@@ -180,7 +180,15 @@ export default function Clients() {
               pagination={{ pageSize: 10 }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
+                role: "button",
+                tabIndex: 0,
                 onClick: () => navigate(`/clients/${r.id}`),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/clients/${r.id}`);
+                  }
+                },
               })}
               className="dataTable"
               locale={{ emptyText: "Aucun client trouvé" }}

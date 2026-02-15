@@ -165,7 +165,15 @@ export default function Suppliers() {
               pagination={{ pageSize: 10 }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
+                role: "button",
+                tabIndex: 0,
                 onClick: () => navigate(`/suppliers/${r.id}`),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/suppliers/${r.id}`);
+                  }
+                },
               })}
               className="dataTable"
               locale={{ emptyText: "Aucun fournisseur trouvé" }}

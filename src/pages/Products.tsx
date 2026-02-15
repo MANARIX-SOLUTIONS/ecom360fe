@@ -308,7 +308,15 @@ export default function Products() {
               pagination={{ pageSize: 10 }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
+                role: "button",
+                tabIndex: 0,
                 onClick: () => navigate(`/products/${r.id}`),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/products/${r.id}`);
+                  }
+                },
               })}
               className="dataTable"
               locale={{ emptyText: "Aucun produit trouvé" }}

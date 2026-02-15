@@ -112,7 +112,21 @@ export default function BackofficeLayout() {
     <Layout className={styles.root}>
       <SkipLink />
       {/* Mobile overlay */}
-      {mobileOpen && <div className={styles.overlay} onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && (
+        <div
+          className={styles.overlay}
+          role="button"
+          tabIndex={0}
+          aria-label="Fermer le menu"
+          onClick={() => setMobileOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setMobileOpen(false);
+            }
+          }}
+        />
+      )}
 
       <Sider
         width={260}

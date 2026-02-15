@@ -295,7 +295,15 @@ export default function Backoffice() {
                 <div
                   key={`${biz.name}-${i}`}
                   className={styles.topRow}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigate("/backoffice/businesses")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate("/backoffice/businesses");
+                    }
+                  }}
                 >
                   <span className={styles.topRank}>#{i + 1}</span>
                   <div className={styles.topInfo}>
