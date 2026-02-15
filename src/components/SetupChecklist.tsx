@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography, Progress } from "antd";
 import { Store, Package, ShoppingCart, Users, ChevronRight, CheckCircle } from "lucide-react";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import styles from "./SetupChecklist.module.css";
 
 type Step = {

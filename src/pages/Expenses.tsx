@@ -19,7 +19,7 @@ import {
 import { Plus, Wallet, TrendingUp, BarChart3 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { listExpenses, listExpenseCategories, createExpense } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 

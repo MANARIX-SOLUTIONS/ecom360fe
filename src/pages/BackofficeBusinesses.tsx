@@ -128,7 +128,7 @@ export default function BackofficeBusinesses() {
         },
       });
     },
-    [modal, detail, loadBusinesses]
+    [modal, detail]
   );
 
   const handleContact = useCallback((biz: Business) => {

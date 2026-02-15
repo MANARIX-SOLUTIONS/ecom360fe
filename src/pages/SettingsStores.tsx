@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Typography, Button, Modal, Form, Input, message } from "antd";
 import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-react";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { getSubscriptionUsage } from "@/api";
 import { t } from "@/i18n";
 import styles from "./SettingsStores.module.css";

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import { Store, ArrowRight } from "lucide-react";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import styles from "./NoStoreBanner.module.css";
 
 export function NoStoreBanner() {

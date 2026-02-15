@@ -152,7 +152,7 @@ export default function MainLayout() {
         ),
       };
     });
-  }, [notifications, markRead]);
+  }, [notifications, markRead, navigate]);
 
   const navItems = useMemo(() => {
     const items = navConfig

@@ -1,29 +1,11 @@
-import { createContext, useContext, useCallback, useState, useEffect, ReactNode } from "react";
+import { useCallback, useState, useEffect, ReactNode } from "react";
 import { listStores, createStore, updateStore as apiUpdateStore, deleteStore } from "@/api";
 import type { StoreResponse } from "@/api";
+import { StoreContext, type Store, type StoreContextValue } from "./store-context";
+
+export type { Store };
 
 const ACTIVE_STORE_KEY = "ecom360_active_store_id";
-
-export type Store = {
-  id: string;
-  name: string;
-  address?: string;
-};
-
-type StoreContextValue = {
-  stores: Store[];
-  activeStore: Store | null;
-  setActiveStoreId: (id: string | null) => void;
-  addStore: (store: Omit<Store, "id">) => Promise<Store>;
-  updateStore: (id: string, updates: Partial<Pick<Store, "name" | "address">>) => Promise<void>;
-  removeStore: (id: string) => Promise<void>;
-  hasStores: boolean;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-};
-
-const StoreContext = createContext<StoreContextValue | null>(null);
 
 function loadActiveId(): string | null {
   return localStorage.getItem(ACTIVE_STORE_KEY);
@@ -136,10 +118,4 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
-}
-
-export function useStore() {
-  const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("useStore must be used within StoreProvider");
-  return ctx;
 }

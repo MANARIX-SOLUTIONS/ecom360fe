@@ -19,7 +19,7 @@ import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import { getProduct, updateProduct, deleteProduct, listCategories, ApiError } from "@/api";
 import { getStockLevel, adjustStock, getStockMovements } from "@/api";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";

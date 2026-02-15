@@ -17,7 +17,7 @@ import {
 import { Search, Plus, Pencil, Package, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import {
   listProducts,
   createProduct,
@@ -355,7 +355,12 @@ export default function Products() {
                   title: "",
                   width: 140,
                   render: (_, r) => (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- stopPropagation only, not interactive
+                    <div
+                      role="group"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="text"
                         size="small"

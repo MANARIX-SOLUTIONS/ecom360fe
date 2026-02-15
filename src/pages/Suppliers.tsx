@@ -202,7 +202,12 @@ export default function Suppliers() {
                   title: "",
                   width: 100,
                   render: (_, r: Supplier) => (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- stopPropagation only, not interactive
+                    <div
+                      role="group"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="text"
                         size="small"

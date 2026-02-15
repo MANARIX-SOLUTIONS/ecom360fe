@@ -24,7 +24,7 @@ import {
   deleteClient,
   getSubscriptionUsage,
 } from "@/api";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 
 type Client = {
   id: string;
@@ -221,7 +221,12 @@ export default function Clients() {
                   title: "",
                   width: 140,
                   render: (_, r: Client) => (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- stopPropagation only, not interactive
+                    <div
+                      role="group"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="text"
                         size="small"

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./POS.module.css";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import {
   getStockByStore,
@@ -295,6 +295,7 @@ export default function POS() {
           size="large"
           className={styles.search}
           allowClear
+          /* eslint-disable-next-line jsx-a11y/no-autofocus -- POS: search is primary action, focus on load improves checkout speed */
           autoFocus
         />
         <div className={styles.categories}>

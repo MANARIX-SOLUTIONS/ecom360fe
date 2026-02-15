@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Button, Result, Spin } from "antd";
 import { Printer, ShoppingCart, Share2, CheckCircle } from "lucide-react";
 import { t } from "@/i18n";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { getSale, ApiError } from "@/api";
 import type { SaleResponse } from "@/api";
 import styles from "./Receipt.module.css";

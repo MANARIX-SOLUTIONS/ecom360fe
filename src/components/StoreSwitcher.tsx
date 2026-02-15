@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Dropdown } from "antd";
 import { Store, ChevronDown, Plus } from "lucide-react";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { t } from "@/i18n";
 import styles from "./StoreSwitcher.module.css";
 

@@ -24,7 +24,7 @@ import {
   listClientPayments,
   ApiError,
 } from "@/api";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ClientResponse } from "@/api";
