@@ -1,0 +1,327 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --color-primary: #1b4d7a;
+  --color-accent: #0891b2;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #ffffff;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --spacing: 8px;
+  --section-gap: 24px;
+  --card-padding: 24px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 10px 40px -10px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --section-gap: 20px;
+    --card-padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --section-gap: 16px;
+    --card-padding: 16px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(27, 77, 122, 0.15);
+  color: var(--color-text);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Large tap targets */
+.ant-btn {
+  min-height: 44px;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-primary {
+  box-shadow: 0 1px 3px rgba(27, 77, 122, 0.3);
+}
+
+.ant-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(27, 77, 122, 0.35);
+  transform: translateY(-1px);
+}
+
+.ant-btn-primary:active {
+  transform: translateY(0);
+}
+
+.ant-input,
+.ant-input-number,
+.ant-select-selector {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+}
+
+.ant-input-affix-wrapper {
+  border-radius: 10px !important;
+}
+
+.ant-select-single .ant-select-selector {
+  align-items: center;
+}
+
+/* Forms */
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+.ant-form-item:last-child {
+  margin-bottom: 0;
+}
+
+.ant-form-item-label > label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.ant-form-item-explain-error {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.ant-input-affix-wrapper,
+.ant-input,
+.ant-input-number,
+.ant-select-selector {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input:focus,
+.ant-input-number:focus,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(27, 77, 122, 0.1) !important;
+}
+
+.ant-form-item-has-error .ant-input-affix-wrapper,
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-input-number,
+.ant-form-item-has-error .ant-select-selector {
+  border-color: var(--color-danger);
+}
+
+.ant-form-item-has-error .ant-input:focus,
+.ant-form-item-has-error .ant-input-affix-wrapper:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Cards */
+.ant-card {
+  border-radius: var(--radius) !important;
+}
+
+/* Numbers: medium / monospace for prices */
+.amount,
+.price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* Shared page layout */
+.pageWrapper {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  margin-bottom: var(--section-gap);
+}
+
+.pageTitle {
+  margin: 0 0 4px !important;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.pageSubtitle {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.contentCard {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+
+.contentCard:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tableResponsive .ant-table {
+  min-width: 320px;
+}
+
+.dataTable .ant-table-thead > tr > th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dataTable .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.dataTable .ant-table-tbody > tr:hover > td {
+  background: rgba(27, 77, 122, 0.02) !important;
+}
+
+.dataTable .ant-table-tbody > tr {
+  transition: background 0.15s;
+}
+
+/* Page content animation */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pageWrapper {
+  animation: pageEnter 0.3s ease both;
+}
+
+/* Responsive */
+@media (max-width: 375px) {
+  .ant-btn {
+    min-height: 44px;
+  }
+}
+
+/* Modal transitions */
+.ant-modal-content {
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden;
+}
+
+/* Drawer */
+.ant-drawer-content-wrapper {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+/* Tags */
+.ant-tag {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Message / Notification */
+.ant-notification-notice {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-elevated) !important;
+}
+
+.ant-message-notice-content {
+  border-radius: var(--radius-sm) !important;
+}
+
+/* Table improvements */
+.ant-table-wrapper .ant-table-pagination {
+  padding: 0 16px;
+}
+
+/* Skeleton loading pulse */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Backoffice notification items */
+.bo-notif-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 4px 0;
+  max-width: 280px;
+}
+
+/* Touch improvements */
+@media (pointer: coarse) {
+  .ant-btn {
+    min-height: 48px;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 14px 12px !important;
+  }
+}
