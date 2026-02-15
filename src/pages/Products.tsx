@@ -48,10 +48,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Divers: "default",
 };
 
-function stockStatus(
-  stock: number,
-  minStock: number,
-): "ok" | "low" | "critical" {
+function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
   if (stock <= 0) return "critical";
   if (stock <= minStock) return "low";
   return "ok";
@@ -70,18 +67,12 @@ export default function Products() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
-    [],
-  );
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [productsAtLimit, setProductsAtLimit] = useState(false);
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) =>
-        setProductsAtLimit(
-          u.productsLimit > 0 && u.productsCount >= u.productsLimit,
-        ),
-      )
+      .then((u) => setProductsAtLimit(u.productsLimit > 0 && u.productsCount >= u.productsLimit))
       .catch(() => setProductsAtLimit(false));
   }, [products.length]);
 
@@ -98,9 +89,7 @@ export default function Products() {
         activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
       ]);
       setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
-      const catById = Object.fromEntries(
-        categoriesRes.map((c) => [c.id, c.name]),
-      );
+      const catById = Object.fromEntries(categoriesRes.map((c) => [c.id, c.name]));
       const stockByProduct: Record<string, StockLevelResponse> = {};
       for (const s of stockList) {
         stockByProduct[s.productId] = s;
@@ -117,7 +106,7 @@ export default function Products() {
             minStock: s?.minStock ?? 0,
             categoryId: p.categoryId,
           };
-        }),
+        })
       );
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur chargement");
@@ -178,11 +167,7 @@ export default function Products() {
             salePrice: values.salePrice,
             isActive: true,
           });
-          if (
-            activeStore?.id &&
-            values.initialStock != null &&
-            values.initialStock > 0
-          ) {
+          if (activeStore?.id && values.initialStock != null && values.initialStock > 0) {
             await initStock({
               productId: created.id,
               storeId: activeStore.id,
@@ -277,10 +262,7 @@ export default function Products() {
           </div>
           {productsAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte.{" "}
-              <Link to="/settings/subscription">
-                Passer à un plan supérieur
-              </Link>
+              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
           ) : (
             <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
@@ -303,8 +285,8 @@ export default function Products() {
               type="secondary"
               style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
             >
-              Ajoutez votre premier produit pour commencer à vendre. Gérez les
-              prix, le stock et les catégories.
+              Ajoutez votre premier produit pour commencer à vendre. Gérez les prix, le stock et les
+              catégories.
             </Typography.Text>
             {!productsAtLimit && (
               <Button
@@ -346,9 +328,7 @@ export default function Products() {
                   width: 100,
                   sorter: (a: Product, b: Product) => a.salePrice - b.salePrice,
                   render: (v: number) => (
-                    <span className="amount">
-                      {v.toLocaleString("fr-FR")} F
-                    </span>
+                    <span className="amount">{v.toLocaleString("fr-FR")} F</span>
                   ),
                 },
                 {
@@ -359,11 +339,7 @@ export default function Products() {
                   render: (stock: number, r: Product) => {
                     const status = stockStatus(stock, r.minStock);
                     const color =
-                      status === "critical"
-                        ? "error"
-                        : status === "low"
-                          ? "warning"
-                          : "success";
+                      status === "critical" ? "error" : status === "low" ? "warning" : "success";
                     return <Tag color={color}>{stock}</Tag>;
                   },
                 },
@@ -399,9 +375,7 @@ export default function Products() {
                                 fetchData();
                               })
                               .catch((e) =>
-                                message.error(
-                                  e instanceof Error ? e.message : "Erreur",
-                                ),
+                                message.error(e instanceof Error ? e.message : "Erreur")
                               );
                           }
                         }}
@@ -443,9 +417,7 @@ export default function Products() {
           <Form.Item
             name="costPrice"
             label={t.products.purchasePrice}
-            rules={[
-              { type: "number", min: 0, message: t.validation.numberMin },
-            ]}
+            rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
           >
             <InputNumber min={0} addonAfter="F" style={{ width: "100%" }} />
           </Form.Item>
@@ -462,18 +434,14 @@ export default function Products() {
           <Form.Item
             name="initialStock"
             label={t.products.initialStock}
-            rules={[
-              { type: "number", min: 0, message: t.validation.numberMin },
-            ]}
+            rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
           >
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             name="minStockAlert"
             label={t.products.minStockAlert}
-            rules={[
-              { type: "number", min: 0, message: t.validation.numberMin },
-            ]}
+            rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
           >
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
@@ -494,13 +462,8 @@ export default function Products() {
       >
         {stockProduct && (
           <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
-            <Typography.Text type="secondary">
-              {stockProduct.name}
-            </Typography.Text>
-            <Typography.Text
-              strong
-              style={{ display: "block", marginBottom: 16 }}
-            >
+            <Typography.Text type="secondary">{stockProduct.name}</Typography.Text>
+            <Typography.Text strong style={{ display: "block", marginBottom: 16 }}>
               Stock actuel : {stockProduct.stock}
             </Typography.Text>
             <Form.Item

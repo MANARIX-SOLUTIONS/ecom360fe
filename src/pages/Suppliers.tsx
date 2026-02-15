@@ -1,17 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Card,
-  Table,
-  Tag,
-  Button,
-  Input,
-  Typography,
-  Skeleton,
-  Modal,
-  Form,
-  message,
-} from "antd";
+import { Card, Table, Tag, Button, Input, Typography, Skeleton, Modal, Form, message } from "antd";
 import { Plus, Search, Truck, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
@@ -55,9 +44,7 @@ export default function Suppliers() {
   useEffect(() => {
     getSubscriptionUsage()
       .then((u) =>
-        setSuppliersAtLimit(
-          u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit,
-        ),
+        setSuppliersAtLimit(u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit)
       )
       .catch(() => setSuppliersAtLimit(false));
   }, [suppliers.length]);
@@ -78,7 +65,7 @@ export default function Suppliers() {
           email: c.email || "",
           zone: c.zone || "",
           balance: c.balance ?? 0,
-        })),
+        }))
       );
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur chargement");
@@ -97,7 +84,7 @@ export default function Suppliers() {
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       (s.phone && s.phone.includes(search)) ||
       (s.email && s.email.toLowerCase().includes(search.toLowerCase())) ||
-      (s.zone && s.zone.toLowerCase().includes(search.toLowerCase())),
+      (s.zone && s.zone.toLowerCase().includes(search.toLowerCase()))
   );
 
   if (loading) {
@@ -134,17 +121,10 @@ export default function Suppliers() {
           />
           {suppliersAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte.{" "}
-              <Link to="/settings/subscription">
-                Passer à un plan supérieur
-              </Link>
+              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
           ) : (
-            <Button
-              type="primary"
-              icon={<Plus size={18} />}
-              onClick={() => setAddOpen(true)}
-            >
+            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
               {t.suppliers.addSupplier}
             </Button>
           )}
@@ -163,8 +143,7 @@ export default function Suppliers() {
               type="secondary"
               style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
             >
-              Ajoutez vos fournisseurs pour suivre vos achats et gérer vos
-              approvisionnements.
+              Ajoutez vos fournisseurs pour suivre vos achats et gérer vos approvisionnements.
             </Typography.Text>
             {!suppliersAtLimit && (
               <Button
@@ -196,9 +175,7 @@ export default function Suppliers() {
                   dataIndex: "name",
                   render: (name: string) => (
                     <span className={styles.nameCell}>
-                      <span className={styles.avatarSmall}>
-                        {getInitials(name)}
-                      </span>
+                      <span className={styles.avatarSmall}>{getInitials(name)}</span>
                       {name}
                     </span>
                   ),
@@ -210,9 +187,7 @@ export default function Suppliers() {
                   title: t.suppliers.balance,
                   dataIndex: "balance",
                   render: (v: number) => (
-                    <Tag color={v < 0 ? "error" : "default"}>
-                      {v.toLocaleString("fr-FR")} F
-                    </Tag>
+                    <Tag color={v < 0 ? "error" : "default"}>{v.toLocaleString("fr-FR")} F</Tag>
                   ),
                 },
                 {
@@ -248,9 +223,7 @@ export default function Suppliers() {
                                 fetchSuppliers();
                               })
                               .catch((e) =>
-                                message.error(
-                                  e instanceof Error ? e.message : "Erreur",
-                                ),
+                                message.error(e instanceof Error ? e.message : "Erreur")
                               );
                           }
                         }}

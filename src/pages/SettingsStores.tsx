@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Typography, Button, Modal, Form, Input, message } from "antd";
-import {
-  Store,
-  Plus,
-  MapPin,
-  Check,
-  Pencil,
-  Trash2,
-  ArrowLeft,
-} from "lucide-react";
+import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { getSubscriptionUsage } from "@/api";
 import { t } from "@/i18n";
@@ -18,15 +10,8 @@ import layoutStyles from "./Settings.module.css";
 
 export default function SettingsStores() {
   const navigate = useNavigate();
-  const {
-    stores,
-    activeStore,
-    setActiveStoreId,
-    addStore,
-    updateStore,
-    removeStore,
-    hasStores,
-  } = useStore();
+  const { stores, activeStore, setActiveStoreId, addStore, updateStore, removeStore, hasStores } =
+    useStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -34,9 +19,7 @@ export default function SettingsStores() {
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) =>
-        setStoresAtLimit(u.storesLimit > 0 && u.storesCount >= u.storesLimit),
-      )
+      .then((u) => setStoresAtLimit(u.storesLimit > 0 && u.storesCount >= u.storesLimit))
       .catch(() => setStoresAtLimit(false));
   }, [stores.length]);
 
@@ -94,23 +77,16 @@ export default function SettingsStores() {
 
       <header className={styles.header}>
         <div>
-          <Typography.Title
-            level={4}
-            className={layoutStyles.settingsPageTitle}
-          >
+          <Typography.Title level={4} className={layoutStyles.settingsPageTitle}>
             {t.stores.title}
           </Typography.Title>
-          <Typography.Text
-            type="secondary"
-            className={layoutStyles.settingsPageSubtitle}
-          >
+          <Typography.Text type="secondary" className={layoutStyles.settingsPageSubtitle}>
             {t.stores.titleDesc}
           </Typography.Text>
         </div>
         {storesAtLimit ? (
           <Typography.Text type="secondary">
-            Limite atteinte.{" "}
-            <Link to="/settings/subscription">Passer à un plan supérieur</Link>
+            Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
           </Typography.Text>
         ) : (
           <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
@@ -129,9 +105,8 @@ export default function SettingsStores() {
               {t.stores.emptyTitle}
             </Typography.Title>
             <Typography.Text type="secondary" className={styles.emptySubtitle}>
-              Créez votre premier point de vente pour commencer à utiliser 360
-              PME. Gérez vos stocks, enregistrez des ventes et suivez votre
-              activité.
+              Créez votre premier point de vente pour commencer à utiliser 360 PME. Gérez vos
+              stocks, enregistrez des ventes et suivez votre activité.
             </Typography.Text>
             {!storesAtLimit && (
               <Button
@@ -157,9 +132,7 @@ export default function SettingsStores() {
                     <span className={styles.storeName}>
                       {store.name}
                       {activeStore?.id === store.id && (
-                        <span className={styles.activeBadge}>
-                          {t.stores.currentStore}
-                        </span>
+                        <span className={styles.activeBadge}>{t.stores.currentStore}</span>
                       )}
                     </span>
                     {store.address && (

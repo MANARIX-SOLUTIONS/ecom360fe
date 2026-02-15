@@ -78,7 +78,7 @@
 }
 
 .menu :global(.ant-menu-item-selected)::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -12px;
   top: 50%;
@@ -241,7 +241,9 @@
   display: flex !important;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .navFab:hover {

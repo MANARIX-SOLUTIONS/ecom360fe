@@ -1,26 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  Table,
-  Button,
-  Typography,
-  Modal,
-  Form,
-  Input,
-  Select,
-  message,
-  Spin,
-} from "antd";
+import { Card, Table, Button, Typography, Modal, Form, Input, Select, message, Spin } from "antd";
 import { ArrowLeft, Plus, User } from "lucide-react";
 import { t } from "@/i18n";
 import { ROLES } from "@/constants/roles";
 import { Link } from "react-router-dom";
-import {
-  listBusinessUsers,
-  inviteBusinessUser,
-  getSubscriptionUsage,
-} from "@/api";
+import { listBusinessUsers, inviteBusinessUser, getSubscriptionUsage } from "@/api";
 import type { BusinessUser } from "@/api";
 import styles from "./Settings.module.css";
 
@@ -55,9 +40,7 @@ export default function SettingsUsers() {
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) =>
-        setUsersAtLimit(u.usersLimit > 0 && u.usersCount >= u.usersLimit),
-      )
+      .then((u) => setUsersAtLimit(u.usersLimit > 0 && u.usersCount >= u.usersLimit))
       .catch(() => setUsersAtLimit(false));
   }, [users.length]);
 
@@ -73,9 +56,7 @@ export default function SettingsUsers() {
       listBusinessUsers().then(setUsers);
     } catch (e) {
       if (e instanceof Error && e.message?.includes("required")) return;
-      message.error(
-        e instanceof Error ? e.message : "Erreur lors de l'invitation",
-      );
+      message.error(e instanceof Error ? e.message : "Erreur lors de l'invitation");
     } finally {
       setInviting(false);
     }
@@ -83,11 +64,7 @@ export default function SettingsUsers() {
 
   return (
     <div className={`${styles.settingsPage} pageWrapper`}>
-      <button
-        type="button"
-        className={styles.settingsBack}
-        onClick={() => navigate("/settings")}
-      >
+      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
       </button>
@@ -98,26 +75,16 @@ export default function SettingsUsers() {
             <Typography.Title level={4} className={styles.settingsPageTitle}>
               {t.settings.usersAndRoles}
             </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              className={styles.settingsPageSubtitle}
-            >
+            <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
               {t.settings.usersAndRolesDesc}
             </Typography.Text>
           </div>
           {usersAtLimit ? (
             <Typography.Text type="secondary" style={{ marginRight: 8 }}>
-              Limite atteinte.{" "}
-              <Link to="/settings/subscription">
-                Passer à un plan supérieur
-              </Link>
+              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
           ) : (
-            <Button
-              type="primary"
-              icon={<Plus size={18} />}
-              onClick={() => setInviteOpen(true)}
-            >
+            <Button type="primary" icon={<Plus size={18} />} onClick={() => setInviteOpen(true)}>
               {t.settings.inviteUser}
             </Button>
           )}
@@ -126,10 +93,7 @@ export default function SettingsUsers() {
 
       <Card bordered={false} className={styles.settingsCard}>
         {loading ? (
-          <Spin
-            size="large"
-            style={{ display: "block", margin: "48px auto" }}
-          />
+          <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
         ) : (
           <div className="tableResponsive">
             <Table

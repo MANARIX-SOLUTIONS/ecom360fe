@@ -44,9 +44,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
 
 export function usePlanFeatures() {
   const [planSlug, setPlanSlug] = useState<string | null>(() =>
-    typeof window !== "undefined"
-      ? localStorage.getItem("ecom360_plan_slug")
-      : null,
+    typeof window !== "undefined" ? localStorage.getItem("ecom360_plan_slug") : null
   );
   const [features, setFeatures] = useState<FeatureFlags>(DEFAULT_FEATURES);
 
@@ -59,9 +57,7 @@ export function usePlanFeatures() {
       const [sub, plans] = await Promise.all([getSubscription(), listPlans()]);
       const slug = sub?.planSlug ?? localStorage.getItem("ecom360_plan_slug");
       setPlanSlug(slug);
-      const plan = plans.find(
-        (p) => p.slug.toLowerCase() === (slug ?? "").toLowerCase(),
-      );
+      const plan = plans.find((p) => p.slug.toLowerCase() === (slug ?? "").toLowerCase());
       setFeatures(plan ? planToFeatures(plan) : DEFAULT_FEATURES);
     } catch {
       setFeatures(DEFAULT_FEATURES);

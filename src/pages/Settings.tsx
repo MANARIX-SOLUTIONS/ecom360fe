@@ -1,50 +1,86 @@
-import { useMemo } from 'react'
-import { Card, Typography } from 'antd'
-import { Building2, CreditCard, Users, Shield, LogOut, Store, ChevronRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
-import { useAuthRole } from '@/hooks/useAuthRole'
-import { usePlanFeatures } from '@/hooks/usePlanFeatures'
-import type { Permission } from '@/constants/roles'
-import { t } from '@/i18n'
-import styles from './Settings.module.css'
+import { useMemo } from "react";
+import { Card, Typography } from "antd";
+import { Building2, CreditCard, Users, Shield, LogOut, Store, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import type { Permission } from "@/constants/roles";
+import { t } from "@/i18n";
+import styles from "./Settings.module.css";
 
 type SettingItem = {
-  icon: typeof Store
-  title: string
-  desc: string
-  path: string
-  permission: string
-}
+  icon: typeof Store;
+  title: string;
+  desc: string;
+  path: string;
+  permission: string;
+};
 
 const organisationConfig: SettingItem[] = [
-  { icon: Store, title: t.stores.title, desc: t.stores.titleDesc, path: '/settings/stores', permission: 'settings:stores' },
-  { icon: Building2, title: t.settings.companyProfile, desc: t.settings.companyProfileDesc, path: '/settings/profile', permission: 'settings:profile' },
-  { icon: CreditCard, title: t.settings.subscription, desc: t.settings.subscriptionDesc, path: '/settings/subscription', permission: 'settings:subscription' },
-]
+  {
+    icon: Store,
+    title: t.stores.title,
+    desc: t.stores.titleDesc,
+    path: "/settings/stores",
+    permission: "settings:stores",
+  },
+  {
+    icon: Building2,
+    title: t.settings.companyProfile,
+    desc: t.settings.companyProfileDesc,
+    path: "/settings/profile",
+    permission: "settings:profile",
+  },
+  {
+    icon: CreditCard,
+    title: t.settings.subscription,
+    desc: t.settings.subscriptionDesc,
+    path: "/settings/subscription",
+    permission: "settings:subscription",
+  },
+];
 
 const accountConfig: SettingItem[] = [
-  { icon: Users, title: t.settings.usersAndRoles, desc: t.settings.usersAndRolesDesc, path: '/settings/users', permission: 'settings:users' },
-  { icon: Shield, title: t.settings.security, desc: t.settings.securityDesc, path: '/settings/security', permission: 'settings:security' },
-]
+  {
+    icon: Users,
+    title: t.settings.usersAndRoles,
+    desc: t.settings.usersAndRolesDesc,
+    path: "/settings/users",
+    permission: "settings:users",
+  },
+  {
+    icon: Shield,
+    title: t.settings.security,
+    desc: t.settings.securityDesc,
+    path: "/settings/security",
+    permission: "settings:security",
+  },
+];
 
 export default function Settings() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
-  const { can } = useAuthRole()
-  const { canAccess } = usePlanFeatures()
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const { can } = useAuthRole();
+  const { canAccess } = usePlanFeatures();
 
   const organisationItems = useMemo(
-    () => organisationConfig.filter((item) => canAccess(item.permission, can(item.permission as Permission))),
+    () =>
+      organisationConfig.filter((item) =>
+        canAccess(item.permission, can(item.permission as Permission))
+      ),
     [can, canAccess]
-  )
+  );
   const accountItems = useMemo(
-    () => accountConfig.filter((item) => canAccess(item.permission, can(item.permission as Permission))),
+    () =>
+      accountConfig.filter((item) =>
+        canAccess(item.permission, can(item.permission as Permission))
+      ),
     [can, canAccess]
-  )
+  );
 
   const renderItem = (item: SettingItem) => {
-    const Icon = item.icon
+    const Icon = item.icon;
     return (
       <button
         key={item.path}
@@ -61,8 +97,8 @@ export default function Settings() {
         </span>
         <ChevronRight size={18} className={styles.itemChevron} />
       </button>
-    )
-  }
+    );
+  };
 
   return (
     <div className={`${styles.page} pageWrapper`}>
@@ -76,39 +112,39 @@ export default function Settings() {
       </header>
 
       {organisationItems.length > 0 && (
-      <section className={styles.section}>
-        <Typography.Text type="secondary" className={styles.sectionTitle}>
-          {t.settings.sectionOrganisation}
-        </Typography.Text>
-        <Card bordered={false} className={styles.card}>
-          <div className={styles.itemList}>
-            {organisationItems.map((item, i) => (
-              <div key={item.path}>
-                {renderItem(item)}
-                {i < organisationItems.length - 1 && <div className={styles.itemDivider} />}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
+        <section className={styles.section}>
+          <Typography.Text type="secondary" className={styles.sectionTitle}>
+            {t.settings.sectionOrganisation}
+          </Typography.Text>
+          <Card bordered={false} className={styles.card}>
+            <div className={styles.itemList}>
+              {organisationItems.map((item, i) => (
+                <div key={item.path}>
+                  {renderItem(item)}
+                  {i < organisationItems.length - 1 && <div className={styles.itemDivider} />}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
       )}
 
       {accountItems.length > 0 && (
-      <section className={styles.section}>
-        <Typography.Text type="secondary" className={styles.sectionTitle}>
-          {t.settings.sectionAccount}
-        </Typography.Text>
-        <Card bordered={false} className={styles.card}>
-          <div className={styles.itemList}>
-            {accountItems.map((item, i) => (
-              <div key={item.path}>
-                {renderItem(item)}
-                {i < accountItems.length - 1 && <div className={styles.itemDivider} />}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
+        <section className={styles.section}>
+          <Typography.Text type="secondary" className={styles.sectionTitle}>
+            {t.settings.sectionAccount}
+          </Typography.Text>
+          <Card bordered={false} className={styles.card}>
+            <div className={styles.itemList}>
+              {accountItems.map((item, i) => (
+                <div key={item.path}>
+                  {renderItem(item)}
+                  {i < accountItems.length - 1 && <div className={styles.itemDivider} />}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
       )}
 
       <section className={styles.section}>
@@ -117,8 +153,8 @@ export default function Settings() {
             type="button"
             className={styles.logoutBtn}
             onClick={() => {
-              logout()
-              navigate('/login')
+              logout();
+              navigate("/login");
             }}
           >
             <LogOut size={20} />
@@ -127,5 +163,5 @@ export default function Settings() {
         </Card>
       </section>
     </div>
-  )
+  );
 }

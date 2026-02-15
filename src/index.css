@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   --color-primary: #1b4d7a;
@@ -189,7 +189,9 @@ body {
 .ant-input,
 .ant-input-number,
 .ant-select-selector {
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .ant-input-affix-wrapper:focus,
@@ -253,7 +255,9 @@ body {
 .contentCard {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
 }
 
 .contentCard:hover {
@@ -357,8 +361,12 @@ body {
 
 /* Skeleton loading pulse */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Backoffice notification items */

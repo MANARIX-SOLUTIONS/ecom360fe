@@ -137,13 +137,7 @@ export default function ResetPassword() {
             <Input.Password prefix={<Lock size={18} />} placeholder="••••••••" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 8 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              loading={loading}
-              style={{ height: 48 }}
-            >
+            <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 48 }}>
               Réinitialiser le mot de passe
             </Button>
           </Form.Item>

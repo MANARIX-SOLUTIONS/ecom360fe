@@ -20,11 +20,7 @@ import { Plus, Wallet, TrendingUp, BarChart3 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
 import { useStore } from "@/contexts/StoreContext";
-import {
-  listExpenses,
-  listExpenseCategories,
-  createExpense,
-} from "@/api";
+import { listExpenses, listExpenseCategories, createExpense } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 
 function formatFCFA(n: number) {
@@ -87,20 +83,20 @@ export default function Expenses() {
   }, [fetchData]);
 
   const filtered =
-    categoryFilter === "all"
-      ? expenses
-      : expenses.filter((e) => e.categoryId === categoryFilter);
+    categoryFilter === "all" ? expenses : expenses.filter((e) => e.categoryId === categoryFilter);
 
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
   const categoryColorMap: Record<string, string> = Object.fromEntries(
-    categories.map((c) => [c.id, c.color || "default"]),
+    categories.map((c) => [c.id, c.color || "default"])
   );
 
   const monthTotal = expenses
     .filter((e) => {
       const d = e.expenseDate;
       const now = new Date();
-      return d && d.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+      return (
+        d && d.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`)
+      );
     })
     .reduce((s, e) => s + (e.amount ?? 0), 0);
 
@@ -112,15 +108,33 @@ export default function Expenses() {
           acc[name] = (acc[name] || 0) + (e.amount ?? 0);
           return acc;
         },
-        {} as Record<string, number>,
+        {} as Record<string, number>
       )
     : {};
   const topCatName = Object.entries(topCategory).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
 
   const summaryStats = [
-    { label: "Total ce mois", value: formatFCFA(monthTotal), icon: Wallet, color: "var(--color-primary)", bg: "rgba(31,58,95,0.08)" },
-    { label: "Top catégorie", value: topCatName, icon: TrendingUp, color: "var(--color-warning)", bg: "rgba(243,156,18,0.08)" },
-    { label: "Nb dépenses", value: String(expenses.length), icon: BarChart3, color: "var(--color-success)", bg: "rgba(46,204,113,0.08)" },
+    {
+      label: "Total ce mois",
+      value: formatFCFA(monthTotal),
+      icon: Wallet,
+      color: "var(--color-primary)",
+      bg: "rgba(31,58,95,0.08)",
+    },
+    {
+      label: "Top catégorie",
+      value: topCatName,
+      icon: TrendingUp,
+      color: "var(--color-warning)",
+      bg: "rgba(243,156,18,0.08)",
+    },
+    {
+      label: "Nb dépenses",
+      value: String(expenses.length),
+      icon: BarChart3,
+      color: "var(--color-success)",
+      bg: "rgba(46,204,113,0.08)",
+    },
   ];
 
   const onFinish = async (values: Record<string, unknown>) => {
@@ -178,11 +192,7 @@ export default function Expenses() {
             ]}
             style={{ width: 200 }}
           />
-          <Button
-            type="primary"
-            icon={<Plus size={18} />}
-            onClick={() => setDrawerOpen(true)}
-          >
+          <Button type="primary" icon={<Plus size={18} />} onClick={() => setDrawerOpen(true)}>
             {t.expenses.addExpense}
           </Button>
         </div>
@@ -194,10 +204,7 @@ export default function Expenses() {
           <Col xs={8} key={label}>
             <Card bordered={false} className={styles.summaryCard}>
               <div className={styles.summaryInner}>
-                <span
-                  className={styles.summaryIcon}
-                  style={{ background: bg, color }}
-                >
+                <span className={styles.summaryIcon} style={{ background: bg, color }}>
                   <Icon size={18} />
                 </span>
                 <span className={styles.summaryValue}>{value}</span>
@@ -208,11 +215,7 @@ export default function Expenses() {
         ))}
       </Row>
 
-      <Card
-        title={t.expenses.list}
-        bordered={false}
-        className={`${styles.card} contentCard`}
-      >
+      <Card title={t.expenses.list} bordered={false} className={`${styles.card} contentCard`}>
         {expenses.length === 0 ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>
@@ -221,10 +224,20 @@ export default function Expenses() {
             <Typography.Title level={4} style={{ marginBottom: 8 }}>
               Aucune dépense
             </Typography.Title>
-            <Typography.Text type="secondary" style={{ maxWidth: 340, textAlign: 'center', lineHeight: 1.6 }}>
-              Enregistrez vos dépenses pour suivre vos charges et mieux comprendre votre rentabilité.
+            <Typography.Text
+              type="secondary"
+              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
+            >
+              Enregistrez vos dépenses pour suivre vos charges et mieux comprendre votre
+              rentabilité.
             </Typography.Text>
-            <Button type="primary" size="large" icon={<Plus size={16} />} onClick={() => setDrawerOpen(true)} style={{ marginTop: 20, height: 48 }}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<Plus size={16} />}
+              onClick={() => setDrawerOpen(true)}
+              style={{ marginTop: 20, height: 48 }}
+            >
               Ajouter une dépense
             </Button>
           </div>
@@ -250,12 +263,9 @@ export default function Expenses() {
                 {
                   title: t.expenses.amount,
                   dataIndex: "amount",
-                  sorter: (a: ExpenseResponse, b: ExpenseResponse) => (a.amount ?? 0) - (b.amount ?? 0),
-                  render: (v: number) => (
-                    <span className="amount">
-                      {formatFCFA(v ?? 0)}
-                    </span>
-                  ),
+                  sorter: (a: ExpenseResponse, b: ExpenseResponse) =>
+                    (a.amount ?? 0) - (b.amount ?? 0),
+                  render: (v: number) => <span className="amount">{formatFCFA(v ?? 0)}</span>,
                   width: 120,
                 },
                 {
@@ -299,9 +309,7 @@ export default function Expenses() {
           <Form.Item
             name="categoryId"
             label={t.expenses.category}
-            rules={[
-              { required: true, message: t.validation.categoryRequired },
-            ]}
+            rules={[{ required: true, message: t.validation.categoryRequired }]}
           >
             <Select
               placeholder={t.expenses.category}
@@ -326,12 +334,7 @@ export default function Expenses() {
               { type: "number", min: 1, message: t.validation.amountMin },
             ]}
           >
-            <InputNumber
-              min={1}
-              addonAfter="F"
-              style={{ width: "100%" }}
-              placeholder="0"
-            />
+            <InputNumber min={1} addonAfter="F" style={{ width: "100%" }} placeholder="0" />
           </Form.Item>
           <Form.Item name="description" label={t.expenses.description}>
             <Input.TextArea rows={3} placeholder="Description (optionnel)" />

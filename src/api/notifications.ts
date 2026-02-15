@@ -24,18 +24,13 @@ export async function listNotifications(params?: {
   size?: number;
 }): Promise<PageResponse<NotificationResponse>> {
   const search = new URLSearchParams();
-  if (params?.unreadOnly != null)
-    search.set("unreadOnly", String(params.unreadOnly));
+  if (params?.unreadOnly != null) search.set("unreadOnly", String(params.unreadOnly));
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.size != null) search.set("size", String(params.size));
   const qs = search.toString();
-  return api.get<PageResponse<NotificationResponse>>(
-    `/notifications${qs ? `?${qs}` : ""}`,
-  );
+  return api.get<PageResponse<NotificationResponse>>(`/notifications${qs ? `?${qs}` : ""}`);
 }
 
-export async function markNotificationRead(
-  id: string,
-): Promise<NotificationResponse> {
+export async function markNotificationRead(id: string): Promise<NotificationResponse> {
   return api.patch<NotificationResponse>(`/notifications/${id}/read`);
 }

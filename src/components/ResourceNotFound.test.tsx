@@ -5,11 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ResourceNotFound } from "./ResourceNotFound";
 
 function renderWithRouter(ui: React.ReactElement, { route = "/" } = {}) {
-  return render(
-    <MemoryRouter initialEntries={[route]}>
-      {ui}
-    </MemoryRouter>
-  );
+  return render(<MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>);
 }
 
 describe("ResourceNotFound", () => {

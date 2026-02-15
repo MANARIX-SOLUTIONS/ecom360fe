@@ -1,12 +1,12 @@
-import { Typography } from 'antd'
-import { CloudOff } from 'lucide-react'
-import { t } from '@/i18n'
-import styles from './SyncIndicator.module.css'
+import { Typography } from "antd";
+import { CloudOff } from "lucide-react";
+import { t } from "@/i18n";
+import styles from "./SyncIndicator.module.css";
 
-type Props = { syncing?: boolean; offline?: boolean }
+type Props = { syncing?: boolean; offline?: boolean };
 
 export function SyncIndicator({ syncing, offline }: Props) {
-  if (!syncing && !offline) return null
+  if (!syncing && !offline) return null;
   return (
     <span className={styles.wrapper} role="status">
       {offline ? (
@@ -20,5 +20,5 @@ export function SyncIndicator({ syncing, offline }: Props) {
         </>
       )}
     </span>
-  )
+  );
 }

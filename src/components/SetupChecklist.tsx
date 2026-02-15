@@ -1,42 +1,77 @@
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Card, Typography, Progress } from 'antd'
-import { Store, Package, ShoppingCart, Users, ChevronRight, CheckCircle } from 'lucide-react'
-import { useStore } from '@/contexts/StoreContext'
-import styles from './SetupChecklist.module.css'
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, Typography, Progress } from "antd";
+import { Store, Package, ShoppingCart, Users, ChevronRight, CheckCircle } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
+import styles from "./SetupChecklist.module.css";
 
 type Step = {
-  key: string
-  icon: typeof Store
-  title: string
-  desc: string
-  path: string
-  done: boolean
-}
+  key: string;
+  icon: typeof Store;
+  title: string;
+  desc: string;
+  path: string;
+  done: boolean;
+};
 
 type SetupChecklistProps = {
-  hasProducts?: boolean
-  hasFirstSale?: boolean
-  hasClients?: boolean
-}
+  hasProducts?: boolean;
+  hasFirstSale?: boolean;
+  hasClients?: boolean;
+};
 
-export function SetupChecklist({ hasProducts = false, hasFirstSale = false, hasClients = false }: SetupChecklistProps) {
-  const navigate = useNavigate()
-  const { hasStores } = useStore()
+export function SetupChecklist({
+  hasProducts = false,
+  hasFirstSale = false,
+  hasClients = false,
+}: SetupChecklistProps) {
+  const navigate = useNavigate();
+  const { hasStores } = useStore();
 
-  const steps: Step[] = useMemo(() => [
-    { key: 'store', icon: Store, title: 'Créer votre boutique', desc: 'Ajoutez votre premier point de vente', path: '/settings/stores', done: hasStores },
-    { key: 'product', icon: Package, title: 'Ajouter des produits', desc: 'Importez ou créez votre catalogue', path: '/products', done: hasProducts },
-    { key: 'sale', icon: ShoppingCart, title: 'Effectuer une vente', desc: 'Testez le point de vente', path: '/pos', done: hasFirstSale },
-    { key: 'client', icon: Users, title: 'Ajouter un client', desc: 'Commencez à suivre les crédits', path: '/clients', done: hasClients },
-  ], [hasStores, hasProducts, hasFirstSale, hasClients])
+  const steps: Step[] = useMemo(
+    () => [
+      {
+        key: "store",
+        icon: Store,
+        title: "Créer votre boutique",
+        desc: "Ajoutez votre premier point de vente",
+        path: "/settings/stores",
+        done: hasStores,
+      },
+      {
+        key: "product",
+        icon: Package,
+        title: "Ajouter des produits",
+        desc: "Importez ou créez votre catalogue",
+        path: "/products",
+        done: hasProducts,
+      },
+      {
+        key: "sale",
+        icon: ShoppingCart,
+        title: "Effectuer une vente",
+        desc: "Testez le point de vente",
+        path: "/pos",
+        done: hasFirstSale,
+      },
+      {
+        key: "client",
+        icon: Users,
+        title: "Ajouter un client",
+        desc: "Commencez à suivre les crédits",
+        path: "/clients",
+        done: hasClients,
+      },
+    ],
+    [hasStores, hasProducts, hasFirstSale, hasClients]
+  );
 
-  const completed = steps.filter((s) => s.done).length
-  const total = steps.length
-  const percent = Math.round((completed / total) * 100)
+  const completed = steps.filter((s) => s.done).length;
+  const total = steps.length;
+  const percent = Math.round((completed / total) * 100);
 
   // If all done, don't show the checklist
-  if (completed >= total) return null
+  if (completed >= total) return null;
 
   return (
     <Card bordered={false} className={styles.card}>
@@ -60,16 +95,16 @@ export function SetupChecklist({ hasProducts = false, hasFirstSale = false, hasC
       </div>
       <div className={styles.steps}>
         {steps.map((step) => {
-          const Icon = step.icon
+          const Icon = step.icon;
           return (
             <button
               key={step.key}
               type="button"
-              className={`${styles.step} ${step.done ? styles.stepDone : ''}`}
+              className={`${styles.step} ${step.done ? styles.stepDone : ""}`}
               onClick={() => !step.done && navigate(step.path)}
               disabled={step.done}
             >
-              <span className={`${styles.stepIcon} ${step.done ? styles.stepIconDone : ''}`}>
+              <span className={`${styles.stepIcon} ${step.done ? styles.stepIconDone : ""}`}>
                 {step.done ? <CheckCircle size={18} /> : <Icon size={18} />}
               </span>
               <span className={styles.stepContent}>
@@ -78,9 +113,9 @@ export function SetupChecklist({ hasProducts = false, hasFirstSale = false, hasC
               </span>
               {!step.done && <ChevronRight size={16} className={styles.stepChevron} />}
             </button>
-          )
+          );
         })}
       </div>
     </Card>
-  )
+  );
 }

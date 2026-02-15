@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Card,
-  Form,
-  Input,
-  Button,
-  Typography,
-  message,
-  Alert,
-} from "antd";
+import { Card, Form, Input, Button, Typography, message, Alert } from "antd";
 import { Mail, Lock, User, Building2, ShoppingBag } from "lucide-react";
 import { ApiError, register } from "@/api";
 import { t } from "@/i18n";
@@ -61,10 +53,7 @@ export default function Register() {
           </div>
 
           <div className={styles.logoBlock}>
-            <Typography.Title
-              level={3}
-              style={{ color: "var(--color-primary)", marginBottom: 8 }}
-            >
+            <Typography.Title level={3} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
               Créer un compte
             </Typography.Title>
             <Typography.Text type="secondary">

@@ -142,7 +142,9 @@
   cursor: pointer;
   min-height: 56px;
   border-radius: var(--radius);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .logoutBtn:hover {
@@ -174,7 +176,9 @@
   cursor: pointer;
   font-family: inherit;
   border-radius: var(--radius);
-  transition: color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
 
 .settingsBack:hover {
@@ -272,12 +276,11 @@
     padding: 14px 16px;
   }
 
-.planRow {
-  flex-direction: column;
-  gap: 12px;
+  .planRow {
+    flex-direction: column;
+    gap: 12px;
   }
 }
-
 
 /* ========== Subscription plan cards ========== */
 .planGrid {
@@ -290,7 +293,9 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   border: 2px solid transparent;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .planCard :global(.ant-card-body) {

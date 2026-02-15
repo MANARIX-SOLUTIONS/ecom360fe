@@ -74,7 +74,10 @@ export default function Receipt() {
 
   if (saleNotFound) {
     return (
-      <div className={styles.wrapper} style={{ padding: 48, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        className={styles.wrapper}
+        style={{ padding: 48, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
         <Result
           status="404"
           title="Vente introuvable"
@@ -103,37 +106,29 @@ export default function Receipt() {
 
   useEffect(() => {
     document.title = `Ticket ${receiptId} - 360 PME Commerce`;
-    return () => { document.title = "360 PME Commerce"; };
+    return () => {
+      document.title = "360 PME Commerce";
+    };
   }, [receiptId]);
   const subtotal = sale?.subtotal ?? cart.reduce((sum, line) => sum + line.price * line.qty, 0);
   const displayTotal = sale?.total ?? total;
   const displayDiscount = sale?.discountAmount ?? discount;
 
   return (
-    <main
-      className={styles.wrapper}
-      role="main"
-      aria-label={t.receipt.saleSummary}
-    >
+    <main className={styles.wrapper} role="main" aria-label={t.receipt.saleSummary}>
       {/* Success indicator */}
       <div className={styles.successBanner}>
         <CheckCircle size={40} className={styles.successIcon} />
         <span className={styles.successText}>{t.pos.paymentSuccess}</span>
       </div>
 
-      <article
-        className={styles.receipt}
-        id="receipt-print"
-        aria-label={t.receipt.ticket}
-      >
+      <article className={styles.receipt} id="receipt-print" aria-label={t.receipt.ticket}>
         <header className={styles.header}>
           <h1 className={styles.shopName}>
             {sale?.storeName || activeStore?.name || "360 PME Commerce"}
           </h1>
           {(sale?.storeAddress || activeStore?.address) && (
-            <p className={styles.shopAddress}>
-              {sale?.storeAddress || activeStore?.address}
-            </p>
+            <p className={styles.shopAddress}>{sale?.storeAddress || activeStore?.address}</p>
           )}
         </header>
 
@@ -159,11 +154,7 @@ export default function Receipt() {
 
         <hr className={styles.divider} aria-hidden />
 
-        <table
-          className={styles.lines}
-          role="table"
-          aria-label="Lignes de la vente"
-        >
+        <table className={styles.lines} role="table" aria-label="Lignes de la vente">
           <thead>
             <tr>
               <th scope="col" className={styles.colDesc}>
@@ -181,16 +172,23 @@ export default function Receipt() {
             </tr>
           </thead>
           <tbody>
-            {(sale?.lines ?? cart.map((l) => ({ productId: l.id, productName: l.name, quantity: l.qty, unitPrice: l.price, lineTotal: l.price * l.qty }))).map((line, i) => (
+            {(
+              sale?.lines ??
+              cart.map((l) => ({
+                productId: l.id,
+                productName: l.name,
+                quantity: l.qty,
+                unitPrice: l.price,
+                lineTotal: l.price * l.qty,
+              }))
+            ).map((line, i) => (
               <tr key={line.productId ?? i}>
                 <td className={styles.colDesc}>
                   <span className={styles.productName}>{line.productName}</span>
                 </td>
                 <td className={styles.colQty}>{line.quantity}</td>
                 <td className={styles.colPrice}>{formatPrice(line.unitPrice)}</td>
-                <td className={styles.colTotal}>
-                  {formatPrice(line.lineTotal)}
-                </td>
+                <td className={styles.colTotal}>{formatPrice(line.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
@@ -207,9 +205,7 @@ export default function Receipt() {
               </div>
               <div className={styles.row}>
                 <span>{t.pos.discount}</span>
-                <span className={styles.discount}>
-                  -{formatPrice(displayDiscount)}
-                </span>
+                <span className={styles.discount}>-{formatPrice(displayDiscount)}</span>
               </div>
             </>
           )}
@@ -222,9 +218,7 @@ export default function Receipt() {
         <hr className={styles.divider} aria-hidden />
 
         <p className={styles.payment}>
-          <span className={styles.paymentLabel}>
-            {t.receipt.paymentMethod}
-          </span>
+          <span className={styles.paymentLabel}>{t.receipt.paymentMethod}</span>
           <span>{METHOD_LABELS[method] || method}</span>
         </p>
 

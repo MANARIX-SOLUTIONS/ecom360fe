@@ -25,11 +25,7 @@ export function ResourceNotFound({ resource, backPath, backLabel }: Props) {
         title={`${resource} introuvable`}
         subTitle="Cette ressource n'existe pas ou a été supprimée."
         extra={
-          <Button
-            type="primary"
-            icon={<ArrowLeft size={16} />}
-            onClick={() => navigate(backPath)}
-          >
+          <Button type="primary" icon={<ArrowLeft size={16} />} onClick={() => navigate(backPath)}>
             {backLabel ?? "Retour à la liste"}
           </Button>
         }

@@ -3,7 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, Button, Typography, Tag, message, Modal, Spin } from "antd";
 import { ArrowLeft, Star, Check, X as XIcon, Zap } from "lucide-react";
 import { t } from "@/i18n";
-import { getSubscription, listPlans, changePlan, cancelSubscription, getSubscriptionUsage } from "@/api";
+import {
+  getSubscription,
+  listPlans,
+  changePlan,
+  cancelSubscription,
+  getSubscriptionUsage,
+} from "@/api";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
 
@@ -112,7 +118,9 @@ export default function SettingsSubscription() {
 
   const refreshSubscription = () => {
     getSubscription().then((sub) => setCurrentPlanSlug(sub?.planSlug ?? null));
-    getSubscriptionUsage().then(setUsage).catch(() => setUsage(null));
+    getSubscriptionUsage()
+      .then(setUsage)
+      .catch(() => setUsage(null));
   };
 
   useEffect(() => {
@@ -163,11 +171,7 @@ export default function SettingsSubscription() {
 
   return (
     <div className={`${styles.settingsPage} pageWrapper`} style={{ maxWidth: 900 }}>
-      <button
-        type="button"
-        className={styles.settingsBack}
-        onClick={() => navigate("/settings")}
-      >
+      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
       </button>
@@ -182,19 +186,39 @@ export default function SettingsSubscription() {
       </header>
 
       {/* Usage summary */}
-      {usage && (usage.usersLimit > 0 || usage.storesLimit > 0 || usage.productsLimit > 0 || usage.clientsLimit > 0 || usage.suppliersLimit > 0 || usage.salesLimit > 0) && (
-        <Card size="small" style={{ marginBottom: 24 }}>
-          <Typography.Text strong>Votre utilisation</Typography.Text>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 8, fontSize: 13 }}>
-            {usage.usersLimit > 0 && <span>Utilisateurs : {formatUsage(usage.usersCount, usage.usersLimit)}</span>}
-            {usage.storesLimit > 0 && <span>Boutiques : {formatUsage(usage.storesCount, usage.storesLimit)}</span>}
-            {usage.productsLimit > 0 && <span>Produits : {formatUsage(usage.productsCount, usage.productsLimit)}</span>}
-            {usage.clientsLimit > 0 && <span>Clients : {formatUsage(usage.clientsCount, usage.clientsLimit)}</span>}
-            {usage.suppliersLimit > 0 && <span>Fournisseurs : {formatUsage(usage.suppliersCount, usage.suppliersLimit)}</span>}
-            {usage.salesLimit > 0 && <span>Ventes ce mois : {formatUsage(usage.salesThisMonth, usage.salesLimit)}</span>}
-          </div>
-        </Card>
-      )}
+      {usage &&
+        (usage.usersLimit > 0 ||
+          usage.storesLimit > 0 ||
+          usage.productsLimit > 0 ||
+          usage.clientsLimit > 0 ||
+          usage.suppliersLimit > 0 ||
+          usage.salesLimit > 0) && (
+          <Card size="small" style={{ marginBottom: 24 }}>
+            <Typography.Text strong>Votre utilisation</Typography.Text>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 8, fontSize: 13 }}>
+              {usage.usersLimit > 0 && (
+                <span>Utilisateurs : {formatUsage(usage.usersCount, usage.usersLimit)}</span>
+              )}
+              {usage.storesLimit > 0 && (
+                <span>Boutiques : {formatUsage(usage.storesCount, usage.storesLimit)}</span>
+              )}
+              {usage.productsLimit > 0 && (
+                <span>Produits : {formatUsage(usage.productsCount, usage.productsLimit)}</span>
+              )}
+              {usage.clientsLimit > 0 && (
+                <span>Clients : {formatUsage(usage.clientsCount, usage.clientsLimit)}</span>
+              )}
+              {usage.suppliersLimit > 0 && (
+                <span>
+                  Fournisseurs : {formatUsage(usage.suppliersCount, usage.suppliersLimit)}
+                </span>
+              )}
+              {usage.salesLimit > 0 && (
+                <span>Ventes ce mois : {formatUsage(usage.salesThisMonth, usage.salesLimit)}</span>
+              )}
+            </div>
+          </Card>
+        )}
 
       {/* Billing toggle */}
       <div className={styles.billingToggle}>
@@ -211,14 +235,24 @@ export default function SettingsSubscription() {
           onClick={() => setYearlyBilling(true)}
         >
           Annuel
-          <Tag color="success" style={{ margin: 0, marginLeft: 6, fontSize: 10, lineHeight: "16px", padding: "0 6px" }}>
+          <Tag
+            color="success"
+            style={{ margin: 0, marginLeft: 6, fontSize: 10, lineHeight: "16px", padding: "0 6px" }}
+          >
             -17%
           </Tag>
         </button>
       </div>
 
       {/* Plan cards */}
-      <div className={styles.planGrid} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
+      <div
+        className={styles.planGrid}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: 16,
+        }}
+      >
         {displayPlans.map((plan) => {
           const isCurrent = plan.key === currentPlanSlug;
           return (
@@ -231,7 +265,10 @@ export default function SettingsSubscription() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <h3 className={styles.planCardName}>{plan.name}</h3>
                   {plan.recommended && (
-                    <Tag color="gold" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Tag
+                      color="gold"
+                      style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
                       <Star size={12} />
                       Recommandé
                     </Tag>
@@ -242,12 +279,13 @@ export default function SettingsSubscription() {
                 <span className={styles.planCardPrice}>
                   {yearlyBilling ? plan.priceYear : plan.price}
                 </span>
-                <span className={styles.planCardPeriod}>
-                  {yearlyBilling ? "/an" : "/mois"}
-                </span>
+                <span className={styles.planCardPeriod}>{yearlyBilling ? "/an" : "/mois"}</span>
               </div>
               {isCurrent ? (
-                <span className={styles.planCardBadge} style={{ display: "inline-block", marginBottom: 16 }}>
+                <span
+                  className={styles.planCardBadge}
+                  style={{ display: "inline-block", marginBottom: 16 }}
+                >
                   <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
                   {t.settings.currentPlan}
                 </span>
@@ -280,14 +318,21 @@ export default function SettingsSubscription() {
         <Typography.Title level={5} style={{ marginBottom: 16 }}>
           Comparaison détaillée des plans
         </Typography.Title>
-        <Card bordered={false} className={styles.settingsCard} style={{ padding: "0 !important", overflow: "auto" }}>
+        <Card
+          bordered={false}
+          className={styles.settingsCard}
+          style={{ padding: "0 !important", overflow: "auto" }}
+        >
           <div className={styles.comparisonTable}>
             <table>
               <thead>
                 <tr>
                   <th>Fonctionnalité</th>
                   {displayPlans.map((p) => (
-                    <th key={p.key} className={p.key === currentPlanSlug ? styles.compColActive : ""}>
+                    <th
+                      key={p.key}
+                      className={p.key === currentPlanSlug ? styles.compColActive : ""}
+                    >
                       {p.name}
                     </th>
                   ))}
@@ -300,12 +345,18 @@ export default function SettingsSubscription() {
                     {displayPlans.map((p) => {
                       const val = (p.limits as Record<string, string | boolean>)[key];
                       return (
-                        <td key={p.key} className={p.key === currentPlanSlug ? styles.compColActive : ""}>
+                        <td
+                          key={p.key}
+                          className={p.key === currentPlanSlug ? styles.compColActive : ""}
+                        >
                           {typeof val === "boolean" ? (
                             val ? (
                               <Check size={16} style={{ color: "var(--color-success)" }} />
                             ) : (
-                              <XIcon size={16} style={{ color: "var(--color-text-muted)", opacity: 0.3 }} />
+                              <XIcon
+                                size={16}
+                                style={{ color: "var(--color-text-muted)", opacity: 0.3 }}
+                              />
                             )
                           ) : (
                             <span style={{ fontWeight: 500 }}>{val}</span>
@@ -333,7 +384,8 @@ export default function SettingsSubscription() {
             onClick={() => {
               Modal.confirm({
                 title: "Annuler l'abonnement ?",
-                content: "Vous conserverez l'accès jusqu'à la fin de la période en cours. Aucun remboursement ne sera effectué.",
+                content:
+                  "Vous conserverez l'accès jusqu'à la fin de la période en cours. Aucun remboursement ne sera effectué.",
                 okText: "Annuler l'abonnement",
                 okButtonProps: { danger: true },
                 cancelText: "Garder mon abonnement",

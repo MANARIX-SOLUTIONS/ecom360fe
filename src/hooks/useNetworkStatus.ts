@@ -5,9 +5,7 @@ import { useState, useEffect } from "react";
  * Shows offline when the browser reports no network connection.
  */
 export function useNetworkStatus() {
-  const [online, setOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true,
-  );
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
 
   useEffect(() => {
     const handleOnline = () => setOnline(true);

@@ -53,7 +53,12 @@ export class ErrorBoundary extends Component<Props, State> {
             title="Une erreur est survenue"
             subTitle="L'application a rencontré un problème. Vous pouvez réessayer ou recharger la page."
             extra={[
-              <Button key="retry" type="primary" icon={<RefreshCw size={16} />} onClick={this.handleRetry}>
+              <Button
+                key="retry"
+                type="primary"
+                icon={<RefreshCw size={16} />}
+                onClick={this.handleRetry}
+              >
                 Réessayer
               </Button>,
               <Button key="reload" onClick={this.handleReload}>

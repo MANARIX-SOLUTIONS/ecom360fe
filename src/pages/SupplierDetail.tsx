@@ -81,7 +81,7 @@ export default function SupplierDetail() {
           id: p.id,
           date: p.createdAt.split("T")[0],
           amount: p.amount,
-        })),
+        }))
       );
     } catch {
       setPayments([]);
@@ -111,7 +111,14 @@ export default function SupplierDetail() {
     );
   }
 
-  if (notFound) return <ResourceNotFound resource="Fournisseur" backPath="/suppliers" backLabel="Retour aux fournisseurs" />;
+  if (notFound)
+    return (
+      <ResourceNotFound
+        resource="Fournisseur"
+        backPath="/suppliers"
+        backLabel="Retour aux fournisseurs"
+      />
+    );
   if (!supplier) return <Navigate to="/suppliers" replace />;
 
   const balanceColor =
@@ -172,11 +179,7 @@ export default function SupplierDetail() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <div className={styles.backWrap}>
-        <Button
-          type="text"
-          icon={<ArrowLeft size={18} />}
-          onClick={() => navigate("/suppliers")}
-        >
+        <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/suppliers")}>
           {t.common.back}
         </Button>
       </div>
@@ -184,9 +187,7 @@ export default function SupplierDetail() {
       {/* Hero summary card */}
       <Card bordered={false} className={styles.heroCard}>
         <div className={styles.heroInner}>
-          <span className={styles.heroAvatar}>
-            {getInitials(supplier.name)}
-          </span>
+          <span className={styles.heroAvatar}>{getInitials(supplier.name)}</span>
           <div className={styles.heroInfo}>
             <Typography.Title level={4} className={styles.heroName}>
               {supplier.name}
@@ -213,13 +214,8 @@ export default function SupplierDetail() {
             </div>
           </div>
           <div className={styles.heroBalance}>
-            <span className={styles.heroBalanceLabel}>
-              {t.suppliers.outstandingBalance}
-            </span>
-            <span
-              className={styles.heroBalanceAmount}
-              style={{ color: balanceColor }}
-            >
+            <span className={styles.heroBalanceLabel}>{t.suppliers.outstandingBalance}</span>
+            <span className={styles.heroBalanceAmount} style={{ color: balanceColor }}>
               {supplier.balance.toLocaleString("fr-FR")} F
             </span>
           </div>
@@ -234,17 +230,10 @@ export default function SupplierDetail() {
             >
               {t.suppliers.addPayment}
             </Button>
-            <Button
-              icon={<Pencil size={18} />}
-              onClick={() => setEditOpen(true)}
-            >
+            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
               {t.common.edit}
             </Button>
-            <Button
-              danger
-              icon={<Trash2 size={18} />}
-              onClick={handleDelete}
-            >
+            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
               {t.common.delete}
             </Button>
           </div>
@@ -257,9 +246,7 @@ export default function SupplierDetail() {
         className={`${styles.card} contentCard`}
       >
         {payments.length === 0 ? (
-          <Typography.Text type="secondary">
-            Aucun paiement enregistré
-          </Typography.Text>
+          <Typography.Text type="secondary">Aucun paiement enregistré</Typography.Text>
         ) : (
           <div className="tableResponsive">
             <Table
@@ -273,11 +260,7 @@ export default function SupplierDetail() {
                 {
                   title: t.expenses.amount,
                   dataIndex: "amount",
-                  render: (v: number) => (
-                    <Tag color="success">
-                      +{v.toLocaleString("fr-FR")} F
-                    </Tag>
-                  ),
+                  render: (v: number) => <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>,
                 },
               ]}
             />
@@ -303,9 +286,7 @@ export default function SupplierDetail() {
           <Form.Item
             name="phone"
             label={t.common.phone}
-            rules={[
-              { pattern: /^[\d\s+()-]{0,20}$/, message: t.validation.phoneInvalid },
-            ]}
+            rules={[{ pattern: /^[\d\s+()-]{0,20}$/, message: t.validation.phoneInvalid }]}
           >
             <Input placeholder="33 123 45 67" />
           </Form.Item>
@@ -331,18 +312,14 @@ export default function SupplierDetail() {
       >
         <div style={{ marginTop: 16 }}>
           <div className={styles.paymentModalHeader}>
-            <span className={styles.avatarMedium}>
-              {getInitials(supplier.name)}
-            </span>
+            <span className={styles.avatarMedium}>{getInitials(supplier.name)}</span>
             <div>
               <Typography.Text strong style={{ display: "block" }}>
                 {supplier.name}
               </Typography.Text>
               <Typography.Text type="secondary">
                 {t.suppliers.outstandingBalance}:{" "}
-                <strong>
-                  {supplier.balance.toLocaleString("fr-FR")} F
-                </strong>
+                <strong>{supplier.balance.toLocaleString("fr-FR")} F</strong>
               </Typography.Text>
             </div>
           </div>

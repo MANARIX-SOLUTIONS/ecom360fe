@@ -3,9 +3,7 @@ import { listNotifications, markNotificationRead } from "@/api";
 import type { NotificationResponse } from "@/api";
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<NotificationResponse[]>(
-    [],
-  );
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -38,9 +36,7 @@ export function useNotifications() {
   const markRead = useCallback(async (id: string) => {
     try {
       await markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
     } catch {
       /* ignore */

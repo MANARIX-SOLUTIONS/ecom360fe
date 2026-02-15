@@ -113,9 +113,7 @@ export default function MainLayout() {
     return notifications.map((n) => {
       const isWarning = n.type === "low_stock" || n.type === "stock_alert";
       const Icon = isWarning ? AlertTriangle : CheckCircle;
-      const iconColor = isWarning
-        ? "var(--color-warning)"
-        : "var(--color-success)";
+      const iconColor = isWarning ? "var(--color-warning)" : "var(--color-success)";
       return {
         key: n.id,
         label: (
@@ -143,16 +141,11 @@ export default function MainLayout() {
               }
             }}
           >
-            <Icon
-              size={16}
-              style={{ color: iconColor, flexShrink: 0, marginTop: 2 }}
-            />
+            <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
               {n.body && (
-                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                  {n.body}
-                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body}</div>
               )}
             </div>
           </div>
@@ -195,9 +188,7 @@ export default function MainLayout() {
             <Typography.Text strong className={styles.logoTitle}>
               360 PME
             </Typography.Text>
-            <Typography.Text className={styles.logoSub}>
-              Commerce
-            </Typography.Text>
+            <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
           </div>
         </div>
         <Menu
@@ -220,11 +211,7 @@ export default function MainLayout() {
               trigger={["click"]}
               placement="bottomRight"
             >
-              <button
-                type="button"
-                className={styles.notifBtn}
-                aria-label="Notifications"
-              >
+              <button type="button" className={styles.notifBtn} aria-label="Notifications">
                 <Badge count={unreadCount} size="small" offset={[-2, 2]}>
                   <Bell size={20} />
                 </Badge>
@@ -249,9 +236,7 @@ export default function MainLayout() {
         >
           <LayoutDashboard size={22} />
           <span>Dashboard</span>
-          {location.pathname === "/dashboard" && (
-            <span className={styles.navDot} />
-          )}
+          {location.pathname === "/dashboard" && <span className={styles.navDot} />}
         </button>
         <button
           type="button"
@@ -261,9 +246,7 @@ export default function MainLayout() {
         >
           <Package size={22} />
           <span>Produits</span>
-          {location.pathname === "/products" && (
-            <span className={styles.navDot} />
-          )}
+          {location.pathname === "/products" && <span className={styles.navDot} />}
         </button>
         {/* Center POS FAB */}
         <button
@@ -282,9 +265,7 @@ export default function MainLayout() {
         >
           <TrendingUp size={22} />
           <span>Rapports</span>
-          {location.pathname === "/reports" && (
-            <span className={styles.navDot} />
-          )}
+          {location.pathname === "/reports" && <span className={styles.navDot} />}
         </button>
         <button
           type="button"
@@ -292,7 +273,7 @@ export default function MainLayout() {
             location.pathname === "/more" ||
             location.pathname === "/backoffice" ||
             ["/settings", "/clients", "/expenses", "/suppliers"].some((p) =>
-              location.pathname.startsWith(p),
+              location.pathname.startsWith(p)
             )
               ? styles.navActive
               : ""
@@ -304,7 +285,7 @@ export default function MainLayout() {
           <span>Plus</span>
           {(location.pathname === "/more" ||
             ["/settings", "/clients", "/expenses", "/suppliers"].some((p) =>
-              location.pathname.startsWith(p),
+              location.pathname.startsWith(p)
             )) && <span className={styles.navDot} />}
         </button>
       </nav>

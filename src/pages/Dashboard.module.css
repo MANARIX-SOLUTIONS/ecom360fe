@@ -135,29 +135,17 @@
 
 .statCard.sales {
   border-left-color: var(--color-primary);
-  background: linear-gradient(
-    to right,
-    rgba(27, 77, 122, 0.04) 0%,
-    transparent 24px
-  );
+  background: linear-gradient(to right, rgba(27, 77, 122, 0.04) 0%, transparent 24px);
 }
 
 .statCard.expenses {
   border-left-color: var(--color-warning);
-  background: linear-gradient(
-    to right,
-    rgba(245, 158, 11, 0.05) 0%,
-    transparent 24px
-  );
+  background: linear-gradient(to right, rgba(245, 158, 11, 0.05) 0%, transparent 24px);
 }
 
 .statCard.profit {
   border-left-color: var(--color-success);
-  background: linear-gradient(
-    to right,
-    rgba(16, 185, 129, 0.05) 0%,
-    transparent 24px
-  );
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.05) 0%, transparent 24px);
 }
 
 .statCardInner {

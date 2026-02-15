@@ -1,6 +1,18 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Tabs, Button, Typography, Space, Row, Col, message, Skeleton, Table, Tag } from "antd";
+import {
+  Card,
+  Tabs,
+  Button,
+  Typography,
+  Space,
+  Row,
+  Col,
+  message,
+  Skeleton,
+  Table,
+  Tag,
+} from "antd";
 import {
   BarChart,
   Bar,
@@ -14,13 +26,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import {
-  FileDown,
-  Wallet,
-  Receipt,
-  PiggyBank,
-  ShoppingCart,
-} from "lucide-react";
+import { FileDown, Wallet, Receipt, PiggyBank, ShoppingCart } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard } from "@/api";
@@ -52,7 +58,8 @@ function escapeCsvCell(v: string | number): string {
 }
 
 function exportToCsv(data: Awaited<ReturnType<typeof getDashboard>>, tab: TabKey) {
-  const periodLabel = tab === "today" ? "Aujourd'hui" : tab === "week" ? "Cette semaine" : "Ce mois";
+  const periodLabel =
+    tab === "today" ? "Aujourd'hui" : tab === "week" ? "Cette semaine" : "Ce mois";
   const rows: string[] = [
     "Rapport 360 PME Commerce",
     `Période;${periodLabel}`,
@@ -67,7 +74,9 @@ function exportToCsv(data: Awaited<ReturnType<typeof getDashboard>>, tab: TabKey
     const date = s.createdAt.slice(0, 10);
     const time = formatTime(s.createdAt);
     const method = LABELS[s.paymentMethod] || s.paymentMethod;
-    rows.push(`${escapeCsvCell(s.receiptNumber)};${date};${time};${s.total};${escapeCsvCell(method)}`);
+    rows.push(
+      `${escapeCsvCell(s.receiptNumber)};${date};${time};${s.total};${escapeCsvCell(method)}`
+    );
   }
   const csv = rows.join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -165,7 +174,9 @@ export default function Reports() {
     };
   }, [data]);
 
-  const pieData = paymentData.length ? paymentData : [{ name: "Aucune donnée", value: 100, color: "#ccc" }];
+  const pieData = paymentData.length
+    ? paymentData
+    : [{ name: "Aucune donnée", value: 100, color: "#ccc" }];
 
   const kpiCards = [
     {
@@ -210,18 +221,11 @@ export default function Reports() {
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
         <div className={styles.toolbar}>
-          <Typography.Title
-            level={4}
-            className="pageTitle"
-            style={{ margin: 0 }}
-          >
+          <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
             Rapports
           </Typography.Title>
           <Space wrap>
-            <Button
-              icon={<FileDown size={16} />}
-              onClick={() => window.print()}
-            >
+            <Button icon={<FileDown size={16} />} onClick={() => window.print()}>
               {t.reports.exportPdf}
             </Button>
             <Button
@@ -277,15 +281,13 @@ export default function Reports() {
         >
           <div className={styles.chartWrap}>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData.length ? chartData : [{ name: "-", ventes: 0, dépenses: 0 }]}>
+              <BarChart
+                data={chartData.length ? chartData : [{ name: "-", ventes: 0, dépenses: 0 }]}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="name" />
-                <YAxis
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  formatter={(v: number) => `${v.toLocaleString("fr-FR")} F`}
-                />
+                <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => `${v.toLocaleString("fr-FR")} F`} />
                 <Bar
                   dataKey="ventes"
                   fill="var(--color-primary)"
@@ -352,8 +354,7 @@ export default function Reports() {
                 size="small"
                 onRow={(r) => ({
                   style: { cursor: "pointer" },
-                  onClick: () =>
-                    navigate("/receipt", { state: { saleId: r.saleId } }),
+                  onClick: () => navigate("/receipt", { state: { saleId: r.saleId } }),
                 })}
                 columns={[
                   {
@@ -373,9 +374,7 @@ export default function Reports() {
                     width: 100,
                     align: "right",
                     render: (v: number) => (
-                      <span className="amount">
-                        {v.toLocaleString("fr-FR")} F
-                      </span>
+                      <span className="amount">{v.toLocaleString("fr-FR")} F</span>
                     ),
                   },
                   {

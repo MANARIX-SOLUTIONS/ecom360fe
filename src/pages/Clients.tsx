@@ -13,15 +13,7 @@ import {
   Skeleton,
   message,
 } from "antd";
-import {
-  Plus,
-  Search,
-  UserPlus,
-  Users,
-  Pencil,
-  Trash2,
-  Wallet,
-} from "lucide-react";
+import { Plus, Search, UserPlus, Users, Pencil, Trash2, Wallet } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
 import {
@@ -68,11 +60,7 @@ export default function Clients() {
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) =>
-        setClientsAtLimit(
-          u.clientsLimit > 0 && u.clientsCount >= u.clientsLimit,
-        ),
-      )
+      .then((u) => setClientsAtLimit(u.clientsLimit > 0 && u.clientsCount >= u.clientsLimit))
       .catch(() => setClientsAtLimit(false));
   }, [clients.length]);
 
@@ -92,7 +80,7 @@ export default function Clients() {
           email: c.email || "",
           address: c.address || "",
           balance: c.creditBalance ?? 0,
-        })),
+        }))
       );
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur chargement");
@@ -111,7 +99,7 @@ export default function Clients() {
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.phone && c.phone.includes(search)) ||
       (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
-      (c.address && c.address.toLowerCase().includes(search.toLowerCase())),
+      (c.address && c.address.toLowerCase().includes(search.toLowerCase()))
   );
 
   if (loading) {
@@ -148,17 +136,10 @@ export default function Clients() {
           />
           {clientsAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte.{" "}
-              <Link to="/settings/subscription">
-                Passer à un plan supérieur
-              </Link>
+              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
           ) : (
-            <Button
-              type="primary"
-              icon={<Plus size={18} />}
-              onClick={() => setAddClientOpen(true)}
-            >
+            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddClientOpen(true)}>
               {t.clients.addClient}
             </Button>
           )}
@@ -177,8 +158,7 @@ export default function Clients() {
               type="secondary"
               style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
             >
-              Ajoutez vos clients pour suivre les crédits, les paiements et
-              l'historique des achats.
+              Ajoutez vos clients pour suivre les crédits, les paiements et l'historique des achats.
             </Typography.Text>
             {!clientsAtLimit && (
               <Button
@@ -210,9 +190,7 @@ export default function Clients() {
                   dataIndex: "name",
                   render: (name: string) => (
                     <span className={styles.nameCell}>
-                      <span className={styles.avatarSmall}>
-                        {getInitials(name)}
-                      </span>
+                      <span className={styles.avatarSmall}>{getInitials(name)}</span>
                       {name}
                     </span>
                   ),
@@ -225,9 +203,7 @@ export default function Clients() {
                   dataIndex: "balance",
                   sorter: (a: Client, b: Client) => a.balance - b.balance,
                   render: (v: number) => (
-                    <Tag
-                      color={v > 0 ? "success" : v < 0 ? "error" : "default"}
-                    >
+                    <Tag color={v > 0 ? "success" : v < 0 ? "error" : "default"}>
                       {v > 0 ? "+" : ""}
                       {v.toLocaleString("fr-FR")} F
                     </Tag>
@@ -276,9 +252,7 @@ export default function Clients() {
                                 fetchClients();
                               })
                               .catch((e) =>
-                                message.error(
-                                  e instanceof Error ? e.message : "Erreur",
-                                ),
+                                message.error(e instanceof Error ? e.message : "Erreur")
                               );
                           }
                         }}
@@ -317,18 +291,14 @@ export default function Clients() {
         {paymentModal && (
           <div style={{ marginTop: 16 }}>
             <div className={styles.paymentModalHeader}>
-              <span className={styles.avatarMedium}>
-                {getInitials(paymentModal.name)}
-              </span>
+              <span className={styles.avatarMedium}>{getInitials(paymentModal.name)}</span>
               <div>
                 <Typography.Text strong style={{ display: "block" }}>
                   {paymentModal.name}
                 </Typography.Text>
                 <Typography.Text type="secondary">
                   {t.clients.outstandingBalance}:{" "}
-                  <strong>
-                    {paymentModal.balance.toLocaleString("fr-FR")} F
-                  </strong>
+                  <strong>{paymentModal.balance.toLocaleString("fr-FR")} F</strong>
                 </Typography.Text>
               </div>
             </div>

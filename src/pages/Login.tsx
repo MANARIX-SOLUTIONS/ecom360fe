@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import {
-  Card,
-  Form,
-  Input,
-  Button,
-  Typography,
-  message,
-  Select,
-  Alert,
-  Checkbox,
-} from "antd";
+import { Card, Form, Input, Button, Typography, message, Select, Alert, Checkbox } from "antd";
 import { Mail, Lock, ShoppingBag, BarChart3, Users, Smartphone, Shield, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/api";
@@ -70,8 +60,7 @@ export default function Login() {
       const role = localStorage.getItem("ecom360_role") || "proprietaire";
       const isSuperAdmin = role === ROLES.SUPER_ADMIN;
       const validFrom =
-        from &&
-        (isSuperAdmin ? from.startsWith("/backoffice") : !from.startsWith("/backoffice"));
+        from && (isSuperAdmin ? from.startsWith("/backoffice") : !from.startsWith("/backoffice"));
       const target = validFrom ? from : isSuperAdmin ? "/backoffice" : "/dashboard";
       navigate(target, { replace: true });
     } catch {
@@ -93,8 +82,8 @@ export default function Login() {
             360 PME Commerce
           </Typography.Title>
           <Typography.Text className={styles.brandSubtitle}>
-            La solution tout-en-un pour gérer votre commerce. Ventes, stocks,
-            clients et rapports — simplement.
+            La solution tout-en-un pour gérer votre commerce. Ventes, stocks, clients et rapports —
+            simplement.
           </Typography.Text>
 
           <div className={styles.featureList}>
@@ -135,15 +124,10 @@ export default function Login() {
           </div>
 
           <div className={styles.logoBlock}>
-            <Typography.Title
-              level={3}
-              style={{ color: "var(--color-primary)", marginBottom: 8 }}
-            >
+            <Typography.Title level={3} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
               Connexion
             </Typography.Title>
-            <Typography.Text type="secondary">
-              Accédez à votre espace de gestion
-            </Typography.Text>
+            <Typography.Text type="secondary">Accédez à votre espace de gestion</Typography.Text>
           </div>
 
           {error && (
@@ -199,21 +183,14 @@ export default function Login() {
                 label={
                   <span>
                     {t.auth.roleLabel}{" "}
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: 11, fontWeight: 400 }}
-                    >
+                    <Typography.Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>
                       (dev only)
                     </Typography.Text>
                   </span>
                 }
                 initialValue={ROLES.PROPRIETAIRE}
               >
-                <Select
-                  placeholder={t.auth.selectRole}
-                  options={ROLE_OPTIONS}
-                  allowClear={false}
-                />
+                <Select placeholder={t.auth.selectRole} options={ROLE_OPTIONS} allowClear={false} />
               </Form.Item>
             )}
 
@@ -252,7 +229,7 @@ export default function Login() {
               <span>Connexion sécurisée et chiffrée</span>
             </div>
             <div className={styles.trialNote}>
-              Pas encore de compte ?{' '}
+              Pas encore de compte ?{" "}
               <Link to="/register" className={styles.trialLink}>
                 Essai gratuit 30 jours
               </Link>

@@ -14,36 +14,17 @@ import {
   message,
   Skeleton,
 } from "antd";
-import {
-  ArrowLeft,
-  Package,
-  Pencil,
-  Trash2,
-  Layers,
-} from "lucide-react";
+import { ArrowLeft, Package, Pencil, Trash2, Layers } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
-import {
-  getProduct,
-  updateProduct,
-  deleteProduct,
-  listCategories,
-  ApiError,
-} from "@/api";
-import {
-  getStockLevel,
-  adjustStock,
-  getStockMovements,
-} from "@/api";
+import { getProduct, updateProduct, deleteProduct, listCategories, ApiError } from "@/api";
+import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/contexts/StoreContext";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 
-function stockStatus(
-  stock: number,
-  minStock: number,
-): "ok" | "low" | "critical" {
+function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
   if (stock <= 0) return "critical";
   if (stock <= minStock) return "low";
   return "ok";
@@ -68,10 +49,7 @@ export default function ProductDetail() {
     if (!id || !localStorage.getItem("ecom360_access_token")) return;
     setLoading(true);
     try {
-      const [productRes, categoriesRes] = await Promise.all([
-        getProduct(id),
-        listCategories(),
-      ]);
+      const [productRes, categoriesRes] = await Promise.all([getProduct(id), listCategories()]);
       setProduct(productRes);
       setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
       editForm.setFieldsValue({
@@ -159,12 +137,14 @@ export default function ProductDetail() {
     );
   }
 
-  if (notFound) return <ResourceNotFound resource="Produit" backPath="/products" backLabel="Retour aux produits" />;
+  if (notFound)
+    return (
+      <ResourceNotFound resource="Produit" backPath="/products" backLabel="Retour aux produits" />
+    );
   if (!product) return <Navigate to="/products" replace />;
 
   const categoryName =
-    product.categoryId &&
-    categories.find((c) => c.id === product.categoryId)?.name;
+    product.categoryId && categories.find((c) => c.id === product.categoryId)?.name;
   const activeStock = stockLevels.find((s) => s.storeId === activeStore?.id);
 
   const handleEdit = () => {
@@ -227,11 +207,7 @@ export default function ProductDetail() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <div className={styles.backWrap}>
-        <Button
-          type="text"
-          icon={<ArrowLeft size={18} />}
-          onClick={() => navigate("/products")}
-        >
+        <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/products")}>
           {t.common.back}
         </Button>
       </div>
@@ -246,16 +222,12 @@ export default function ProductDetail() {
               {product.name}
             </Typography.Title>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
-              {categoryName && (
-                <Tag color="blue">{categoryName}</Tag>
-              )}
+              {categoryName && <Tag color="blue">{categoryName}</Tag>}
               {product.sku && (
                 <Typography.Text type="secondary">SKU: {product.sku}</Typography.Text>
               )}
               {product.barcode && (
-                <Typography.Text type="secondary">
-                  Code: {product.barcode}
-                </Typography.Text>
+                <Typography.Text type="secondary">Code: {product.barcode}</Typography.Text>
               )}
             </div>
           </div>
@@ -282,15 +254,9 @@ export default function ProductDetail() {
                 </Typography.Text>
                 <Tag
                   color={
-                    stockStatus(
-                      activeStock.quantity,
-                      activeStock.minStock
-                    ) === "critical"
+                    stockStatus(activeStock.quantity, activeStock.minStock) === "critical"
                       ? "error"
-                      : stockStatus(
-                          activeStock.quantity,
-                          activeStock.minStock
-                        ) === "low"
+                      : stockStatus(activeStock.quantity, activeStock.minStock) === "low"
                         ? "warning"
                         : "success"
                   }
@@ -308,17 +274,10 @@ export default function ProductDetail() {
             >
               {t.products.stockAdjustment}
             </Button>
-            <Button
-              icon={<Pencil size={18} />}
-              onClick={() => setEditOpen(true)}
-            >
+            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
               {t.common.edit}
             </Button>
-            <Button
-              danger
-              icon={<Trash2 size={18} />}
-              onClick={handleDelete}
-            >
+            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
               {t.common.delete}
             </Button>
           </div>
@@ -330,7 +289,10 @@ export default function ProductDetail() {
         bordered={false}
         className={`${styles.card} ${styles.sectionCard} contentCard`}
       >
-        <div className={styles.infoGrid} style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+        <div
+          className={styles.infoGrid}
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}
+        >
           <div>
             <div className={styles.infoLabel}>{t.common.name}</div>
             <div className={styles.infoValue}>{product.name}</div>
@@ -343,15 +305,11 @@ export default function ProductDetail() {
           )}
           <div>
             <div className={styles.infoLabel}>{t.products.purchasePrice}</div>
-            <div className={styles.infoValue}>
-              {product.costPrice.toLocaleString("fr-FR")} F
-            </div>
+            <div className={styles.infoValue}>{product.costPrice.toLocaleString("fr-FR")} F</div>
           </div>
           <div>
             <div className={styles.infoLabel}>{t.products.salePrice}</div>
-            <div className={styles.infoValue}>
-              {product.salePrice.toLocaleString("fr-FR")} F
-            </div>
+            <div className={styles.infoValue}>{product.salePrice.toLocaleString("fr-FR")} F</div>
           </div>
           <div>
             <div className={styles.infoLabel}>Unité</div>
@@ -372,9 +330,7 @@ export default function ProductDetail() {
         className={`${styles.card} ${styles.sectionCard} contentCard`}
       >
         {stockLevels.length === 0 ? (
-          <Typography.Text type="secondary">
-            Aucun stock configuré
-          </Typography.Text>
+          <Typography.Text type="secondary">Aucun stock configuré</Typography.Text>
         ) : (
           <div className="tableResponsive">
             <Table
@@ -419,9 +375,7 @@ export default function ProductDetail() {
           className={`${styles.card} contentCard`}
         >
           {movements.length === 0 ? (
-            <Typography.Text type="secondary">
-              Aucun mouvement
-            </Typography.Text>
+            <Typography.Text type="secondary">Aucun mouvement</Typography.Text>
           ) : (
             <div className="tableResponsive">
               <Table
@@ -520,10 +474,7 @@ export default function ProductDetail() {
       >
         <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
           <Typography.Text type="secondary">{product.name}</Typography.Text>
-          <Typography.Text
-            strong
-            style={{ display: "block", marginBottom: 16 }}
-          >
+          <Typography.Text strong style={{ display: "block", marginBottom: 16 }}>
             Stock actuel : {activeStock?.quantity ?? 0}
           </Typography.Text>
           <Form.Item

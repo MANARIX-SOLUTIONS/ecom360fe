@@ -81,9 +81,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [data, setData] = useState<Awaited<
-    ReturnType<typeof getDashboard>
-  > | null>(null);
+  const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
 
   const loadData = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -114,8 +112,7 @@ export default function Dashboard() {
       localStorage.setItem(key, "1");
       notification.success({
         message: "Bienvenue sur 360 PME !",
-        description:
-          "Commencez par configurer votre boutique et ajouter vos produits.",
+        description: "Commencez par configurer votre boutique et ajouter vos produits.",
         placement: "topRight",
         duration: 6,
       });
@@ -226,10 +223,7 @@ export default function Dashboard() {
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.header}>
           <Skeleton.Input active style={{ width: 260, height: 28 }} />
-          <Skeleton.Input
-            active
-            style={{ width: 160, height: 18, marginTop: 10 }}
-          />
+          <Skeleton.Input active style={{ width: 160, height: 18, marginTop: 10 }} />
         </div>
         <div className={styles.statsSection}>
           <Row gutter={[16, 16]}>
@@ -280,9 +274,7 @@ export default function Dashboard() {
               <Typography.Text type="secondary" className={styles.headerDate}>
                 {formatDate()}
               </Typography.Text>
-              {activeStore && (
-                <span className={styles.storeBadge}>{activeStore.name}</span>
-              )}
+              {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
             </div>
           </div>
         </header>
@@ -294,10 +286,7 @@ export default function Dashboard() {
                 <Typography.Text strong className={styles.emptyTitle}>
                   {t.dashboard.emptyTitle}
                 </Typography.Text>
-                <Typography.Text
-                  type="secondary"
-                  className={styles.emptySubtitle}
-                >
+                <Typography.Text type="secondary" className={styles.emptySubtitle}>
                   {t.dashboard.emptySubtitle}
                 </Typography.Text>
               </div>
@@ -319,9 +308,7 @@ export default function Dashboard() {
             <Typography.Text type="secondary" className={styles.headerDate}>
               {formatDate()}
             </Typography.Text>
-            {activeStore && (
-              <span className={styles.storeBadge}>{activeStore.name}</span>
-            )}
+            {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
           </div>
         </div>
       </header>
@@ -364,33 +351,21 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Nouvelle vente</span>
         </button>
-        <button
-          type="button"
-          className={styles.quickCard}
-          onClick={() => navigate("/products")}
-        >
+        <button type="button" className={styles.quickCard} onClick={() => navigate("/products")}>
           <span className={styles.quickCardIcon}>
             <Plus size={22} />
           </span>
           <span className={styles.quickCardLabel}>Ajouter produit</span>
         </button>
         {canExpenses && (
-          <button
-            type="button"
-            className={styles.quickCard}
-            onClick={() => navigate("/expenses")}
-          >
+          <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
             <span className={styles.quickCardIcon}>
               <FileText size={22} />
             </span>
             <span className={styles.quickCardLabel}>Dépense</span>
           </button>
         )}
-        <button
-          type="button"
-          className={styles.quickCard}
-          onClick={() => navigate("/clients")}
-        >
+        <button type="button" className={styles.quickCard} onClick={() => navigate("/clients")}>
           <span className={styles.quickCardIcon}>
             <Users size={22} />
           </span>
@@ -400,65 +375,38 @@ export default function Dashboard() {
 
       <section className={styles.statsSection} aria-label="Indicateurs du jour">
         <Row gutter={[16, 16]}>
-          {statCards.map(
-            ({
-              key,
-              label,
-              value,
-              prevValue,
-              trend,
-              up,
-              variant,
-              icon: Icon,
-            }) => (
-              <Col xs={24} sm={12} lg={8} key={key}>
-                <Card
-                  bordered={false}
-                  className={`${styles.statCard} ${styles[variant]}`}
-                >
-                  <div className={styles.statCardInner}>
-                    <div className={styles.statLabelRow}>
-                      <span className={styles.statIconWrap}>
-                        <Icon
-                          size={20}
-                          className={styles.statIcon}
-                          aria-hidden
-                        />
-                      </span>
-                      <Typography.Text className={styles.statLabel}>
-                        {label}
-                      </Typography.Text>
-                    </div>
-                    <div className={styles.statRow}>
-                      <div>
-                        <span className={`amount ${styles.statValue}`}>
-                          {value}
-                        </span>
-                        {prevValue != null && (
-                          <span className={styles.statPrev}>
-                            vs {prevValue} hier
-                          </span>
-                        )}
-                      </div>
-                      {trend !== 0 && (
-                        <Tag
-                          color={up ? "success" : "warning"}
-                          className={styles.trend}
-                        >
-                          {up ? (
-                            <TrendingUp size={12} aria-hidden />
-                          ) : (
-                            <TrendingDown size={12} aria-hidden />
-                          )}
-                          <span>{trend}%</span>
-                        </Tag>
+          {statCards.map(({ key, label, value, prevValue, trend, up, variant, icon: Icon }) => (
+            <Col xs={24} sm={12} lg={8} key={key}>
+              <Card bordered={false} className={`${styles.statCard} ${styles[variant]}`}>
+                <div className={styles.statCardInner}>
+                  <div className={styles.statLabelRow}>
+                    <span className={styles.statIconWrap}>
+                      <Icon size={20} className={styles.statIcon} aria-hidden />
+                    </span>
+                    <Typography.Text className={styles.statLabel}>{label}</Typography.Text>
+                  </div>
+                  <div className={styles.statRow}>
+                    <div>
+                      <span className={`amount ${styles.statValue}`}>{value}</span>
+                      {prevValue != null && (
+                        <span className={styles.statPrev}>vs {prevValue} hier</span>
                       )}
                     </div>
+                    {trend !== 0 && (
+                      <Tag color={up ? "success" : "warning"} className={styles.trend}>
+                        {up ? (
+                          <TrendingUp size={12} aria-hidden />
+                        ) : (
+                          <TrendingDown size={12} aria-hidden />
+                        )}
+                        <span>{trend}%</span>
+                      </Tag>
+                    )}
                   </div>
-                </Card>
-              </Col>
-            ),
-          )}
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
       </section>
 
@@ -514,11 +462,7 @@ export default function Dashboard() {
             <Card
               title={
                 <span className={styles.cardTitle}>
-                  <AlertTriangle
-                    size={20}
-                    className={styles.alertIcon}
-                    aria-hidden
-                  />
+                  <AlertTriangle size={20} className={styles.alertIcon} aria-hidden />
                   {t.dashboard.lowStockAlerts}
                 </span>
               }
@@ -546,7 +490,10 @@ export default function Dashboard() {
                       title: "Stock",
                       dataIndex: "stock",
                       width: 88,
-                      render: (val: number, r: { productId: string; storeName: string; min: number }) => (
+                      render: (
+                        val: number,
+                        r: { productId: string; storeName: string; min: number }
+                      ) => (
                         <Tag color={val < r.min ? "error" : "default"}>
                           {val} / {r.min}
                         </Tag>
@@ -560,10 +507,7 @@ export default function Dashboard() {
         </Row>
       </section>
 
-      <section
-        className={styles.paymentSection}
-        aria-label="Répartition des paiements"
-      >
+      <section className={styles.paymentSection} aria-label="Répartition des paiements">
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card
@@ -582,9 +526,7 @@ export default function Dashboard() {
                     <div className={styles.paymentLabel}>
                       <span className={styles.paymentMethod}>{method}</span>
                       <span className={styles.paymentPct}>{pct}%</span>
-                      <span className={`amount ${styles.paymentAmount}`}>
-                        {amount}
-                      </span>
+                      <span className={`amount ${styles.paymentAmount}`}>{amount}</span>
                     </div>
                     <div className={styles.barBg} role="presentation">
                       <div
@@ -608,11 +550,7 @@ export default function Dashboard() {
               bordered={false}
               className={styles.card}
               extra={
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => navigate("/reports")}
-                >
+                <Button type="link" size="small" onClick={() => navigate("/reports")}>
                   Voir tout
                 </Button>
               }
@@ -624,9 +562,7 @@ export default function Dashboard() {
                     className={styles.recentRow}
                     role="button"
                     tabIndex={0}
-                    onClick={() =>
-                      navigate("/receipt", { state: { saleId: sale.saleId } })
-                    }
+                    onClick={() => navigate("/receipt", { state: { saleId: sale.saleId } })}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();

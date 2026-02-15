@@ -14,9 +14,7 @@ export function OfflineBanner() {
   return (
     <div className={styles.banner} role="alert" aria-live="polite">
       <CloudOff size={18} className={styles.icon} aria-hidden />
-      <span>
-        Vous êtes hors ligne. Les modifications seront synchronisées à la reconnexion.
-      </span>
+      <span>Vous êtes hors ligne. Les modifications seront synchronisées à la reconnexion.</span>
     </div>
   );
 }

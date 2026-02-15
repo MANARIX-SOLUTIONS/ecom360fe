@@ -1,16 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Card,
-  Typography,
-  Row,
-  Col,
-  Tag,
-  Button,
-  Switch,
-  Skeleton,
-  message,
-  Modal,
-} from "antd";
+import { Card, Typography, Row, Col, Tag, Button, Switch, Skeleton, message, Modal } from "antd";
 import {
   Server,
   Database,
@@ -178,8 +167,7 @@ const initialLogs: LogEntry[] = [
 const FLAGS_KEY = "ecom360_bo_feature_flags";
 
 const BACKEND_BASE =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV ? "" : "http://localhost:8080");
+  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "" : "http://localhost:8080");
 
 async function fetchHealth(): Promise<{ status: string; ok: boolean }> {
   try {
@@ -201,9 +189,7 @@ function loadFlags(): Record<string, boolean> {
   } catch {
     /* ignore */
   }
-  return Object.fromEntries(
-    featureFlagDefs.map((f) => [f.key, f.defaultEnabled]),
-  );
+  return Object.fromEntries(featureFlagDefs.map((f) => [f.key, f.defaultEnabled]));
 }
 
 function saveFlags(flags: Record<string, boolean>) {
@@ -215,9 +201,7 @@ export default function BackofficeSystem() {
   const [refreshing, setRefreshing] = useState(false);
   const [flags, setFlags] = useState<Record<string, boolean>>(loadFlags);
   const [logs, setLogs] = useState(initialLogs);
-  const [health, setHealth] = useState<{ status: string; ok: boolean } | null>(
-    null,
-  );
+  const [health, setHealth] = useState<{ status: string; ok: boolean } | null>(null);
   const [modal, contextHolder] = Modal.useModal();
 
   const loadHealth = useCallback(() => {
@@ -249,9 +233,7 @@ export default function BackofficeSystem() {
   }, [loadHealth]);
 
   const handleExportLogs = useCallback(() => {
-    const content = logs
-      .map((l) => `[${l.time}] [${l.level.toUpperCase()}] ${l.msg}`)
-      .join("\n");
+    const content = logs.map((l) => `[${l.time}] [${l.level.toUpperCase()}] ${l.msg}`).join("\n");
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -293,7 +275,7 @@ export default function BackofficeSystem() {
         },
       });
     },
-    [modal],
+    [modal]
   );
 
   if (loading) {
@@ -327,12 +309,7 @@ export default function BackofficeSystem() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <Button
-              icon={
-                <RefreshCw
-                  size={16}
-                  className={refreshing ? "spin-icon" : ""}
-                />
-              }
+              icon={<RefreshCw size={16} className={refreshing ? "spin-icon" : ""} />}
               onClick={handleRefresh}
               loading={refreshing}
             >
@@ -350,10 +327,7 @@ export default function BackofficeSystem() {
         {resourceCards.map(({ icon: Icon, label, value, max, pct, color }) => (
           <Col xs={12} sm={6} key={label}>
             <Card bordered={false} className={styles.healthCard}>
-              <div
-                className={styles.healthIcon}
-                style={{ background: `${color}10`, color }}
-              >
+              <div className={styles.healthIcon} style={{ background: `${color}10`, color }}>
                 <Icon size={22} />
               </div>
               <span className={styles.healthValue}>{value}</span>
@@ -410,24 +384,18 @@ export default function BackofficeSystem() {
               {healthItems(health?.status ?? null, health?.ok ?? false).map(
                 ({ icon: Icon, label, value, status, color }) => (
                   <div key={label} className={styles.envRow}>
-                    <span
-                      className={styles.envIcon}
-                      style={{ background: `${color}10`, color }}
-                    >
+                    <span className={styles.envIcon} style={{ background: `${color}10`, color }}>
                       <Icon size={18} />
                     </span>
                     <div className={styles.envInfo}>
                       <span className={styles.envLabel}>{label}</span>
                       <span className={styles.envValue}>{value}</span>
                     </div>
-                    <Tag
-                      color={status === "ok" ? "success" : "error"}
-                      style={{ margin: 0 }}
-                    >
+                    <Tag color={status === "ok" ? "success" : "error"} style={{ margin: 0 }}>
                       {status === "ok" ? "OK" : "Erreur"}
                     </Tag>
                   </div>
-                ),
+                )
               )}
             </div>
           </Card>
@@ -451,12 +419,8 @@ export default function BackofficeSystem() {
                   <span
                     className={styles.envIcon}
                     style={{
-                      background: flags[key]
-                        ? "rgba(16,185,129,0.08)"
-                        : "rgba(0,0,0,0.04)",
-                      color: flags[key]
-                        ? "var(--color-success)"
-                        : "var(--color-text-muted)",
+                      background: flags[key] ? "rgba(16,185,129,0.08)" : "rgba(0,0,0,0.04)",
+                      color: flags[key] ? "var(--color-success)" : "var(--color-text-muted)",
                     }}
                   >
                     <Icon size={18} />
@@ -468,9 +432,7 @@ export default function BackofficeSystem() {
                   <Switch
                     size="small"
                     checked={flags[key]}
-                    onChange={(checked) =>
-                      handleToggleFlag(key, label, checked)
-                    }
+                    onChange={(checked) => handleToggleFlag(key, label, checked)}
                   />
                 </div>
               ))}
@@ -502,11 +464,7 @@ export default function BackofficeSystem() {
               <span className={styles.logTime}>{log.time}</span>
               <Tag
                 color={
-                  log.level === "warn"
-                    ? "warning"
-                    : log.level === "error"
-                      ? "error"
-                      : "default"
+                  log.level === "warn" ? "warning" : log.level === "error" ? "error" : "default"
                 }
                 style={{
                   margin: 0,

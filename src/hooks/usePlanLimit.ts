@@ -9,18 +9,16 @@ type LimitKey = "users" | "stores" | "products" | "clients" | "suppliers";
 
 function checkLimit(
   u: SubscriptionUsageResponse,
-  key: LimitKey,
+  key: LimitKey
 ): { atLimit: boolean; usage: string | null } {
-  const map: Record<
-    LimitKey,
-    [keyof SubscriptionUsageResponse, keyof SubscriptionUsageResponse]
-  > = {
-    users: ["usersCount", "usersLimit"],
-    stores: ["storesCount", "storesLimit"],
-    products: ["productsCount", "productsLimit"],
-    clients: ["clientsCount", "clientsLimit"],
-    suppliers: ["suppliersCount", "suppliersLimit"],
-  };
+  const map: Record<LimitKey, [keyof SubscriptionUsageResponse, keyof SubscriptionUsageResponse]> =
+    {
+      users: ["usersCount", "usersLimit"],
+      stores: ["storesCount", "storesLimit"],
+      products: ["productsCount", "productsLimit"],
+      clients: ["clientsCount", "clientsLimit"],
+      suppliers: ["suppliersCount", "suppliersLimit"],
+    };
   const [countKey, limitKey] = map[key];
   const c = u[countKey] as number;
   const l = u[limitKey] as number;

@@ -117,8 +117,7 @@ export const t = {
     address: "Adresse",
     setActive: "Définir comme active",
     emptyTitle: "Aucune boutique",
-    emptySubtitle:
-      "Ajoutez votre première boutique pour gérer vos points de vente.",
+    emptySubtitle: "Ajoutez votre première boutique pour gérer vos points de vente.",
   },
   profile: {
     myProfile: "Mon profil",

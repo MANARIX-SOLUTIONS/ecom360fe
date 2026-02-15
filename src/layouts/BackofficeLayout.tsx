@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Typography, Button, Badge, Dropdown, Tag } from 'antd'
+import { useState } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Layout, Menu, Typography, Button, Badge, Dropdown, Tag } from "antd";
 import {
   Building2,
   Users,
@@ -16,93 +16,107 @@ import {
   AlertTriangle,
   CheckCircle,
   UserPlus,
-} from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
-import { useUserProfile } from '@/hooks/useUserProfile'
-import { SkipLink } from '@/components/SkipLink'
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { SkipLink } from "@/components/SkipLink";
 // i18n removed – labels are now inline French
-import styles from './BackofficeLayout.module.css'
+import styles from "./BackofficeLayout.module.css";
 
-const { Header, Sider, Content } = Layout
+const { Header, Sider, Content } = Layout;
 
 const navItems = [
-  { key: '/backoffice', icon: <LayoutDashboard size={18} />, label: 'Vue d\'ensemble' },
-  { key: '/backoffice/businesses', icon: <Building2 size={18} />, label: 'Entreprises' },
-  { key: '/backoffice/users', icon: <Users size={18} />, label: 'Utilisateurs' },
-  { key: '/backoffice/system', icon: <Settings size={18} />, label: 'Système' },
-]
+  { key: "/backoffice", icon: <LayoutDashboard size={18} />, label: "Vue d'ensemble" },
+  { key: "/backoffice/businesses", icon: <Building2 size={18} />, label: "Entreprises" },
+  { key: "/backoffice/users", icon: <Users size={18} />, label: "Utilisateurs" },
+  { key: "/backoffice/system", icon: <Settings size={18} />, label: "Système" },
+];
 
 const notifItems = [
   {
-    key: '1',
+    key: "1",
     label: (
       <div className="bo-notif-item">
-        <AlertTriangle size={14} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: 2 }} />
+        <AlertTriangle
+          size={14}
+          style={{ color: "var(--color-warning)", flexShrink: 0, marginTop: 2 }}
+        />
         <div>
           <div style={{ fontWeight: 500, fontSize: 13 }}>Abonnement expiré</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Mini Market Rufisque — Plan Starter</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Mini Market Rufisque — Plan Starter
+          </div>
         </div>
       </div>
     ),
   },
   {
-    key: '2',
+    key: "2",
     label: (
       <div className="bo-notif-item">
-        <UserPlus size={14} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: 2 }} />
+        <UserPlus
+          size={14}
+          style={{ color: "var(--color-primary)", flexShrink: 0, marginTop: 2 }}
+        />
         <div>
           <div style={{ fontWeight: 500, fontSize: 13 }}>Nouvel utilisateur inscrit</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Moussa Keita — Il y a 2h</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Moussa Keita — Il y a 2h
+          </div>
         </div>
       </div>
     ),
   },
   {
-    key: '3',
+    key: "3",
     label: (
       <div className="bo-notif-item">
-        <CheckCircle size={14} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: 2 }} />
+        <CheckCircle
+          size={14}
+          style={{ color: "var(--color-success)", flexShrink: 0, marginTop: 2 }}
+        />
         <div>
           <div style={{ fontWeight: 500, fontSize: 13 }}>Backup terminé</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Base de données — 04:00 UTC</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Base de données — 04:00 UTC
+          </div>
         </div>
       </div>
     ),
   },
-]
+];
 
 export default function BackofficeLayout() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { logout } = useAuth()
-  const { displayName, initials } = useUserProfile()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { logout } = useAuth();
+  const { displayName, initials } = useUserProfile();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+    logout();
+    navigate("/login");
+  };
 
-  const selectedKey = navItems.find(n => location.pathname === n.key)?.key
-    ?? navItems.find(n => n.key !== '/backoffice' && location.pathname.startsWith(n.key))?.key
-    ?? '/backoffice'
+  const selectedKey =
+    navItems.find((n) => location.pathname === n.key)?.key ??
+    navItems.find((n) => n.key !== "/backoffice" && location.pathname.startsWith(n.key))?.key ??
+    "/backoffice";
 
   const handleNav = (key: string) => {
-    navigate(key)
-    setMobileOpen(false)
-  }
+    navigate(key);
+    setMobileOpen(false);
+  };
 
   return (
     <Layout className={styles.root}>
       <SkipLink />
       {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className={styles.overlay} onClick={() => setMobileOpen(false)} />
-      )}
+      {mobileOpen && <div className={styles.overlay} onClick={() => setMobileOpen(false)} />}
 
       <Sider
         width={260}
-        className={`${styles.sider} ${mobileOpen ? styles.siderOpen : ''}`}
+        className={`${styles.sider} ${mobileOpen ? styles.siderOpen : ""}`}
         theme="light"
       >
         {/* Logo area */}
@@ -112,7 +126,9 @@ export default function BackofficeLayout() {
               <Shield size={18} />
             </div>
             <div>
-              <Typography.Text strong className={styles.logoTitle}>360 PME</Typography.Text>
+              <Typography.Text strong className={styles.logoTitle}>
+                360 PME
+              </Typography.Text>
               <Typography.Text className={styles.logoSub}>Backoffice Admin</Typography.Text>
             </div>
           </div>
@@ -167,7 +183,10 @@ export default function BackofficeLayout() {
           <span className={styles.siderAvatar}>{initials}</span>
           <div className={styles.siderUserInfo}>
             <span className={styles.siderUserName}>{displayName}</span>
-            <Tag color="red" style={{ margin: 0, fontSize: 10, lineHeight: '16px', padding: '0 6px' }}>
+            <Tag
+              color="red"
+              style={{ margin: 0, fontSize: 10, lineHeight: "16px", padding: "0 6px" }}
+            >
               Super Admin
             </Tag>
           </div>
@@ -187,22 +206,18 @@ export default function BackofficeLayout() {
             </button>
             <div className={styles.breadcrumb}>
               <span className={styles.breadcrumbSep}>Backoffice</span>
-              {location.pathname !== '/backoffice' && (
+              {location.pathname !== "/backoffice" && (
                 <>
                   <span className={styles.breadcrumbDivider}>/</span>
                   <span className={styles.breadcrumbCurrent}>
-                    {navItems.find(n => n.key === selectedKey)?.label ?? ''}
+                    {navItems.find((n) => n.key === selectedKey)?.label ?? ""}
                   </span>
                 </>
               )}
             </div>
           </div>
           <div className={styles.headerActions}>
-            <Dropdown
-              menu={{ items: notifItems }}
-              trigger={['click']}
-              placement="bottomRight"
-            >
+            <Dropdown menu={{ items: notifItems }} trigger={["click"]} placement="bottomRight">
               <button type="button" className={styles.headerBtn} aria-label="Notifications">
                 <Badge count={3} size="small" offset={[-2, 2]}>
                   <Bell size={18} />
@@ -212,7 +227,7 @@ export default function BackofficeLayout() {
             <Button
               type="text"
               icon={<ArrowLeft size={16} />}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className={styles.backBtn}
             >
               <span className={styles.backBtnText}>Retour à l'app</span>
@@ -233,5 +248,5 @@ export default function BackofficeLayout() {
         </Content>
       </Layout>
     </Layout>
-  )
+  );
 }

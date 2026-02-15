@@ -11,7 +11,9 @@
   font-weight: 500;
   color: var(--color-text);
   min-height: 44px;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .trigger:hover {

@@ -1,14 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography } from "antd";
-import {
-  Users,
-  Truck,
-  Receipt,
-  Settings,
-  Shield,
-  ChevronRight,
-} from "lucide-react";
+import { Users, Truck, Receipt, Settings, Shield, ChevronRight } from "lucide-react";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -76,8 +69,9 @@ export default function More() {
   const links = useMemo(
     () =>
       linkConfig.filter((l) =>
-        canAccess(l.permission, can(l.permission as Parameters<typeof can>[0]))),
-    [can, canAccess],
+        canAccess(l.permission, can(l.permission as Parameters<typeof can>[0]))
+      ),
+    [can, canAccess]
   );
   const commerceLinks = links.filter((l) => l.group === "commerce");
   const adminLinks = links.filter((l) => l.group === "admin");
@@ -137,9 +131,7 @@ export default function More() {
               {commerceLinks.map((item, i) => (
                 <div key={item.path}>
                   {renderItem(item)}
-                  {i < commerceLinks.length - 1 && (
-                    <div className={styles.divider} />
-                  )}
+                  {i < commerceLinks.length - 1 && <div className={styles.divider} />}
                 </div>
               ))}
             </div>
@@ -158,9 +150,7 @@ export default function More() {
               {adminLinks.map((item, i) => (
                 <div key={item.path}>
                   {renderItem(item)}
-                  {i < adminLinks.length - 1 && (
-                    <div className={styles.divider} />
-                  )}
+                  {i < adminLinks.length - 1 && <div className={styles.divider} />}
                 </div>
               ))}
             </div>

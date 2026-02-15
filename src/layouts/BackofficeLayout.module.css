@@ -97,8 +97,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .statusLabel {
@@ -151,7 +156,7 @@
 }
 
 .menu :global(.ant-menu-item-selected)::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 8px;

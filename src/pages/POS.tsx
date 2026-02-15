@@ -1,15 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Card,
-  Input,
-  Button,
-  InputNumber,
-  Typography,
-  message,
-  Badge,
-  Select,
-} from "antd";
+import { Card, Input, Button, InputNumber, Typography, message, Badge, Select } from "antd";
 import {
   Search,
   Plus,
@@ -115,12 +106,11 @@ export default function POS() {
     () =>
       PAYMENT_METHODS.filter((m) => {
         if (m.key === "cash") return true;
-        if (m.key === "wave" || m.key === "orange_money")
-          return canMultiPayment;
+        if (m.key === "wave" || m.key === "orange_money") return canMultiPayment;
         if (m.key === "credit") return canClientCredits;
         return false;
       }),
-    [canMultiPayment, canClientCredits],
+    [canMultiPayment, canClientCredits]
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -134,14 +124,11 @@ export default function POS() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
-  const searchRef =
-    useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
+  const searchRef = useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) =>
-        setSalesAtLimit(u.salesLimit > 0 && u.salesThisMonth >= u.salesLimit),
-      )
+      .then((u) => setSalesAtLimit(u.salesLimit > 0 && u.salesThisMonth >= u.salesLimit))
       .catch(() => setSalesAtLimit(false));
   }, []);
 
@@ -159,23 +146,18 @@ export default function POS() {
     }
     const load = async () => {
       try {
-        const [stockList, catsRes, productsRes, clientsRes] = await Promise.all(
-          [
-            getStockByStore(activeStore.id),
-            listCategories(),
-            listProducts({ page: 0, size: 500 }),
-            listClients({ page: 0, size: 200 }),
-          ],
-        );
+        const [stockList, catsRes, productsRes, clientsRes] = await Promise.all([
+          getStockByStore(activeStore.id),
+          listCategories(),
+          listProducts({ page: 0, size: 500 }),
+          listClients({ page: 0, size: 200 }),
+        ]);
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         setClients(clientsRes.content.map((c) => ({ id: c.id, name: c.name })));
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
         const byProduct = Object.fromEntries(
-          productsRes.content.map((p) => [
-            p.id,
-            { price: p.salePrice, categoryId: p.categoryId },
-          ]),
+          productsRes.content.map((p) => [p.id, { price: p.salePrice, categoryId: p.categoryId }])
         );
         setProducts(
           stockList.map((s) => {
@@ -184,17 +166,14 @@ export default function POS() {
               id: s.productId,
               name: s.productName,
               price: info?.price ?? 0,
-              category:
-                (info?.categoryId && byCat[info.categoryId]) || "Divers",
+              category: (info?.categoryId && byCat[info.categoryId]) || "Divers",
               stock: s.quantity,
               minStock: s.minStock,
             };
-          }),
+          })
         );
       } catch (e) {
-        message.error(
-          e instanceof Error ? e.message : "Erreur chargement produits",
-        );
+        message.error(e instanceof Error ? e.message : "Erreur chargement produits");
         setProducts([]);
         setClients([]);
       }
@@ -219,16 +198,12 @@ export default function POS() {
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchCat = category === "Tous" || p.category === category;
-      const matchSearch =
-        !search || p.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     });
   }, [category, search, products]);
 
-  const subtotal = useMemo(
-    () => cart.reduce((s, l) => s + l.price * l.qty, 0),
-    [cart],
-  );
+  const subtotal = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount);
   const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
 
@@ -283,9 +258,7 @@ export default function POS() {
         paymentMethod,
         discountAmount: Math.round(discount),
         amountReceived:
-          paymentMethod === "cash" ||
-          paymentMethod === "wave" ||
-          paymentMethod === "orange_money"
+          paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
             ? total
             : undefined,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
@@ -359,17 +332,13 @@ export default function POS() {
                   >
                     {categoryInitial(p.category)}
                   </span>
-                  {cartItem && (
-                    <span className={styles.cartQtyBadge}>{cartItem.qty}</span>
-                  )}
+                  {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
                 </div>
                 <span className={styles.productName}>{p.name}</span>
                 <span className={`amount ${styles.productPrice}`}>
                   {p.price.toLocaleString("fr-FR")} F
                 </span>
-                <span
-                  className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}
-                >
+                <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
                   {outOfStock
                     ? t.pos.outOfStock
                     : level === "low"
@@ -391,10 +360,7 @@ export default function POS() {
           </Typography.Text>
           {itemCount > 0 && (
             <>
-              <Badge
-                count={itemCount}
-                style={{ backgroundColor: "var(--color-primary)" }}
-              />
+              <Badge count={itemCount} style={{ backgroundColor: "var(--color-primary)" }} />
               <button
                 type="button"
                 className={styles.clearCartBtn}
@@ -410,9 +376,7 @@ export default function POS() {
           <div className={styles.cartEmpty}>
             <ShoppingBag size={32} strokeWidth={1.5} />
             <span>Aucun article</span>
-            <span className={styles.cartEmptyHint}>
-              Cliquez sur un produit pour l'ajouter
-            </span>
+            <span className={styles.cartEmptyHint}>Cliquez sur un produit pour l'ajouter</span>
           </div>
         ) : (
           <div className={styles.cartList}>
@@ -465,10 +429,7 @@ export default function POS() {
         <Card className={styles.totalCard} bordered={false}>
           {/* Payment method selection */}
           <div className={styles.paymentSection}>
-            <Typography.Text
-              type="secondary"
-              className={styles.paymentSectionLabel}
-            >
+            <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
               Mode de paiement
             </Typography.Text>
             <div className={styles.paymentGrid}>
@@ -504,9 +465,7 @@ export default function POS() {
 
           {paymentMethod === "credit" && (
             <div className={styles.clientRow}>
-              <Typography.Text type="secondary">
-                Client (crédit)
-              </Typography.Text>
+              <Typography.Text type="secondary">Client (crédit)</Typography.Text>
               <Select
                 placeholder="Sélectionner un client"
                 allowClear

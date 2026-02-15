@@ -13,15 +13,7 @@ import {
   message,
   Skeleton,
 } from "antd";
-import {
-  ArrowLeft,
-  Phone,
-  Mail,
-  MapPin,
-  Plus,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
 import {
@@ -52,9 +44,7 @@ export default function ClientDetail() {
   const { activeStore } = useStore();
   const { canClientCredits } = usePlanFeatures();
   const [client, setClient] = useState<ClientResponse | null>(null);
-  const [payments, setPayments] = useState<
-    { id: string; date: string; amount: number }[]
-  >([]);
+  const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -95,7 +85,7 @@ export default function ClientDetail() {
           id: p.id,
           date: p.createdAt.split("T")[0],
           amount: p.amount,
-        })),
+        }))
       );
     } catch {
       setPayments([]);
@@ -125,7 +115,10 @@ export default function ClientDetail() {
     );
   }
 
-  if (notFound) return <ResourceNotFound resource="Client" backPath="/clients" backLabel="Retour aux clients" />;
+  if (notFound)
+    return (
+      <ResourceNotFound resource="Client" backPath="/clients" backLabel="Retour aux clients" />
+    );
   if (!client) return <Navigate to="/clients" replace />;
 
   const balanceColor =
@@ -187,11 +180,7 @@ export default function ClientDetail() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <div className={styles.backWrap}>
-        <Button
-          type="text"
-          icon={<ArrowLeft size={18} />}
-          onClick={() => navigate("/clients")}
-        >
+        <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/clients")}>
           {t.common.back}
         </Button>
       </div>
@@ -226,13 +215,8 @@ export default function ClientDetail() {
             </div>
           </div>
           <div className={styles.heroBalance}>
-            <span className={styles.heroBalanceLabel}>
-              {t.clients.outstandingBalance}
-            </span>
-            <span
-              className={styles.heroBalanceAmount}
-              style={{ color: balanceColor }}
-            >
+            <span className={styles.heroBalanceLabel}>{t.clients.outstandingBalance}</span>
+            <span className={styles.heroBalanceAmount} style={{ color: balanceColor }}>
               {client.creditBalance > 0 ? "+" : ""}
               {client.creditBalance.toLocaleString("fr-FR")} F
             </span>
@@ -250,10 +234,7 @@ export default function ClientDetail() {
                 {t.clients.addPayment}
               </Button>
             )}
-            <Button
-              icon={<Pencil size={18} />}
-              onClick={() => setEditOpen(true)}
-            >
+            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
               {t.common.edit}
             </Button>
             <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
@@ -269,9 +250,7 @@ export default function ClientDetail() {
         className={`${styles.card} contentCard`}
       >
         {payments.length === 0 ? (
-          <Typography.Text type="secondary">
-            Aucun paiement enregistré
-          </Typography.Text>
+          <Typography.Text type="secondary">Aucun paiement enregistré</Typography.Text>
         ) : (
           <div className="tableResponsive">
             <Table
@@ -285,9 +264,7 @@ export default function ClientDetail() {
                 {
                   title: t.expenses.amount,
                   dataIndex: "amount",
-                  render: (v: number) => (
-                    <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>
-                  ),
+                  render: (v: number) => <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>,
                 },
               ]}
             />
@@ -344,18 +321,14 @@ export default function ClientDetail() {
       >
         <div style={{ marginTop: 16 }}>
           <div className={styles.paymentModalHeader}>
-            <span className={styles.avatarMedium}>
-              {getInitials(client.name)}
-            </span>
+            <span className={styles.avatarMedium}>{getInitials(client.name)}</span>
             <div>
               <Typography.Text strong style={{ display: "block" }}>
                 {client.name}
               </Typography.Text>
               <Typography.Text type="secondary">
                 {t.clients.outstandingBalance}:{" "}
-                <strong>
-                  {client.creditBalance.toLocaleString("fr-FR")} F
-                </strong>
+                <strong>{client.creditBalance.toLocaleString("fr-FR")} F</strong>
               </Typography.Text>
             </div>
           </div>

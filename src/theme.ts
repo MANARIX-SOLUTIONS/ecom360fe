@@ -6,19 +6,19 @@
  */
 export const tokens = {
   color: {
-    primary: '#1B4D7A',
-    accent: '#0891B2',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-    background: '#F8FAFC',
-    text: '#1E293B',
-    textSecondary: '#64748B',
+    primary: "#1B4D7A",
+    accent: "#0891B2",
+    success: "#10B981",
+    warning: "#F59E0B",
+    danger: "#EF4444",
+    background: "#F8FAFC",
+    text: "#1E293B",
+    textSecondary: "#64748B",
   },
   spacing: 8,
   borderRadius: 12,
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-} as const
+  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+} as const;
 
 export const antdTheme = {
   token: {
@@ -31,14 +31,14 @@ export const antdTheme = {
     fontFamily: tokens.fontFamily,
     colorText: tokens.color.text,
     colorTextSecondary: tokens.color.textSecondary,
-    colorBgContainer: '#FFFFFF',
+    colorBgContainer: "#FFFFFF",
     colorBgLayout: tokens.color.background,
     controlHeight: 44,
     fontSize: 14,
     lineHeight: 1.6,
     // Modern shadows
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
-    boxShadowSecondary: '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05)',
+    boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)",
+    boxShadowSecondary: "0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05)",
   },
   components: {
     Button: {
@@ -71,4 +71,4 @@ export const antdTheme = {
       borderRadiusSM: 6,
     },
   },
-}
+};
