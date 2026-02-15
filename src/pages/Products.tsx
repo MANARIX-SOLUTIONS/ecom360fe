@@ -70,12 +70,18 @@ export default function Products() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [productsAtLimit, setProductsAtLimit] = useState(false);
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) => setProductsAtLimit(u.productsLimit > 0 && u.productsCount >= u.productsLimit))
+      .then((u) =>
+        setProductsAtLimit(
+          u.productsLimit > 0 && u.productsCount >= u.productsLimit,
+        ),
+      )
       .catch(() => setProductsAtLimit(false));
   }, [products.length]);
 
@@ -92,7 +98,9 @@ export default function Products() {
         activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
       ]);
       setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
-      const catById = Object.fromEntries(categoriesRes.map((c) => [c.id, c.name]));
+      const catById = Object.fromEntries(
+        categoriesRes.map((c) => [c.id, c.name]),
+      );
       const stockByProduct: Record<string, StockLevelResponse> = {};
       for (const s of stockList) {
         stockByProduct[s.productId] = s;
@@ -170,7 +178,11 @@ export default function Products() {
             salePrice: values.salePrice,
             isActive: true,
           });
-          if (activeStore?.id && values.initialStock != null && values.initialStock > 0) {
+          if (
+            activeStore?.id &&
+            values.initialStock != null &&
+            values.initialStock > 0
+          ) {
             await initStock({
               productId: created.id,
               storeId: activeStore.id,
@@ -191,7 +203,10 @@ export default function Products() {
 
   const openStockAdjust = (p: Product) => {
     setStockProduct(p);
-    stockForm.setFieldsValue({ newStock: p.stock, reason: "Ajustement manuel" });
+    stockForm.setFieldsValue({
+      newStock: p.stock,
+      reason: "Ajustement manuel",
+    });
     setStockModalOpen(true);
   };
   const onStockSave = () => {
@@ -262,7 +277,10 @@ export default function Products() {
           </div>
           {productsAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
+              Limite atteinte.{" "}
+              <Link to="/settings/subscription">
+                Passer à un plan supérieur
+              </Link>
             </Typography.Text>
           ) : (
             <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
@@ -281,11 +299,21 @@ export default function Products() {
             <Typography.Title level={4} style={{ marginBottom: 8 }}>
               Aucun produit
             </Typography.Title>
-            <Typography.Text type="secondary" style={{ maxWidth: 340, textAlign: 'center', lineHeight: 1.6 }}>
-              Ajoutez votre premier produit pour commencer à vendre. Gérez les prix, le stock et les catégories.
+            <Typography.Text
+              type="secondary"
+              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
+            >
+              Ajoutez votre premier produit pour commencer à vendre. Gérez les
+              prix, le stock et les catégories.
             </Typography.Text>
             {!productsAtLimit && (
-              <Button type="primary" size="large" icon={<Plus size={16} />} onClick={openAdd} style={{ marginTop: 20, height: 48 }}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<Plus size={16} />}
+                onClick={openAdd}
+                style={{ marginTop: 20, height: 48 }}
+              >
                 Ajouter mon premier produit
               </Button>
             )}
@@ -316,8 +344,7 @@ export default function Products() {
                   title: "Prix",
                   dataIndex: "salePrice",
                   width: 100,
-                  sorter: (a: Product, b: Product) =>
-                    a.salePrice - b.salePrice,
+                  sorter: (a: Product, b: Product) => a.salePrice - b.salePrice,
                   render: (v: number) => (
                     <span className="amount">
                       {v.toLocaleString("fr-FR")} F
@@ -372,7 +399,9 @@ export default function Products() {
                                 fetchData();
                               })
                               .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur"),
+                                message.error(
+                                  e instanceof Error ? e.message : "Erreur",
+                                ),
                               );
                           }
                         }}
@@ -404,10 +433,7 @@ export default function Products() {
           >
             <Input placeholder="Nom du produit" />
           </Form.Item>
-          <Form.Item
-            name="categoryId"
-            label={t.products.category}
-          >
+          <Form.Item name="categoryId" label={t.products.category}>
             <Select
               placeholder={t.products.category}
               allowClear
@@ -487,10 +513,7 @@ export default function Products() {
             >
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item
-              name="reason"
-              label={t.products.reason}
-            >
+            <Form.Item name="reason" label={t.products.reason}>
               <Input placeholder={t.products.reason} />
             </Form.Item>
           </Form>

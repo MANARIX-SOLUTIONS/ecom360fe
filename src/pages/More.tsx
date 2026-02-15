@@ -76,7 +76,7 @@ export default function More() {
   const links = useMemo(
     () =>
       linkConfig.filter((l) =>
-        canAccess(l.permission, can(l.permission as Parameters<typeof can>[0])),
+        canAccess(l.permission, can(l.permission as Parameters<typeof can>[0]))),
     [can, canAccess],
   );
   const commerceLinks = links.filter((l) => l.group === "commerce");

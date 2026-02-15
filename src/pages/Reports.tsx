@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { Card, Tabs, Button, Typography, Space, Row, Col, message, Skeleton } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Card, Tabs, Button, Typography, Space, Row, Col, message, Skeleton, Table, Tag } from "antd";
 import {
   BarChart,
   Bar,
@@ -42,6 +43,42 @@ const LABELS: Record<string, string> = {
   credit: "Crédit",
 };
 
+function escapeCsvCell(v: string | number): string {
+  const s = String(v);
+  if (s.includes(";") || s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function exportToCsv(data: Awaited<ReturnType<typeof getDashboard>>, tab: TabKey) {
+  const periodLabel = tab === "today" ? "Aujourd'hui" : tab === "week" ? "Cette semaine" : "Ce mois";
+  const rows: string[] = [
+    "Rapport 360 PME Commerce",
+    `Période;${periodLabel}`,
+    "",
+    "Résumé;Ventes;Dépenses;Bénéfice;Transactions",
+    `;${data.periodRevenue};${data.periodExpenses};${data.periodProfit};${data.periodSalesCount}`,
+    "",
+    "Ventes récentes",
+    "N° ticket;Date;Heure;Montant (F);Paiement",
+  ];
+  for (const s of data.recentSales) {
+    const date = s.createdAt.slice(0, 10);
+    const time = formatTime(s.createdAt);
+    const method = LABELS[s.paymentMethod] || s.paymentMethod;
+    rows.push(`${escapeCsvCell(s.receiptNumber)};${date};${time};${s.total};${escapeCsvCell(method)}`);
+  }
+  const csv = rows.join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rapport-${tab}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
 }
@@ -59,7 +96,19 @@ function getPeriodRange(tab: TabKey): { start: string; end: string } {
   return { start: d.toISOString().slice(0, 10), end: today };
 }
 
+function formatTime(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
 export default function Reports() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,10 +218,23 @@ export default function Reports() {
             Rapports
           </Typography.Title>
           <Space wrap>
-            <Button icon={<FileDown size={16} />} onClick={() => message.info('Export PDF en cours…')}>
+            <Button
+              icon={<FileDown size={16} />}
+              onClick={() => window.print()}
+            >
               {t.reports.exportPdf}
             </Button>
-            <Button icon={<FileDown size={16} />} onClick={() => message.info('Export Excel en cours…')}>
+            <Button
+              icon={<FileDown size={16} />}
+              onClick={() => {
+                if (data) {
+                  exportToCsv(data, activeTab);
+                  message.success("Export téléchargé (CSV)");
+                } else {
+                  message.warning("Chargement des données en cours…");
+                }
+              }}
+            >
               {t.reports.exportExcel}
             </Button>
           </Space>
@@ -269,6 +331,78 @@ export default function Reports() {
             </ResponsiveContainer>
           </div>
         </Card>
+        {data?.recentSales && data.recentSales.length > 0 && (
+          <Card
+            title="Ventes récentes"
+            bordered={false}
+            className={`${styles.card} contentCard`}
+            style={{ marginTop: 16 }}
+          >
+            <div className="tableResponsive">
+              <Table
+                dataSource={data.recentSales.map((s) => ({
+                  key: s.saleId,
+                  saleId: s.saleId,
+                  receiptNumber: s.receiptNumber,
+                  total: s.total,
+                  paymentMethod: s.paymentMethod,
+                  createdAt: s.createdAt,
+                }))}
+                pagination={false}
+                size="small"
+                onRow={(r) => ({
+                  style: { cursor: "pointer" },
+                  onClick: () =>
+                    navigate("/receipt", { state: { saleId: r.saleId } }),
+                })}
+                columns={[
+                  {
+                    title: "N° ticket",
+                    dataIndex: "receiptNumber",
+                    width: 120,
+                  },
+                  {
+                    title: "Heure",
+                    dataIndex: "createdAt",
+                    width: 80,
+                    render: (v: string) => formatTime(v),
+                  },
+                  {
+                    title: "Montant",
+                    dataIndex: "total",
+                    width: 100,
+                    align: "right",
+                    render: (v: number) => (
+                      <span className="amount">
+                        {v.toLocaleString("fr-FR")} F
+                      </span>
+                    ),
+                  },
+                  {
+                    title: "Paiement",
+                    dataIndex: "paymentMethod",
+                    width: 100,
+                    render: (m: string) => (
+                      <Tag
+                        color={
+                          m === "wave"
+                            ? "processing"
+                            : m === "orange_money"
+                              ? "warning"
+                              : m === "credit"
+                                ? "purple"
+                                : "default"
+                        }
+                      >
+                        {LABELS[m] || m}
+                      </Tag>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

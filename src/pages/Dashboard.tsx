@@ -29,6 +29,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/contexts/StoreContext";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard } from "@/api";
@@ -49,7 +50,10 @@ function formatFCFA(n: number) {
 function formatTime(iso: string) {
   try {
     const d = new Date(iso);
-    return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return "";
   }
@@ -73,10 +77,13 @@ function getGreeting() {
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
+  const { canExpenses } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
+  const [data, setData] = useState<Awaited<
+    ReturnType<typeof getDashboard>
+  > | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -105,7 +112,8 @@ export default function Dashboard() {
       localStorage.setItem(key, "1");
       notification.success({
         message: "Bienvenue sur 360 PME !",
-        description: "Commencez par configurer votre boutique et ajouter vos produits.",
+        description:
+          "Commencez par configurer votre boutique et ajouter vos produits.",
         placement: "topRight",
         duration: 6,
       });
@@ -124,16 +132,20 @@ export default function Dashboard() {
           variant: "sales" as const,
           icon: Wallet,
         },
-        {
-          key: "expenses",
-          label: t.dashboard.expensesToday,
-          value: formatFCFA(data.periodExpenses),
-          prevValue: null,
-          trend: 0,
-          up: false,
-          variant: "expenses" as const,
-          icon: Receipt,
-        },
+        ...(canExpenses
+          ? [
+              {
+                key: "expenses",
+                label: t.dashboard.expensesToday,
+                value: formatFCFA(data.periodExpenses),
+                prevValue: null,
+                trend: 0,
+                up: false,
+                variant: "expenses" as const,
+                icon: Receipt,
+              },
+            ]
+          : []),
         {
           key: "profit",
           label: t.dashboard.profitEstimate,
@@ -147,25 +159,39 @@ export default function Dashboard() {
       ]
     : [];
 
-  const topProducts = data?.topProducts.map((p) => ({
-    name: p.productName,
-    qty: p.totalQuantity,
-    amount: formatFCFA(p.totalRevenue),
-  })) ?? [];
+  const topProducts =
+    data?.topProducts.map((p) => ({
+      productId: p.productId,
+      name: p.productName,
+      qty: p.totalQuantity,
+      amount: formatFCFA(p.totalRevenue),
+    })) ?? [];
 
-  const lowStock = data?.lowStockItems.map((i) => ({
-    name: i.productName,
-    stock: i.quantity,
-    min: i.minStock,
-  })) ?? [];
+  const lowStock =
+    data?.lowStockItems.map((i) => ({
+      productId: i.productId,
+      name: i.productName,
+      storeName: i.storeName,
+      stock: i.quantity,
+      min: i.minStock,
+    })) ?? [];
 
-  const recentSales = data?.recentSales.map((s, i) => ({
-    id: s.receiptNumber || String(i),
-    time: formatTime(s.createdAt),
-    items: "-",
-    total: s.total,
-    method: s.paymentMethod === "cash" ? "Espèces" : s.paymentMethod === "wave" ? "Wave" : s.paymentMethod === "orange_money" ? "Orange Money" : s.paymentMethod,
-  })) ?? [];
+  const recentSales =
+    data?.recentSales.map((s, i) => ({
+      saleId: s.saleId,
+      id: s.receiptNumber || String(i),
+      time: formatTime(s.createdAt),
+      items: "-",
+      total: s.total,
+      method:
+        s.paymentMethod === "cash"
+          ? "Espèces"
+          : s.paymentMethod === "wave"
+            ? "Wave"
+            : s.paymentMethod === "orange_money"
+              ? "Orange Money"
+              : s.paymentMethod,
+    })) ?? [];
 
   const paymentBreakdown = (() => {
     if (!data?.recentSales.length) return [];
@@ -177,7 +203,12 @@ export default function Dashboard() {
       total += s.total;
     }
     if (total === 0) return [];
-    const labels: Record<string, string> = { cash: "Espèces", wave: "Wave", orange_money: "Orange Money", credit: "Crédit" };
+    const labels: Record<string, string> = {
+      cash: "Espèces",
+      wave: "Wave",
+      orange_money: "Orange Money",
+      credit: "Crédit",
+    };
     return Object.entries(byMethod)
       .map(([method, amount]) => ({
         method: labels[method] || method,
@@ -227,7 +258,13 @@ export default function Dashboard() {
     );
   }
 
-  const emptyData = !loading && !apiError && data != null && data.todayRevenue === 0 && data.periodExpenses === 0 && !data.recentSales.length;
+  const emptyData =
+    !loading &&
+    !apiError &&
+    data != null &&
+    data.todayRevenue === 0 &&
+    data.periodExpenses === 0 &&
+    !data.recentSales.length;
 
   if (emptyData) {
     return (
@@ -247,10 +284,7 @@ export default function Dashboard() {
             </div>
           </div>
         </header>
-        <Card
-          bordered={false}
-          className={`${styles.card} ${styles.emptyCard}`}
-        >
+        <Card bordered={false} className={`${styles.card} ${styles.emptyCard}`}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
@@ -313,20 +347,46 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <section className={styles.quickActions} aria-label="Actions rapides">
-        <button type="button" className={`${styles.quickCard} ${styles.quickCardPrimary}`} onClick={() => navigate("/pos")}>
-          <span className={styles.quickCardIcon}><ShoppingCart size={22} /></span>
+        <button
+          type="button"
+          className={`${styles.quickCard} ${styles.quickCardPrimary}`}
+          onClick={() => navigate("/pos")}
+        >
+          <span className={styles.quickCardIcon}>
+            <ShoppingCart size={22} />
+          </span>
           <span className={styles.quickCardLabel}>Nouvelle vente</span>
         </button>
-        <button type="button" className={styles.quickCard} onClick={() => navigate("/products")}>
-          <span className={styles.quickCardIcon}><Plus size={22} /></span>
+        <button
+          type="button"
+          className={styles.quickCard}
+          onClick={() => navigate("/products")}
+        >
+          <span className={styles.quickCardIcon}>
+            <Plus size={22} />
+          </span>
           <span className={styles.quickCardLabel}>Ajouter produit</span>
         </button>
-        <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
-          <span className={styles.quickCardIcon}><FileText size={22} /></span>
-          <span className={styles.quickCardLabel}>Dépense</span>
-        </button>
-        <button type="button" className={styles.quickCard} onClick={() => navigate("/clients")}>
-          <span className={styles.quickCardIcon}><Users size={22} /></span>
+        {canExpenses && (
+          <button
+            type="button"
+            className={styles.quickCard}
+            onClick={() => navigate("/expenses")}
+          >
+            <span className={styles.quickCardIcon}>
+              <FileText size={22} />
+            </span>
+            <span className={styles.quickCardLabel}>Dépense</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className={styles.quickCard}
+          onClick={() => navigate("/clients")}
+        >
+          <span className={styles.quickCardIcon}>
+            <Users size={22} />
+          </span>
           <span className={styles.quickCardLabel}>Clients</span>
         </button>
       </section>
@@ -362,7 +422,7 @@ export default function Dashboard() {
                         {label}
                       </Typography.Text>
                     </div>
-                      <div className={styles.statRow}>
+                    <div className={styles.statRow}>
                       <div>
                         <span className={`amount ${styles.statValue}`}>
                           {value}
@@ -411,10 +471,14 @@ export default function Dashboard() {
               <div className="tableResponsive">
                 <Table
                   dataSource={topProducts}
-                  rowKey="name"
+                  rowKey="productId"
                   pagination={false}
                   size="small"
                   className={styles.dataTable}
+                  onRow={(r) => ({
+                    style: { cursor: "pointer" },
+                    onClick: () => navigate(`/products/${r.productId}`),
+                  })}
                   columns={[
                     {
                       title: t.common.name,
@@ -457,10 +521,14 @@ export default function Dashboard() {
               <div className="tableResponsive">
                 <Table
                   dataSource={lowStock}
-                  rowKey="name"
+                  rowKey={(r) => `${r.productId}-${r.storeName}`}
                   pagination={false}
                   size="small"
                   className={styles.dataTable}
+                  onRow={(r) => ({
+                    style: { cursor: "pointer" },
+                    onClick: () => navigate(`/products/${r.productId}`),
+                  })}
                   columns={[
                     {
                       title: t.common.name,
@@ -533,14 +601,35 @@ export default function Dashboard() {
               bordered={false}
               className={styles.card}
               extra={
-                <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => navigate("/reports")}
+                >
                   Voir tout
                 </Button>
               }
             >
               <div className={styles.recentList}>
                 {recentSales.map((sale) => (
-                  <div key={sale.id} className={styles.recentRow}>
+                  <div
+                    key={sale.id}
+                    className={styles.recentRow}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      navigate("/receipt", { state: { saleId: sale.saleId } })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        navigate("/receipt", {
+                          state: { saleId: sale.saleId },
+                        });
+                      }
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
                     <div className={styles.recentInfo}>
                       <span className={styles.recentTime}>{sale.time}</span>
                       <span className={styles.recentItems}>{sale.items}</span>

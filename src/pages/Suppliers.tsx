@@ -15,7 +15,13 @@ import {
 import { Plus, Search, Truck, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
-import { listSuppliers, createSupplier, deleteSupplier, updateSupplier, getSubscriptionUsage } from "@/api";
+import {
+  listSuppliers,
+  createSupplier,
+  deleteSupplier,
+  updateSupplier,
+  getSubscriptionUsage,
+} from "@/api";
 
 type Supplier = {
   id: string;
@@ -48,7 +54,11 @@ export default function Suppliers() {
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) => setSuppliersAtLimit(u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit))
+      .then((u) =>
+        setSuppliersAtLimit(
+          u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit,
+        ),
+      )
       .catch(() => setSuppliersAtLimit(false));
   }, [suppliers.length]);
 
@@ -124,10 +134,17 @@ export default function Suppliers() {
           />
           {suppliersAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
+              Limite atteinte.{" "}
+              <Link to="/settings/subscription">
+                Passer à un plan supérieur
+              </Link>
             </Typography.Text>
           ) : (
-            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
+            <Button
+              type="primary"
+              icon={<Plus size={18} />}
+              onClick={() => setAddOpen(true)}
+            >
               {t.suppliers.addSupplier}
             </Button>
           )}
@@ -142,11 +159,21 @@ export default function Suppliers() {
             <Typography.Title level={4} style={{ marginBottom: 8 }}>
               Aucun fournisseur
             </Typography.Title>
-            <Typography.Text type="secondary" style={{ maxWidth: 340, textAlign: 'center', lineHeight: 1.6 }}>
-              Ajoutez vos fournisseurs pour suivre vos achats et gérer vos approvisionnements.
+            <Typography.Text
+              type="secondary"
+              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
+            >
+              Ajoutez vos fournisseurs pour suivre vos achats et gérer vos
+              approvisionnements.
             </Typography.Text>
             {!suppliersAtLimit && (
-              <Button type="primary" size="large" icon={<Truck size={16} />} onClick={() => setAddOpen(true)} style={{ marginTop: 20, height: 48 }}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<Truck size={16} />}
+                onClick={() => setAddOpen(true)}
+                style={{ marginTop: 20, height: 48 }}
+              >
                 Ajouter un fournisseur
               </Button>
             )}
@@ -221,7 +248,9 @@ export default function Suppliers() {
                                 fetchSuppliers();
                               })
                               .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur"),
+                                message.error(
+                                  e instanceof Error ? e.message : "Erreur",
+                                ),
                               );
                           }
                         }}

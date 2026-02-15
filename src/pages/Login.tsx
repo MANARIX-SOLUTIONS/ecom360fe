@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Card,
   Form,
@@ -39,6 +39,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
   const { loginWithApi } = useAuth();
   const { setRole } = useAuthRole();
 
@@ -65,8 +67,13 @@ export default function Login() {
         setRole(values.role as Role);
       }
       message.success(t.auth.loginSuccess);
-      const isSuperAdmin = values.role === ROLES.SUPER_ADMIN;
-      navigate(isSuperAdmin ? "/backoffice" : "/dashboard");
+      const role = localStorage.getItem("ecom360_role") || "proprietaire";
+      const isSuperAdmin = role === ROLES.SUPER_ADMIN;
+      const validFrom =
+        from &&
+        (isSuperAdmin ? from.startsWith("/backoffice") : !from.startsWith("/backoffice"));
+      const target = validFrom ? from : isSuperAdmin ? "/backoffice" : "/dashboard";
+      navigate(target, { replace: true });
     } catch {
       setError(t.auth.invalidCredentials);
     } finally {

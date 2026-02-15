@@ -1,18 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
-import { Button } from "antd";
+import { Button, Spin } from "antd";
 import { Printer, ShoppingCart, Share2, CheckCircle } from "lucide-react";
 import { t } from "@/i18n";
 import { useStore } from "@/contexts/StoreContext";
+import { getSale } from "@/api";
 import type { SaleResponse } from "@/api";
 import styles from "./Receipt.module.css";
 
 type LocationState = {
   sale?: SaleResponse;
-  cart: { id: string; name: string; price: number; qty: number }[];
-  total: number;
-  discount: number;
-  method: string;
+  saleId?: string;
+  cart?: { id: string; name: string; price: number; qty: number }[];
+  total?: number;
+  discount?: number;
+  method?: string;
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -41,12 +43,39 @@ export default function Receipt() {
   const location = useLocation();
   const { activeStore } = useStore();
   const state = location.state as LocationState | null;
+  const [fetchedSale, setFetchedSale] = useState<SaleResponse | null>(null);
+  const [loading, setLoading] = useState(!!state?.saleId && !state?.sale);
+
+  useEffect(() => {
+    if (state?.saleId && !state?.sale) {
+      getSale(state.saleId)
+        .then(setFetchedSale)
+        .catch(() => navigate("/dashboard", { replace: true }))
+        .finally(() => setLoading(false));
+    }
+  }, [state?.saleId, state?.sale, navigate]);
 
   if (!state) {
     return <Navigate to="/pos" replace />;
   }
 
-  const { sale, cart, total, discount, method } = state;
+  const sale = state.sale ?? fetchedSale ?? null;
+  const cart = state.cart ?? [];
+  const total = state.total ?? sale?.total ?? 0;
+  const discount = state.discount ?? sale?.discountAmount ?? 0;
+  const method = state.method ?? sale?.paymentMethod ?? "cash";
+
+  if (loading || (state.saleId && !sale)) {
+    return (
+      <div className={styles.wrapper} style={{ padding: 48, textAlign: "center" }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (state.saleId && !sale) {
+    return <Navigate to="/dashboard" replace />;
+  }
   const now = sale?.createdAt ? new Date(sale.createdAt) : new Date();
   const receiptId = sale?.receiptNumber ?? `T${now.getTime().toString(36).toUpperCase()}`;
 
@@ -77,10 +106,12 @@ export default function Receipt() {
       >
         <header className={styles.header}>
           <h1 className={styles.shopName}>
-            {activeStore?.name || "360 PME Commerce"}
+            {sale?.storeName || activeStore?.name || "360 PME Commerce"}
           </h1>
-          {activeStore?.address && (
-            <p className={styles.shopAddress}>{activeStore.address}</p>
+          {(sale?.storeAddress || activeStore?.address) && (
+            <p className={styles.shopAddress}>
+              {sale?.storeAddress || activeStore?.address}
+            </p>
           )}
         </header>
 

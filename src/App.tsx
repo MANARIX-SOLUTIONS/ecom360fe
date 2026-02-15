@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { message } from 'antd'
 import { useAuth } from './hooks/useAuth'
 import { RequirePermission } from './components/RequirePermission'
@@ -35,7 +35,8 @@ import More from './pages/More'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  const location = useLocation()
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />
   return <>{children}</>
 }
 

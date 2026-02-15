@@ -115,11 +115,12 @@ export default function POS() {
     () =>
       PAYMENT_METHODS.filter((m) => {
         if (m.key === "cash") return true;
-        if (m.key === "wave" || m.key === "orange_money") return canMultiPayment;
+        if (m.key === "wave" || m.key === "orange_money")
+          return canMultiPayment;
         if (m.key === "credit") return canClientCredits;
         return false;
       }),
-    [canMultiPayment, canClientCredits]
+    [canMultiPayment, canClientCredits],
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -133,11 +134,14 @@ export default function POS() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
-  const searchRef = useRef<ReturnType<typeof Input['prototype']['input']>>(null);
+  const searchRef =
+    useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) => setSalesAtLimit(u.salesLimit > 0 && u.salesThisMonth >= u.salesLimit))
+      .then((u) =>
+        setSalesAtLimit(u.salesLimit > 0 && u.salesThisMonth >= u.salesLimit),
+      )
       .catch(() => setSalesAtLimit(false));
   }, []);
 
@@ -155,18 +159,23 @@ export default function POS() {
     }
     const load = async () => {
       try {
-        const [stockList, catsRes, productsRes, clientsRes] = await Promise.all([
-          getStockByStore(activeStore.id),
-          listCategories(),
-          listProducts({ page: 0, size: 500 }),
-          listClients({ page: 0, size: 200 }),
-        ]);
+        const [stockList, catsRes, productsRes, clientsRes] = await Promise.all(
+          [
+            getStockByStore(activeStore.id),
+            listCategories(),
+            listProducts({ page: 0, size: 500 }),
+            listClients({ page: 0, size: 200 }),
+          ],
+        );
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         setClients(clientsRes.content.map((c) => ({ id: c.id, name: c.name })));
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
         const byProduct = Object.fromEntries(
-          productsRes.content.map((p) => [p.id, { price: p.salePrice, categoryId: p.categoryId }]),
+          productsRes.content.map((p) => [
+            p.id,
+            { price: p.salePrice, categoryId: p.categoryId },
+          ]),
         );
         setProducts(
           stockList.map((s) => {
@@ -175,14 +184,17 @@ export default function POS() {
               id: s.productId,
               name: s.productName,
               price: info?.price ?? 0,
-              category: (info?.categoryId && byCat[info.categoryId]) || "Divers",
+              category:
+                (info?.categoryId && byCat[info.categoryId]) || "Divers",
               stock: s.quantity,
               minStock: s.minStock,
             };
           }),
         );
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur chargement produits");
+        message.error(
+          e instanceof Error ? e.message : "Erreur chargement produits",
+        );
         setProducts([]);
         setClients([]);
       }
@@ -227,9 +239,7 @@ export default function POS() {
       const maxQty = p.stock;
       if (existing) {
         if (existing.qty >= maxQty) return prev;
-        return prev.map((l) =>
-          l.id === p.id ? { ...l, qty: l.qty + 1 } : l,
-        );
+        return prev.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l));
       }
       return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
     });
@@ -400,7 +410,9 @@ export default function POS() {
           <div className={styles.cartEmpty}>
             <ShoppingBag size={32} strokeWidth={1.5} />
             <span>Aucun article</span>
-            <span className={styles.cartEmptyHint}>Cliquez sur un produit pour l'ajouter</span>
+            <span className={styles.cartEmptyHint}>
+              Cliquez sur un produit pour l'ajouter
+            </span>
           </div>
         ) : (
           <div className={styles.cartList}>
@@ -421,9 +433,7 @@ export default function POS() {
                   >
                     <Minus size={14} />
                   </button>
-                  <span className={`amount ${styles.qtyDisplay}`}>
-                    {l.qty}
-                  </span>
+                  <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
                   <button
                     type="button"
                     className={styles.qtyBtn}

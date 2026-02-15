@@ -13,10 +13,25 @@ import {
   Skeleton,
   message,
 } from "antd";
-import { Plus, Search, UserPlus, Users, Pencil, Trash2, Wallet } from "lucide-react";
+import {
+  Plus,
+  Search,
+  UserPlus,
+  Users,
+  Pencil,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
-import { listClients, createClient, recordClientPayment, updateClient, deleteClient, getSubscriptionUsage } from "@/api";
+import {
+  listClients,
+  createClient,
+  recordClientPayment,
+  updateClient,
+  deleteClient,
+  getSubscriptionUsage,
+} from "@/api";
 import { useStore } from "@/contexts/StoreContext";
 
 type Client = {
@@ -53,7 +68,11 @@ export default function Clients() {
 
   useEffect(() => {
     getSubscriptionUsage()
-      .then((u) => setClientsAtLimit(u.clientsLimit > 0 && u.clientsCount >= u.clientsLimit))
+      .then((u) =>
+        setClientsAtLimit(
+          u.clientsLimit > 0 && u.clientsCount >= u.clientsLimit,
+        ),
+      )
       .catch(() => setClientsAtLimit(false));
   }, [clients.length]);
 
@@ -129,7 +148,10 @@ export default function Clients() {
           />
           {clientsAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
+              Limite atteinte.{" "}
+              <Link to="/settings/subscription">
+                Passer à un plan supérieur
+              </Link>
             </Typography.Text>
           ) : (
             <Button
@@ -151,11 +173,21 @@ export default function Clients() {
             <Typography.Title level={4} style={{ marginBottom: 8 }}>
               Aucun client
             </Typography.Title>
-            <Typography.Text type="secondary" style={{ maxWidth: 340, textAlign: 'center', lineHeight: 1.6 }}>
-              Ajoutez vos clients pour suivre les crédits, les paiements et l'historique des achats.
+            <Typography.Text
+              type="secondary"
+              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
+            >
+              Ajoutez vos clients pour suivre les crédits, les paiements et
+              l'historique des achats.
             </Typography.Text>
             {!clientsAtLimit && (
-              <Button type="primary" size="large" icon={<UserPlus size={16} />} onClick={() => setAddClientOpen(true)} style={{ marginTop: 20, height: 48 }}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<UserPlus size={16} />}
+                onClick={() => setAddClientOpen(true)}
+                style={{ marginTop: 20, height: 48 }}
+              >
                 Ajouter mon premier client
               </Button>
             )}
@@ -244,7 +276,9 @@ export default function Clients() {
                                 fetchClients();
                               })
                               .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur"),
+                                message.error(
+                                  e instanceof Error ? e.message : "Erreur",
+                                ),
                               );
                           }
                         }}

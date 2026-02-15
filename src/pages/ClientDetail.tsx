@@ -13,7 +13,15 @@ import {
   message,
   Skeleton,
 } from "antd";
-import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
 import {
@@ -24,6 +32,7 @@ import {
   listClientPayments,
 } from "@/api";
 import { useStore } from "@/contexts/StoreContext";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import type { ClientResponse } from "@/api";
 
 function getInitials(name: string) {
@@ -39,8 +48,11 @@ export default function ClientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeStore } = useStore();
+  const { canClientCredits } = usePlanFeatures();
   const [client, setClient] = useState<ClientResponse | null>(null);
-  const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
+  const [payments, setPayments] = useState<
+    { id: string; date: string; amount: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -179,9 +191,7 @@ export default function ClientDetail() {
       {/* Hero summary card */}
       <Card bordered={false} className={styles.heroCard}>
         <div className={styles.heroInner}>
-          <span className={styles.heroAvatar}>
-            {getInitials(client.name)}
-          </span>
+          <span className={styles.heroAvatar}>{getInitials(client.name)}</span>
           <div className={styles.heroInfo}>
             <Typography.Title level={4} className={styles.heroName}>
               {client.name}
@@ -211,33 +221,34 @@ export default function ClientDetail() {
             <span className={styles.heroBalanceLabel}>
               {t.clients.outstandingBalance}
             </span>
-            <span className={styles.heroBalanceAmount} style={{ color: balanceColor }}>
+            <span
+              className={styles.heroBalanceAmount}
+              style={{ color: balanceColor }}
+            >
               {client.creditBalance > 0 ? "+" : ""}
               {client.creditBalance.toLocaleString("fr-FR")} F
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button
-              type="primary"
-              icon={<Plus size={18} />}
-              onClick={() => {
-                setPaymentAmount(Math.abs(client.creditBalance));
-                setPaymentOpen(true);
-              }}
-            >
-              {t.clients.addPayment}
-            </Button>
+            {canClientCredits && (
+              <Button
+                type="primary"
+                icon={<Plus size={18} />}
+                onClick={() => {
+                  setPaymentAmount(Math.abs(client.creditBalance));
+                  setPaymentOpen(true);
+                }}
+              >
+                {t.clients.addPayment}
+              </Button>
+            )}
             <Button
               icon={<Pencil size={18} />}
               onClick={() => setEditOpen(true)}
             >
               {t.common.edit}
             </Button>
-            <Button
-              danger
-              icon={<Trash2 size={18} />}
-              onClick={handleDelete}
-            >
+            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
               {t.common.delete}
             </Button>
           </div>
@@ -267,9 +278,7 @@ export default function ClientDetail() {
                   title: t.expenses.amount,
                   dataIndex: "amount",
                   render: (v: number) => (
-                    <Tag color="success">
-                      +{v.toLocaleString("fr-FR")} F
-                    </Tag>
+                    <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>
                   ),
                 },
               ]}
@@ -297,7 +306,10 @@ export default function ClientDetail() {
             name="phone"
             label={t.common.phone}
             rules={[
-              { pattern: /^[\d\s+()-]{0,20}$/, message: t.validation.phoneInvalid },
+              {
+                pattern: /^[\d\s+()-]{0,20}$/,
+                message: t.validation.phoneInvalid,
+              },
             ]}
           >
             <Input placeholder="77 123 45 67" />
