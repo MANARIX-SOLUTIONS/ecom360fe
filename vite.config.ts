@@ -4,6 +4,19 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-ui": ["antd"],
+          "vendor-charts": ["recharts"],
+          "vendor-icons": ["lucide-react"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
