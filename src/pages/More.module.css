@@ -1,0 +1,158 @@
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* ========== Profile card ========== */
+.profileCard {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--section-gap);
+  cursor: pointer;
+}
+
+.profileInner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #2c5282 100%);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+}
+
+.profileInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.profileName {
+  display: block;
+  font-size: 16px;
+}
+
+.profileHint {
+  font-size: 13px;
+}
+
+/* ========== Sections ========== */
+.section {
+  margin-bottom: var(--section-gap);
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  padding-left: 4px;
+  color: var(--color-text-muted) !important;
+}
+
+.listCard {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== Items ========== */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  min-height: 56px;
+  transition: background 0.15s ease;
+}
+
+.item:hover {
+  background: var(--color-bg);
+}
+
+.item:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: rgba(31, 58, 95, 0.08);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.itemContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemTitle {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.itemDesc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.itemChevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.divider {
+  height: 1px;
+  background: var(--color-bg);
+  margin: 0 20px;
+}
+
+@media (max-width: 480px) {
+  .item {
+    padding: 14px 16px;
+    min-height: 52px;
+  }
+
+  .itemIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .divider {
+    margin: 0 16px;
+  }
+}
