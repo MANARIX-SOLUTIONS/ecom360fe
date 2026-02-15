@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Card, Typography, Row, Col, Tag, Skeleton, Button } from 'antd'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, Typography, Row, Col, Tag, Skeleton, Button, message } from 'antd'
 import {
   Building2,
   Users,
   TrendingUp,
   Activity,
-  ArrowUpRight,
   UserPlus,
   Store,
   CreditCard,
@@ -15,46 +14,57 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { getAdminStats } from '@/api/backoffice'
 import styles from './Backoffice.module.css'
 
-const kpis = [
-  { key: 'businesses', label: 'Entreprises', value: '47', trend: '+5', trendUp: true, icon: Building2, color: 'var(--color-primary)', path: '/backoffice/businesses' },
-  { key: 'users', label: 'Utilisateurs', value: '183', trend: '+12', trendUp: true, icon: Users, color: 'var(--color-accent)', path: '/backoffice/users' },
-  { key: 'revenue', label: 'Revenu mensuel', value: '2 450 000 F', trend: '+18%', trendUp: true, icon: CreditCard, color: 'var(--color-success)', path: '/backoffice/businesses' },
-  { key: 'stores', label: 'Boutiques actives', value: '89', trend: '+7', trendUp: true, icon: Store, color: 'var(--color-warning)', path: '/backoffice/businesses' },
-]
+const planColors: Record<string, string> = {
+  Starter: 'var(--color-text-muted)',
+  Pro: 'var(--color-primary)',
+  Business: 'var(--color-warning)',
+}
+
+function formatFCFA(n: number): string {
+  return `${n.toLocaleString('fr-FR')} F`
+}
 
 const recentActivity = [
-  { id: '1', icon: UserPlus, color: 'var(--color-primary)', title: 'Nouvel utilisateur', desc: 'Moussa Keita s\'est inscrit', time: 'Il y a 2h' },
-  { id: '2', icon: Building2, color: 'var(--color-accent)', title: 'Nouvelle entreprise', desc: 'Commerce Saint-Louis créé', time: 'Il y a 5h' },
-  { id: '3', icon: AlertTriangle, color: 'var(--color-warning)', title: 'Abonnement expiré', desc: 'Mini Market Rufisque — Plan Starter', time: 'Il y a 8h' },
-  { id: '4', icon: CheckCircle, color: 'var(--color-success)', title: 'Paiement reçu', desc: 'Boutique Dakar Centre — Plan Pro', time: 'Il y a 1j' },
-  { id: '5', icon: Store, color: 'var(--color-text-muted)', title: 'Boutique ajoutée', desc: 'Commerce Thiès — Succursale 2', time: 'Il y a 1j' },
-]
-
-const topBusinesses = [
-  { name: 'Boutique Dakar Centre', owner: 'Amadou Diallo', revenue: '450 000 F', stores: 3, plan: 'Pro' },
-  { name: 'Commerce Thiès', owner: 'Fatou Ba', revenue: '280 000 F', stores: 2, plan: 'Business' },
-  { name: 'Marché Pikine', owner: 'Ibrahima Seck', revenue: '195 000 F', stores: 1, plan: 'Pro' },
-  { name: 'Super Alimentation', owner: 'Aïssatou Ndiaye', revenue: '170 000 F', stores: 2, plan: 'Starter' },
-]
-
-const planDistribution = [
-  { plan: 'Starter', count: 18, pct: 38, color: 'var(--color-text-muted)' },
-  { plan: 'Pro', count: 20, pct: 43, color: 'var(--color-primary)' },
-  { plan: 'Business', count: 9, pct: 19, color: 'var(--color-warning)' },
+  { id: '1', icon: UserPlus, color: 'var(--color-primary)', title: 'Nouvel utilisateur', desc: 'Inscription récente', time: '—' },
+  { id: '2', icon: Building2, color: 'var(--color-accent)', title: 'Nouvelle entreprise', desc: 'Création récente', time: '—' },
+  { id: '3', icon: AlertTriangle, color: 'var(--color-warning)', title: 'Abonnement', desc: 'Voir les entreprises', time: '—' },
+  { id: '4', icon: CheckCircle, color: 'var(--color-success)', title: 'Paiement', desc: 'Voir les entreprises', time: '—' },
+  { id: '5', icon: Store, color: 'var(--color-text-muted)', title: 'Boutique', desc: 'Voir les entreprises', time: '—' },
 ]
 
 export default function Backoffice() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getAdminStats>> | null>(null)
 
-  useEffect(() => {
-    const id = setTimeout(() => setLoading(false), 400)
-    return () => clearTimeout(id)
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await getAdminStats()
+      setStats(data)
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : 'Erreur chargement statistiques')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  if (loading) {
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
+
+  const kpis = stats
+    ? [
+        { key: 'businesses', label: 'Entreprises', value: String(stats.businessesCount), icon: Building2, color: 'var(--color-primary)', path: '/backoffice/businesses' },
+        { key: 'users', label: 'Utilisateurs', value: String(stats.usersCount), icon: Users, color: 'var(--color-accent)', path: '/backoffice/users' },
+        { key: 'revenue', label: 'Revenu mensuel', value: formatFCFA(stats.monthlyRevenue), icon: CreditCard, color: 'var(--color-success)', path: '/backoffice/businesses' },
+        { key: 'stores', label: 'Boutiques actives', value: String(stats.storesCount), icon: Store, color: 'var(--color-warning)', path: '/backoffice/businesses' },
+      ]
+    : []
+
+  if (loading || !stats) {
     return (
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.pageHeader}>
@@ -88,20 +98,13 @@ export default function Backoffice() {
 
       {/* KPI Cards */}
       <Row gutter={[16, 16]} className={styles.kpiSection}>
-        {kpis.map(({ key, label, value, trend, trendUp, icon: Icon, color, path }) => (
+        {kpis.map(({ key, label, value, icon: Icon, color, path }) => (
           <Col xs={12} sm={12} md={6} key={key}>
             <Card bordered={false} className={styles.kpiCard} hoverable onClick={() => navigate(path)} style={{ cursor: 'pointer' }}>
               <div className={styles.kpiTop}>
                 <span className={styles.kpiIconWrap} style={{ background: `${color}12`, color }}>
                   <Icon size={18} />
                 </span>
-                <Tag
-                  color={trendUp ? 'success' : 'error'}
-                  className={styles.kpiTrend}
-                >
-                  <ArrowUpRight size={12} />
-                  {trend}
-                </Tag>
               </div>
               <div className={styles.kpiValue}>{value}</div>
               <div className={styles.kpiLabel}>{label}</div>
@@ -165,7 +168,7 @@ export default function Backoffice() {
             style={{ marginBottom: 16 }}
           >
             <div className={styles.planList}>
-              {planDistribution.map(({ plan, count, pct, color }) => (
+              {stats.planDistribution.map(({ plan, count, pct }) => (
                 <div key={plan} className={styles.planRow}>
                   <div className={styles.planMeta}>
                     <span className={styles.planName}>{plan}</span>
@@ -173,10 +176,13 @@ export default function Backoffice() {
                     <span className={styles.planPct}>{pct}%</span>
                   </div>
                   <div className={styles.planBar}>
-                    <div className={styles.planBarFill} style={{ width: `${pct}%`, background: color }} />
+                    <div className={styles.planBarFill} style={{ width: `${pct}%`, background: planColors[plan] ?? 'var(--color-text-muted)' }} />
                   </div>
                 </div>
               ))}
+              {stats.planDistribution.length === 0 && (
+                <Typography.Text type="secondary">Aucune donnée</Typography.Text>
+              )}
             </div>
           </Card>
 
@@ -197,19 +203,19 @@ export default function Backoffice() {
             }
           >
             <div className={styles.topList}>
-              {topBusinesses.map((biz, i) => (
+              {stats.topBusinesses.map((biz, i) => (
                 <div
-                  key={biz.name}
+                  key={`${biz.name}-${i}`}
                   className={styles.topRow}
                   onClick={() => navigate('/backoffice/businesses')}
                 >
                   <span className={styles.topRank}>#{i + 1}</span>
                   <div className={styles.topInfo}>
                     <span className={styles.topName}>{biz.name}</span>
-                    <span className={styles.topOwner}>{biz.owner} · {biz.stores} boutique{biz.stores > 1 ? 's' : ''}</span>
+                    <span className={styles.topOwner}>{biz.owner} · {biz.storesCount} boutique{biz.storesCount > 1 ? 's' : ''}</span>
                   </div>
                   <div className={styles.topRight}>
-                    <span className={styles.topRevenue}>{biz.revenue}</span>
+                    <span className={styles.topRevenue}>{formatFCFA(biz.revenue)}</span>
                     <Tag style={{ margin: 0, fontSize: 10 }} color={biz.plan === 'Business' ? 'gold' : biz.plan === 'Pro' ? 'blue' : 'default'}>
                       {biz.plan}
                     </Tag>
@@ -217,6 +223,9 @@ export default function Backoffice() {
                   <ChevronRight size={14} className={styles.topChevron} />
                 </div>
               ))}
+              {stats.topBusinesses.length === 0 && (
+                <Typography.Text type="secondary">Aucune entreprise</Typography.Text>
+              )}
             </div>
           </Card>
         </Col>

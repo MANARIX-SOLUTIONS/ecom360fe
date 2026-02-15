@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Table, Tag, Typography, Input, Button, Skeleton, Drawer, Modal, Select, message, Space, Dropdown } from 'antd'
 import { Search, Building2, Store, MoreVertical, Eye, Trash2, Mail, CheckCircle } from 'lucide-react'
 import styles from './Backoffice.module.css'
@@ -17,17 +17,25 @@ export default function BackofficeBusinesses() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [search, setSearch] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+  const resetPageRef = useRef(false)
   const [filterPlan, setFilterPlan] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [detail, setDetail] = useState<Business | null>(null)
   const [modal, contextHolder] = Modal.useModal()
 
   const loadBusinesses = useCallback(async () => {
+    const effectivePage = resetPageRef.current ? 0 : page
+    if (resetPageRef.current) {
+      resetPageRef.current = false
+      setPage(0)
+    }
     setLoading(true)
     try {
       const res = await listAdminBusinesses({
-        page,
+        page: effectivePage,
         size: pageSize,
+        search: searchDebounced.trim() || undefined,
         status: filterStatus !== 'all' ? filterStatus : undefined,
         plan: filterPlan !== 'all' ? filterPlan : undefined,
       })
@@ -44,20 +52,20 @@ export default function BackofficeBusinesses() {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, filterStatus, filterPlan])
+  }, [page, pageSize, searchDebounced, filterStatus, filterPlan])
+
+  useEffect(() => {
+    const id = setTimeout(() => setSearchDebounced(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => {
+    resetPageRef.current = true
+  }, [searchDebounced, filterStatus, filterPlan])
 
   useEffect(() => {
     loadBusinesses()
   }, [loadBusinesses])
-
-  const filtered = useMemo(() => {
-    return businesses.filter(b => {
-      const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) || b.owner.toLowerCase().includes(search.toLowerCase())
-      const matchPlan = filterPlan === 'all' || b.plan === filterPlan
-      const matchStatus = filterStatus === 'all' || b.status === filterStatus
-      return matchSearch && matchPlan && matchStatus
-    })
-  }, [businesses, search, filterPlan, filterStatus])
 
   const toggleSuspend = useCallback((biz: Business) => {
     const nextStatus = biz.status === 'suspended' ? 'active' : 'suspended'
@@ -132,7 +140,7 @@ export default function BackofficeBusinesses() {
       <Card bordered={false} className={styles.tableCard}>
         <div className="tableResponsive">
           <Table
-            dataSource={filtered}
+            dataSource={businesses}
             rowKey="id"
             pagination={{
               current: page + 1,

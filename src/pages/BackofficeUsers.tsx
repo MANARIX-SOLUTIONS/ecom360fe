@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Table, Tag, Typography, Input, Button, Skeleton, Select, Modal, Form, message, Dropdown, Tooltip, Drawer, Space } from 'antd'
 import { Search, UserPlus, MoreVertical, Shield, Eye, Ban, CheckCircle, Mail, Calendar, Building2 } from 'lucide-react'
 import styles from './Backoffice.module.css'
@@ -35,20 +35,29 @@ export default function BackofficeUsers() {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [search, setSearch] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
   const [filterRole, setFilterRole] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const resetPageRef = useRef(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [detail, setDetail] = useState<PlatformUser | null>(null)
   const [form] = Form.useForm()
   const [modal, contextHolder] = Modal.useModal()
 
   const loadUsers = useCallback(async () => {
+    const effectivePage = resetPageRef.current ? 0 : page
+    if (resetPageRef.current) {
+      resetPageRef.current = false
+      setPage(0)
+    }
     setLoading(true)
     try {
       const res = await listAdminUsers({
-        page,
+        page: effectivePage,
         size: pageSize,
+        search: searchDebounced.trim() || undefined,
         status: filterStatus !== 'all' ? filterStatus : undefined,
+        role: filterRole !== 'all' ? filterRole : undefined,
       })
       const mapped: PlatformUser[] = (res.content || []).map((u) => ({
         ...u,
@@ -61,20 +70,20 @@ export default function BackofficeUsers() {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, filterStatus])
+  }, [page, pageSize, searchDebounced, filterStatus, filterRole])
+
+  useEffect(() => {
+    const id = setTimeout(() => setSearchDebounced(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
+
+  useEffect(() => {
+    resetPageRef.current = true
+  }, [searchDebounced, filterStatus, filterRole])
 
   useEffect(() => {
     loadUsers()
   }, [loadUsers])
-
-  const filtered = useMemo(() => {
-    return users.filter(u => {
-      const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || u.business.toLowerCase().includes(search.toLowerCase())
-      const matchRole = filterRole === 'all' || u.role === filterRole
-      const matchStatus = filterStatus === 'all' || u.status === filterStatus
-      return matchSearch && matchRole && matchStatus
-    })
-  }, [users, search, filterRole, filterStatus])
 
   const handleInvite = useCallback(() => {
     message.info('Invitation plateforme — fonctionnalité à venir')
@@ -156,7 +165,7 @@ export default function BackofficeUsers() {
       <Card bordered={false} className={styles.tableCard}>
         <div className="tableResponsive">
           <Table
-            dataSource={filtered}
+            dataSource={users}
             rowKey="id"
             pagination={{
               current: page + 1,
