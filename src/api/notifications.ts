@@ -3,6 +3,7 @@
  */
 
 import { api } from "./client";
+import type { PageResponse } from "./products";
 
 export type NotificationResponse = {
   id: string;
@@ -15,14 +16,6 @@ export type NotificationResponse = {
   isRead: boolean;
   readAt: string | null;
   createdAt: string;
-};
-
-export type PageResponse<T> = {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
 };
 
 export async function listNotifications(params?: {

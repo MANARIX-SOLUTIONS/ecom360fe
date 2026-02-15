@@ -110,7 +110,7 @@ export default function BackofficeUsers() {
       form.resetFields()
       loadUsers()
     } catch (e) {
-      if (e?.errorFields) return
+      if ((e as { errorFields?: unknown })?.errorFields) return
       message.error(e instanceof Error ? e.message : 'Erreur lors de l\'invitation')
       throw e
     } finally {

@@ -539,7 +539,7 @@ export default function Dashboard() {
                       title: "Stock",
                       dataIndex: "stock",
                       width: 88,
-                      render: (val: number, r: { min: number }) => (
+                      render: (val: number, r: { productId: string; storeName: string; min: number }) => (
                         <Tag color={val < r.min ? "error" : "default"}>
                           {val} / {r.min}
                         </Tag>

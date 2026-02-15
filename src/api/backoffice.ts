@@ -4,6 +4,7 @@
  */
 
 import { api } from './client'
+import type { PageResponse } from './products'
 
 export type AdminBusiness = {
   id: string
@@ -38,18 +39,6 @@ export type AdminStats = {
   monthlyRevenue: number
   planDistribution: { plan: string; count: number; pct: number }[]
   topBusinesses: { name: string; owner: string; revenue: number; storesCount: number; plan: string }[]
-}
-
-export type PageResponse<T> = {
-  content: T[]
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-  first: boolean
-  last: boolean
-  hasNext: boolean
-  hasPrevious: boolean
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
