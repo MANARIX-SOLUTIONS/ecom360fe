@@ -40,6 +40,8 @@ npm run format       # format code
 npm run format:check # check formatting
 ```
 
+Pre-commit hooks (husky + lint-staged) run format + lint on staged files automatically.
+
 ## Tests
 
 ```bash
