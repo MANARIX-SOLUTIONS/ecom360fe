@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import globals from "globals";
 
 export default tseslint.config(
@@ -22,8 +23,14 @@ export default tseslint.config(
     plugins: {
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
+      "jsx-a11y": jsxA11y,
     },
     rules: {
+      ...jsxA11y.configs.recommended.rules,
+      // Strict rules as warnings — fix gradually
+      "jsx-a11y/click-events-have-key-events": "warn",
+      "jsx-a11y/no-static-element-interactions": "warn",
+      "jsx-a11y/no-autofocus": "warn",
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": [
         "warn",
