@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { SkipLink } from '@/components/SkipLink'
 // i18n removed – labels are now inline French
 import styles from './BackofficeLayout.module.css'
 
@@ -93,6 +94,7 @@ export default function BackofficeLayout() {
 
   return (
     <Layout className={styles.root}>
+      <SkipLink />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className={styles.overlay} onClick={() => setMobileOpen(false)} />
@@ -226,7 +228,7 @@ export default function BackofficeLayout() {
           </div>
         </Header>
 
-        <Content className={styles.content}>
+        <Content id="main-content" className={styles.content} tabIndex={-1}>
           <Outlet />
         </Content>
       </Layout>

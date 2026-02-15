@@ -1,5 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useDocumentTitle } from './hooks/useDocumentTitle'
+import { ScrollToTop } from './components/ScrollToTop'
 import { Spin, message } from 'antd'
 import { useAuth } from './hooks/useAuth'
 import { RequirePermission } from './components/RequirePermission'
@@ -43,6 +45,11 @@ function PageLoader() {
   )
 }
 
+function DocumentTitle() {
+  useDocumentTitle()
+  return null
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
   const location = useLocation()
@@ -59,6 +66,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <DocumentTitle />
+      <ScrollToTop />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -18,6 +18,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/SyncIndicator";
+import { SkipLink } from "@/components/SkipLink";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { HeaderProfile } from "@/components/HeaderProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
@@ -176,6 +177,7 @@ export default function MainLayout() {
 
   return (
     <Layout className={styles.root}>
+      <SkipLink />
       <Sider
         breakpoint="lg"
         collapsedWidth="0"
@@ -232,7 +234,7 @@ export default function MainLayout() {
           </Space>
         </Header>
 
-        <Content className={styles.content}>
+        <Content id="main-content" className={styles.content} tabIndex={-1}>
           <Outlet />
         </Content>
       </Layout>

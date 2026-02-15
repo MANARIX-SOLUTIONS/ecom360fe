@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   Row,
@@ -85,25 +85,27 @@ export default function Dashboard() {
     ReturnType<typeof getDashboard>
   > | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!localStorage.getItem("ecom360_access_token")) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await getDashboard();
-        setData(res);
-        setApiError(null);
-      } catch (e) {
-        setApiError(e instanceof Error ? e.message : "Erreur chargement");
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const loadData = useCallback(async () => {
+    if (!localStorage.getItem("ecom360_access_token")) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await getDashboard();
+      setData(res);
+      setApiError(null);
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : "Erreur chargement");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Welcome toast on first visit
   useEffect(() => {
@@ -331,6 +333,11 @@ export default function Dashboard() {
           showIcon
           closable
           onClose={() => setApiError(null)}
+          action={
+            <Button size="small" onClick={loadData}>
+              Réessayer
+            </Button>
+          }
           className={styles.apiError}
         />
       )}
