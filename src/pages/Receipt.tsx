@@ -236,7 +236,7 @@ export default function Receipt() {
         <Button
           size="large"
           icon={<Share2 size={18} />}
-          onClick={() => handleShare(displayTotal, method, receiptId)}
+          onClick={() => handleShare(displayTotal, method, receiptId ?? undefined)}
           aria-label="Partager"
         >
           Partager
