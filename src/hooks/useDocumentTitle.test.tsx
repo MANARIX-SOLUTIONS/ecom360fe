@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { useDocumentTitle } from "./useDocumentTitle";
 
-function TitleConsumer({ path }: { path: string }) {
+function TitleConsumer() {
   useDocumentTitle();
   return null;
 }
@@ -13,7 +13,7 @@ describe("useDocumentTitle", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
         <Routes>
-          <Route path="/dashboard" element={<TitleConsumer path="/dashboard" />} />
+          <Route path="/dashboard" element={<TitleConsumer />} />
         </Routes>
       </MemoryRouter>
     );
@@ -24,7 +24,7 @@ describe("useDocumentTitle", () => {
     render(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
-          <Route path="/login" element={<TitleConsumer path="/login" />} />
+          <Route path="/login" element={<TitleConsumer />} />
         </Routes>
       </MemoryRouter>
     );
@@ -35,7 +35,7 @@ describe("useDocumentTitle", () => {
     render(
       <MemoryRouter initialEntries={["/products/123"]}>
         <Routes>
-          <Route path="/products/:id" element={<TitleConsumer path="/products/123" />} />
+          <Route path="/products/:id" element={<TitleConsumer />} />
         </Routes>
       </MemoryRouter>
     );

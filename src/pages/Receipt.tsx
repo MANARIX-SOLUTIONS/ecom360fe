@@ -62,11 +62,25 @@ export default function Receipt() {
     }
   }, [state?.saleId, state?.sale, navigate]);
 
+  const sale = state?.sale ?? fetchedSale ?? null;
+  const now = sale?.createdAt ? new Date(sale.createdAt) : new Date();
+  const receiptId = state
+    ? (sale?.receiptNumber ?? `T${now.getTime().toString(36).toUpperCase()}`)
+    : null;
+
+  useEffect(() => {
+    if (receiptId) {
+      document.title = `Ticket ${receiptId} - 360 PME Commerce`;
+      return () => {
+        document.title = "360 PME Commerce";
+      };
+    }
+  }, [receiptId]);
+
   if (!state) {
     return <Navigate to="/pos" replace />;
   }
 
-  const sale = state.sale ?? fetchedSale ?? null;
   const cart = state.cart ?? [];
   const total = state.total ?? sale?.total ?? 0;
   const discount = state.discount ?? sale?.discountAmount ?? 0;
@@ -101,15 +115,6 @@ export default function Receipt() {
   if (state.saleId && !sale) {
     return <Navigate to="/dashboard" replace />;
   }
-  const now = sale?.createdAt ? new Date(sale.createdAt) : new Date();
-  const receiptId = sale?.receiptNumber ?? `T${now.getTime().toString(36).toUpperCase()}`;
-
-  useEffect(() => {
-    document.title = `Ticket ${receiptId} - 360 PME Commerce`;
-    return () => {
-      document.title = "360 PME Commerce";
-    };
-  }, [receiptId]);
   const subtotal = sale?.subtotal ?? cart.reduce((sum, line) => sum + line.price * line.qty, 0);
   const displayTotal = sale?.total ?? total;
   const displayDiscount = sale?.discountAmount ?? discount;
