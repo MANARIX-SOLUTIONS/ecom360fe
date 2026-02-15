@@ -33,6 +33,13 @@ npm run build
 npm run preview
 ```
 
+## Format
+
+```bash
+npm run format       # format code
+npm run format:check # check formatting
+```
+
 ## Tests
 
 ```bash
