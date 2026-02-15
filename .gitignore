@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Coverage
+coverage/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store

@@ -36,8 +36,9 @@ npm run preview
 ## Tests
 
 ```bash
-npm run test        # watch mode
-npm run test:run    # single run
+npm run test          # watch mode
+npm run test:run     # single run
+npm run test:coverage # run with coverage (output in coverage/)
 ```
 
 ## Écrans
