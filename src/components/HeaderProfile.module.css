@@ -1,0 +1,56 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  min-height: 44px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.trigger:hover {
+  background: var(--color-bg);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .name {
+    display: none;
+  }
+
+  .trigger {
+    padding: 8px;
+  }
+}

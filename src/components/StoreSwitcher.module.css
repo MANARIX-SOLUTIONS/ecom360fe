@@ -1,0 +1,38 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  min-height: 44px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.trigger:hover {
+  border-color: var(--color-primary);
+  background: rgba(31, 58, 95, 0.04);
+}
+
+.trigger svg:first-child {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.triggerName {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .triggerName {
+    max-width: 120px;
+  }
+}

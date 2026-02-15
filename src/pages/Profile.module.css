@@ -1,0 +1,98 @@
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.back {
+  margin-bottom: 16px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--section-gap);
+}
+
+.avatarWrap {
+  margin-bottom: 12px;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #1e3a5f 100%);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.title {
+  margin: 0 0 4px !important;
+  font-weight: 600;
+}
+
+.roleBadge {
+  margin: 6px 0 8px !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+}
+
+.card {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.detailRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detailRow:last-of-type {
+  border-bottom: none;
+}
+
+.detailIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.detailValue {
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.editBtn {
+  margin-top: 20px;
+  min-height: 44px;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.formActions button {
+  min-height: 44px;
+  min-width: 100px;
+}
