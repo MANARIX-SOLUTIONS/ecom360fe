@@ -1,0 +1,518 @@
+/* ========== Receipt theme (override in print) ========== */
+.receipt {
+  --receipt-bg: #fff;
+  --receipt-border: rgba(0, 0, 0, 0.06);
+  --receipt-divider: rgba(0, 0, 0, 0.12);
+  --receipt-text: var(--color-text);
+  --receipt-muted: var(--color-text-muted);
+  --receipt-accent: var(--color-primary);
+  --receipt-radius: var(--radius);
+  --receipt-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ========== Success banner ========== */
+.successBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  animation: fadeInDown 0.5s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.successIcon {
+  color: var(--color-success);
+  animation: scaleIn 0.4s ease 0.1s both;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.successText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+/* ========== Layout ========== */
+.wrapper {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--section-gap) 20px 40px;
+  background: var(--color-bg);
+}
+
+.receipt {
+  width: 100%;
+  background: var(--receipt-bg);
+  border-radius: var(--receipt-radius);
+  box-shadow: var(--receipt-shadow);
+  padding: 28px 24px;
+  border: 1px solid var(--receipt-border);
+  flex-shrink: 0;
+}
+
+/* ========== Header ========== */
+.header {
+  text-align: center;
+  margin: 0 0 4px;
+}
+
+.shopName {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--receipt-text);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.shopAddress {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--receipt-muted);
+  line-height: 1.4;
+}
+
+.divider {
+  height: 0;
+  border: none;
+  border-top: 1px dashed var(--receipt-divider);
+  margin: 18px 0;
+  padding: 0;
+}
+
+/* ========== Meta (ticket title, id, date) ========== */
+.metaBlock {
+  text-align: center;
+}
+
+.ticketTitle {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--receipt-muted);
+}
+
+.receiptId {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--receipt-muted);
+}
+
+.datetime {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--receipt-muted);
+  display: block;
+}
+
+/* ========== Line items table ========== */
+.lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 4px 0 0;
+  table-layout: fixed;
+}
+
+.lines thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--receipt-muted);
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--receipt-divider);
+}
+
+.lines thead th.colTotal,
+.lines thead th.colPrice {
+  text-align: right;
+}
+
+.lines tbody td {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.lines tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.colDesc {
+  width: 100%;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.productName {
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.colQty {
+  width: 40px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.colPrice {
+  width: 72px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.colTotal {
+  width: 76px;
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* ========== Totals ========== */
+.totals {
+  margin-top: 4px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  margin-top: 6px;
+  gap: 12px;
+}
+
+.rowTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--receipt-accent);
+  color: var(--receipt-text);
+}
+
+.discount {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+/* ========== Payment & footer ========== */
+.payment {
+  margin: 0;
+  font-size: 13px;
+  color: var(--receipt-text);
+}
+
+.paymentLabel {
+  color: var(--receipt-muted);
+  margin-right: 6px;
+}
+
+.footer {
+  margin-top: 22px;
+  padding-top: 14px;
+  text-align: center;
+  border-top: 1px dashed var(--receipt-divider);
+}
+
+.footer p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--receipt-muted);
+}
+
+/* ========== Actions (screen only) ========== */
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 28px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.actions button {
+  min-width: 140px;
+  flex: 1;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 480px) {
+  .wrapper {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 32px;
+  }
+
+  .receipt {
+    padding: 20px 18px;
+  }
+
+  .shopName {
+    font-size: 18px;
+  }
+
+  .lines {
+    font-size: 13px;
+  }
+
+  .lines thead th {
+    padding: 6px 0 4px;
+  }
+
+  .lines tbody td {
+    padding: 6px 0;
+  }
+
+  .colPrice {
+    width: 64px;
+  }
+
+  .colTotal {
+    width: 68px;
+  }
+
+  .rowTotal {
+    font-size: 16px;
+  }
+
+  .actions {
+    flex-direction: column;
+    margin-top: 24px;
+  }
+
+  .actions button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ========== Print (machine thermique 58mm / 80mm) ========== */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .wrapper,
+  .wrapper *,
+  #receipt-print,
+  #receipt-print * {
+    visibility: visible;
+  }
+
+  .successBanner {
+    display: none !important;
+  }
+
+  .wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    align-items: flex-start;
+  }
+
+  .receipt {
+    max-width: 80mm;
+    width: 80mm;
+    min-width: 80mm;
+    margin: 0;
+    padding: 6px 4px;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    background: #fff;
+    --receipt-shadow: none;
+    --receipt-border: transparent;
+    --receipt-radius: 0;
+    /* Police monospace pour imprimantes thermiques */
+    font-family: "Courier New", Courier, monospace;
+  }
+
+  .header,
+  .metaBlock,
+  .lines,
+  .totals,
+  .payment,
+  .footer {
+    font-family: inherit;
+  }
+
+  .shopName {
+    font-size: 14px;
+  }
+
+  .shopAddress {
+    font-size: 10px;
+  }
+
+  .ticketTitle {
+    font-size: 9px;
+  }
+
+  .receiptId {
+    font-size: 10px;
+  }
+
+  .datetime {
+    font-size: 11px;
+  }
+
+  .lines {
+    font-size: 11px;
+  }
+
+  .lines thead th {
+    padding: 4px 0 2px;
+    font-size: 9px;
+  }
+
+  .lines tbody td {
+    padding: 4px 0;
+    break-inside: avoid;
+  }
+
+  .lines tbody tr {
+    break-inside: avoid;
+  }
+
+  .productName {
+    max-width: 42mm;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    font-size: 10px;
+  }
+
+  .colDesc {
+    max-width: 42mm;
+  }
+
+  .colQty {
+    width: 8mm;
+  }
+
+  .colPrice {
+    width: 14mm;
+  }
+
+  .colTotal {
+    width: 16mm;
+  }
+
+  .row,
+  .payment,
+  .footer p {
+    font-size: 11px;
+  }
+
+  .rowTotal {
+    font-size: 13px;
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+
+  .divider {
+    margin: 10px 0;
+  }
+
+  .footer {
+    margin-top: 12px;
+    padding-top: 8px;
+  }
+
+  .actions {
+    display: none !important;
+  }
+
+  /* Fin de ticket - espace pour coupe thermique */
+  .footer::after {
+    content: "";
+    display: block;
+    height: 20px;
+    margin-top: 8px;
+    border-top: 1px dashed #999;
+  }
+}
+
+/* Variante 58mm (ajouter class="thermal-58" sur html si imprimante 58mm) */
+@media print {
+  html.thermal-58 .receipt {
+    max-width: 58mm;
+    width: 58mm;
+    min-width: 58mm;
+    padding: 4px 2px;
+  }
+
+  html.thermal-58 .shopName {
+    font-size: 12px;
+  }
+
+  html.thermal-58 .productName {
+    max-width: 28mm;
+    font-size: 9px;
+  }
+
+  html.thermal-58 .lines {
+    font-size: 9px;
+  }
+
+  html.thermal-58 .lines thead th {
+    font-size: 8px;
+  }
+
+  html.thermal-58 .row,
+  html.thermal-58 .payment,
+  html.thermal-58 .footer p {
+    font-size: 9px;
+  }
+
+  html.thermal-58 .rowTotal {
+    font-size: 11px;
+  }
+}
