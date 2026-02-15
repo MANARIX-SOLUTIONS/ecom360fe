@@ -31,6 +31,15 @@ export type AdminUser = {
   createdAt: string
 }
 
+export type AdminStats = {
+  businessesCount: number
+  usersCount: number
+  storesCount: number
+  monthlyRevenue: number
+  planDistribution: { plan: string; count: number; pct: number }[]
+  topBusinesses: { name: string; owner: string; revenue: number; storesCount: number; plan: string }[]
+}
+
 export type PageResponse<T> = {
   content: T[]
   page: number
@@ -43,18 +52,24 @@ export type PageResponse<T> = {
   hasPrevious: boolean
 }
 
+export async function getAdminStats(): Promise<AdminStats> {
+  return api.get<AdminStats>('/admin/stats')
+}
+
 export async function listAdminBusinesses(params?: {
   page?: number
   size?: number
+  search?: string
   status?: string
   plan?: string
 }): Promise<PageResponse<AdminBusiness>> {
-  const search = new URLSearchParams()
-  if (params?.page != null) search.set('page', String(params.page))
-  if (params?.size != null) search.set('size', String(params.size))
-  if (params?.status) search.set('status', params.status)
-  if (params?.plan) search.set('plan', params.plan)
-  const q = search.toString()
+  const searchParams = new URLSearchParams()
+  if (params?.page != null) searchParams.set('page', String(params.page))
+  if (params?.size != null) searchParams.set('size', String(params.size))
+  if (params?.search) searchParams.set('search', params.search)
+  if (params?.status) searchParams.set('status', params.status)
+  if (params?.plan) searchParams.set('plan', params.plan)
+  const q = searchParams.toString()
   return api.get<PageResponse<AdminBusiness>>(`/admin/businesses${q ? `?${q}` : ''}`)
 }
 
@@ -65,13 +80,17 @@ export async function setBusinessStatus(businessId: string, status: 'active' | '
 export async function listAdminUsers(params?: {
   page?: number
   size?: number
+  search?: string
   status?: string
+  role?: string
 }): Promise<PageResponse<AdminUser>> {
-  const search = new URLSearchParams()
-  if (params?.page != null) search.set('page', String(params.page))
-  if (params?.size != null) search.set('size', String(params.size))
-  if (params?.status) search.set('status', params.status)
-  const q = search.toString()
+  const searchParams = new URLSearchParams()
+  if (params?.page != null) searchParams.set('page', String(params.page))
+  if (params?.size != null) searchParams.set('size', String(params.size))
+  if (params?.search) searchParams.set('search', params.search)
+  if (params?.status) searchParams.set('status', params.status)
+  if (params?.role) searchParams.set('role', params.role)
+  const q = searchParams.toString()
   return api.get<PageResponse<AdminUser>>(`/admin/users${q ? `?${q}` : ''}`)
 }
 

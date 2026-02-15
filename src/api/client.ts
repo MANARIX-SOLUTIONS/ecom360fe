@@ -3,8 +3,11 @@
  * Handles base URL, auth headers, token refresh, and error mapping.
  */
 
-// Dev: use empty string to hit Vite proxy (/api → localhost:8080). Prod: use VITE_API_URL.
-const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'http://localhost:8080')
+// Dev: use backend directly to avoid proxy 404s. Prod: VITE_API_URL required.
+// Set VITE_API_URL='' to use Vite proxy (/api → localhost:8080).
+const API_BASE =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? 'http://localhost:8080' : 'http://localhost:8080')
 const API_PREFIX = '/api/v1'
 const REQUEST_TIMEOUT_MS = 30_000
 
@@ -131,6 +134,7 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Request-Id': crypto.randomUUID?.() ?? `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     ...(init.headers as Record<string, string>),
   }
 
@@ -174,8 +178,10 @@ async function request<T>(
     } catch {
       body = await res.text().catch(() => null)
     }
+    const requestId = res.headers.get('X-Request-Id')
     const msg = parseErrorMessage(body, res)
-    throw new ApiError(msg, res.status, body)
+    const errMsg = requestId ? `${msg} (ID: ${requestId})` : msg
+    throw new ApiError(errMsg, res.status, body)
   }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') {

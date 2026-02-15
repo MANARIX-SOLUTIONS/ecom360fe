@@ -33,6 +33,8 @@ export type SaleResponse = {
   id: string
   businessId: string
   storeId: string
+  storeName?: string
+  storeAddress?: string
   userId: string
   clientId: string | null
   receiptNumber: string
