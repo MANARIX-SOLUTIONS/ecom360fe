@@ -32,6 +32,7 @@ import SettingsSecurity from './pages/SettingsSecurity'
 import SettingsStores from './pages/SettingsStores'
 import Profile from './pages/Profile'
 import More from './pages/More'
+import NotFound from './pages/NotFound'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
@@ -96,7 +97,7 @@ export default function App() {
           <Route path="users" element={<BackofficeUsers />} />
           <Route path="system" element={<BackofficeSystem />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

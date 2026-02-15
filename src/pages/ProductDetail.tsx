@@ -28,6 +28,7 @@ import {
   updateProduct,
   deleteProduct,
   listCategories,
+  ApiError,
 } from "@/api";
 import {
   getStockLevel,
@@ -35,6 +36,7 @@ import {
   getStockMovements,
 } from "@/api";
 import { useStore } from "@/contexts/StoreContext";
+import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 
@@ -56,6 +58,7 @@ export default function ProductDetail() {
   const [stockLevels, setStockLevels] = useState<StockLevelResponse[]>([]);
   const [movements, setMovements] = useState<StockMovementResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
   const [editForm] = Form.useForm();
@@ -78,8 +81,12 @@ export default function ProductDetail() {
         salePrice: productRes.salePrice,
       });
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
-      setProduct(null);
+      if (e instanceof ApiError && e.status === 404) {
+        setNotFound(true);
+      } else {
+        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        setProduct(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -152,6 +159,7 @@ export default function ProductDetail() {
     );
   }
 
+  if (notFound) return <ResourceNotFound resource="Produit" backPath="/products" backLabel="Retour aux produits" />;
   if (!product) return <Navigate to="/products" replace />;
 
   const categoryName =

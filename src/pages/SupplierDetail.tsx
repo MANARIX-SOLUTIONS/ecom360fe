@@ -15,6 +15,7 @@ import {
 } from "antd";
 import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
+import { ResourceNotFound } from "@/components/ResourceNotFound";
 import styles from "./Clients.module.css";
 import {
   getSupplier,
@@ -22,6 +23,7 @@ import {
   deleteSupplier,
   recordSupplierPayment,
   listSupplierPayments,
+  ApiError,
 } from "@/api";
 import type { SupplierResponse } from "@/api";
 
@@ -40,6 +42,7 @@ export default function SupplierDetail() {
   const [supplier, setSupplier] = useState<SupplierResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -58,8 +61,12 @@ export default function SupplierDetail() {
         zone: res.zone || "",
       });
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
-      setSupplier(null);
+      if (e instanceof ApiError && e.status === 404) {
+        setNotFound(true);
+      } else {
+        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        setSupplier(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +111,7 @@ export default function SupplierDetail() {
     );
   }
 
+  if (notFound) return <ResourceNotFound resource="Fournisseur" backPath="/suppliers" backLabel="Retour aux fournisseurs" />;
   if (!supplier) return <Navigate to="/suppliers" replace />;
 
   const balanceColor =

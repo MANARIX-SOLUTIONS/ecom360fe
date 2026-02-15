@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
-import { Button, Spin } from "antd";
+import { Button, Result, Spin } from "antd";
 import { Printer, ShoppingCart, Share2, CheckCircle } from "lucide-react";
 import { t } from "@/i18n";
 import { useStore } from "@/contexts/StoreContext";
-import { getSale } from "@/api";
+import { getSale, ApiError } from "@/api";
 import type { SaleResponse } from "@/api";
 import styles from "./Receipt.module.css";
 
@@ -45,12 +45,19 @@ export default function Receipt() {
   const state = location.state as LocationState | null;
   const [fetchedSale, setFetchedSale] = useState<SaleResponse | null>(null);
   const [loading, setLoading] = useState(!!state?.saleId && !state?.sale);
+  const [saleNotFound, setSaleNotFound] = useState(false);
 
   useEffect(() => {
     if (state?.saleId && !state?.sale) {
       getSale(state.saleId)
         .then(setFetchedSale)
-        .catch(() => navigate("/dashboard", { replace: true }))
+        .catch((e) => {
+          if (e instanceof ApiError && e.status === 404) {
+            setSaleNotFound(true);
+          } else {
+            navigate("/dashboard", { replace: true });
+          }
+        })
         .finally(() => setLoading(false));
     }
   }, [state?.saleId, state?.sale, navigate]);
@@ -65,6 +72,22 @@ export default function Receipt() {
   const discount = state.discount ?? sale?.discountAmount ?? 0;
   const method = state.method ?? sale?.paymentMethod ?? "cash";
 
+  if (saleNotFound) {
+    return (
+      <div className={styles.wrapper} style={{ padding: 48, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Result
+          status="404"
+          title="Vente introuvable"
+          subTitle="Cette vente n'existe pas ou a été supprimée."
+          extra={
+            <Button type="primary" onClick={() => navigate("/dashboard", { replace: true })}>
+              Retour au tableau de bord
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
   if (loading || (state.saleId && !sale)) {
     return (
       <div className={styles.wrapper} style={{ padding: 48, textAlign: "center" }}>
@@ -72,7 +95,6 @@ export default function Receipt() {
       </div>
     );
   }
-
   if (state.saleId && !sale) {
     return <Navigate to="/dashboard" replace />;
   }

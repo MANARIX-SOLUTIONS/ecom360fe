@@ -30,9 +30,11 @@ import {
   deleteClient,
   recordClientPayment,
   listClientPayments,
+  ApiError,
 } from "@/api";
 import { useStore } from "@/contexts/StoreContext";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ClientResponse } from "@/api";
 
 function getInitials(name: string) {
@@ -54,6 +56,7 @@ export default function ClientDetail() {
     { id: string; date: string; amount: number }[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -72,8 +75,12 @@ export default function ClientDetail() {
         address: res.address || "",
       });
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
-      setClient(null);
+      if (e instanceof ApiError && e.status === 404) {
+        setNotFound(true);
+      } else {
+        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        setClient(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -118,6 +125,7 @@ export default function ClientDetail() {
     );
   }
 
+  if (notFound) return <ResourceNotFound resource="Client" backPath="/clients" backLabel="Retour aux clients" />;
   if (!client) return <Navigate to="/clients" replace />;
 
   const balanceColor =
