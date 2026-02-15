@@ -180,7 +180,18 @@ export default function MainLayout() {
         className={styles.sider}
         theme="light"
       >
-        <div className={styles.logo} onClick={() => navigate("/dashboard")}>
+        <div
+          className={styles.logo}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/dashboard")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate("/dashboard");
+            }
+          }}
+        >
           <div className={styles.logoIcon}>
             <ShoppingCart size={20} />
           </div>
