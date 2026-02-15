@@ -31,8 +31,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          # No cache: avoids "Some specified paths were not resolved" when
-          # cache-dependency-path doesn't match repo layout (monorepo vs standalone)
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
