@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { t } from "@/i18n";
 import styles from "./More.module.css";
@@ -69,14 +70,14 @@ const linkConfig: MenuLink[] = [
 export default function More() {
   const navigate = useNavigate();
   const { can } = useAuthRole();
+  const { canAccess } = usePlanFeatures();
   const { displayName, initials } = useUserProfile();
 
   const links = useMemo(
     () =>
       linkConfig.filter((l) =>
-        can(l.permission as Parameters<typeof can>[0]),
-      ),
-    [can],
+        canAccess(l.permission, can(l.permission as Parameters<typeof can>[0])),
+    [can, canAccess],
   );
   const commerceLinks = links.filter((l) => l.group === "commerce");
   const adminLinks = links.filter((l) => l.group === "admin");

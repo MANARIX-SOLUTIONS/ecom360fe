@@ -22,6 +22,8 @@ import { StoreSwitcher } from '@/components/StoreSwitcher'
 import { HeaderProfile } from '@/components/HeaderProfile'
 import { useAuthRole } from '@/hooks/useAuthRole'
 import { usePlanFeatures } from '@/hooks/usePlanFeatures'
+import { useNotifications } from '@/hooks/useNotifications'
+import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 import { t } from '@/i18n'
 import styles from './MainLayout.module.css'
 
@@ -44,33 +46,65 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const { can, isSuperAdmin } = useAuthRole()
   const { canAccess } = usePlanFeatures()
+  const { notifications, unreadCount, markRead } = useNotifications()
+  const { offline } = useNetworkStatus()
 
-  const notificationItems = useMemo(() => [
-    {
-      key: '1',
-      label: (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0', maxWidth: 280 }}>
-          <AlertTriangle size={16} style={{ color: 'var(--color-warning)', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontWeight: 500, fontSize: 13 }}>Stock faible: Sucre 1kg</div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Il reste 3 unités</div>
+  const notificationItems = useMemo(() => {
+    if (notifications.length === 0) {
+      return [
+        {
+          key: 'empty',
+          label: (
+            <div style={{ padding: 16, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+              Aucune notification
+            </div>
+          ),
+        },
+      ]
+    }
+    return notifications.map((n) => {
+      const isWarning = n.type === 'low_stock' || n.type === 'stock_alert'
+      const Icon = isWarning ? AlertTriangle : CheckCircle
+      const iconColor = isWarning ? 'var(--color-warning)' : 'var(--color-success)'
+      return {
+        key: n.id,
+        label: (
+          <div
+            role="button"
+            tabIndex={0}
+            style={{
+              display: 'flex',
+              gap: 10,
+              alignItems: 'flex-start',
+              padding: '8px 0',
+              maxWidth: 280,
+              cursor: 'pointer',
+              opacity: n.isRead ? 0.8 : 1,
+            }}
+            onClick={() => {
+              if (!n.isRead) markRead(n.id)
+              if (n.actionUrl) navigate(n.actionUrl)
+            }}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                if (!n.isRead) markRead(n.id)
+                if (n.actionUrl) navigate(n.actionUrl)
+              }
+            }}
+          >
+            <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
+              {n.body && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{n.body}</div>
+              )}
+            </div>
           </div>
-        </div>
-      ),
-    },
-    {
-      key: '2',
-      label: (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0', maxWidth: 280 }}>
-          <CheckCircle size={16} style={{ color: 'var(--color-success)', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontWeight: 500, fontSize: 13 }}>Paiement reçu</div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>M. Diallo — 10 000 F</div>
-          </div>
-        </div>
-      ),
-    },
-  ], [])
+        ),
+      }
+    })
+  }, [notifications, markRead])
 
   const navItems = useMemo(() => {
     const items = navConfig.filter((item) => canAccess(item.permission, can(item.permission))).map(({ key, icon, label }) => ({ key, icon, label }))
@@ -114,7 +148,7 @@ export default function MainLayout() {
         <Header className={styles.header}>
           <StoreSwitcher />
           <Space size="middle">
-            <SyncIndicator syncing={false} offline={false} />
+            <SyncIndicator offline={offline} />
             <Dropdown
               menu={{ items: notificationItems }}
               trigger={['click']}
@@ -125,7 +159,7 @@ export default function MainLayout() {
                 className={styles.notifBtn}
                 aria-label="Notifications"
               >
-                <Badge count={2} size="small" offset={[-2, 2]}>
+                <Badge count={unreadCount} size="small" offset={[-2, 2]}>
                   <Bell size={20} />
                 </Badge>
               </button>
