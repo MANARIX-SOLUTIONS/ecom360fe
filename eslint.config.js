@@ -16,7 +16,7 @@ export default tseslint.config(
       parserOptions: {
         ecmaVersion: "latest",
         ecmaFeatures: { jsx: true },
-        project: "./tsconfig.json",
+        project: "./tsconfig.eslint.json",
       },
     },
     plugins: {
