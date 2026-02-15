@@ -1,17 +1,15 @@
 # ──────────────────────────────────────────────────────────────
 # CI Frontend — Lint, test, build
-# Triggers: every push to main/develop, every PR (when ecom360/ changes)
-# For monorepo: run from ecom360/ directory
+# Use when ecom360 is the repo root (standalone).
+# For monorepo (ecom360Saas root), see .github/workflows/ci-frontend.yml at repo root.
 # ──────────────────────────────────────────────────────────────
 name: CI Frontend
 
 on:
   push:
     branches: [main, develop]
-    paths: ["ecom360/**"]
   pull_request:
     branches: [main, develop]
-    paths: ["ecom360/**"]
 
 concurrency:
   group: ci-frontend-${{ github.ref }}
@@ -25,9 +23,6 @@ jobs:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: ecom360
 
     steps:
       - name: Checkout
@@ -38,7 +33,6 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: ecom360/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -59,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: ecom360/coverage/
+          path: coverage/
           retention-days: 7
 
       - name: Build
