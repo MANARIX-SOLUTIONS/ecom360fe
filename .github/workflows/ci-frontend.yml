@@ -1,14 +1,17 @@
 # ──────────────────────────────────────────────────────────────
 # CI Frontend — Lint, test, build
-# Triggers: every push to main/develop, every PR
+# Triggers: every push to main/develop, every PR (when ecom360/ changes)
+# For monorepo: run from ecom360/ directory
 # ──────────────────────────────────────────────────────────────
 name: CI Frontend
 
 on:
   push:
     branches: [main, develop]
+    paths: ["ecom360/**"]
   pull_request:
     branches: [main, develop]
+    paths: ["ecom360/**"]
 
 concurrency:
   group: ci-frontend-${{ github.ref }}
@@ -22,6 +25,9 @@ jobs:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ecom360
 
     steps:
       - name: Checkout
@@ -32,6 +38,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: ecom360/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -52,8 +59,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: ecom360/coverage/
           retention-days: 7
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E smoke tests
+        run: npm run test:e2e:smoke
