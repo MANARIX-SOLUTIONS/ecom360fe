@@ -1,0 +1,18 @@
+{
+  "name": "360 PME Commerce",
+  "short_name": "360 PME",
+  "description": "Point de vente et gestion pour PME — Sénégal et Afrique",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1b4d7a",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
