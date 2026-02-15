@@ -97,3 +97,12 @@ export async function listAdminUsers(params?: {
 export async function setUserStatus(userId: string, active: boolean): Promise<void> {
   await api.patch(`/admin/users/${userId}/status`, { active })
 }
+
+export async function inviteAdminUser(params: {
+  email: string
+  fullName: string
+  role: string
+  businessId: string
+}): Promise<AdminUser> {
+  return api.post<AdminUser>('/admin/users/invite', params)
+}

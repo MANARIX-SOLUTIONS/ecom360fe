@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, Table, Tag, Typography, Input, Button, Skeleton, Select, Modal, Form, message, Dropdown, Tooltip, Drawer, Space } from 'antd'
 import { Search, UserPlus, MoreVertical, Shield, Eye, Ban, CheckCircle, Mail, Calendar, Building2 } from 'lucide-react'
 import styles from './Backoffice.module.css'
-import { listAdminUsers, setUserStatus, type AdminUser } from '@/api/backoffice'
+import { listAdminUsers, setUserStatus, inviteAdminUser, listAdminBusinesses, type AdminUser } from '@/api/backoffice'
 
 type PlatformUser = AdminUser & { lastLogin: string }
 
@@ -41,6 +41,8 @@ export default function BackofficeUsers() {
   const resetPageRef = useRef(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [detail, setDetail] = useState<PlatformUser | null>(null)
+  const [businesses, setBusinesses] = useState<{ id: string; name: string }[]>([])
+  const [inviteLoading, setInviteLoading] = useState(false)
   const [form] = Form.useForm()
   const [modal, contextHolder] = Modal.useModal()
 
@@ -85,10 +87,36 @@ export default function BackofficeUsers() {
     loadUsers()
   }, [loadUsers])
 
-  const handleInvite = useCallback(() => {
-    message.info('Invitation plateforme — fonctionnalité à venir')
-    setInviteOpen(false)
-  }, [])
+  useEffect(() => {
+    if (inviteOpen) {
+      listAdminBusinesses({ page: 0, size: 100 })
+        .then((res) => setBusinesses((res.content || []).map((b) => ({ id: b.id, name: b.name }))))
+        .catch(() => setBusinesses([]))
+    }
+  }, [inviteOpen])
+
+  const handleInvite = useCallback(async () => {
+    try {
+      const values = await form.validateFields()
+      setInviteLoading(true)
+      await inviteAdminUser({
+        email: values.email,
+        fullName: values.name,
+        role: values.role,
+        businessId: values.businessId,
+      })
+      message.success('Invitation envoyée')
+      setInviteOpen(false)
+      form.resetFields()
+      loadUsers()
+    } catch (e) {
+      if (e?.errorFields) return
+      message.error(e instanceof Error ? e.message : 'Erreur lors de l\'invitation')
+      throw e
+    } finally {
+      setInviteLoading(false)
+    }
+  }, [form, loadUsers])
 
   const toggleStatus = useCallback((user: PlatformUser) => {
     const isDisabled = user.status === 'disabled'
@@ -115,7 +143,7 @@ export default function BackofficeUsers() {
   }, [modal, detail])
 
   const handleContact = useCallback((user: PlatformUser) => {
-    message.info(`Email envoyé à ${user.email}`)
+    window.location.href = `mailto:${user.email}`
   }, [])
 
   if (loading) {
@@ -302,6 +330,7 @@ export default function BackofficeUsers() {
         onCancel={() => { setInviteOpen(false); form.resetFields() }}
         onOk={handleInvite}
         okText="Envoyer l'invitation"
+        confirmLoading={inviteLoading}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="name" label="Nom complet">
@@ -313,14 +342,14 @@ export default function BackofficeUsers() {
           <Form.Item name="role" label="Rôle" initialValue="Caissier">
             <Select options={[{ value: 'Propriétaire', label: 'Propriétaire' }, { value: 'Gestionnaire', label: 'Gestionnaire' }, { value: 'Caissier', label: 'Caissier' }]} />
           </Form.Item>
-          <Form.Item name="business" label="Entreprise" rules={[{ required: true, message: 'Requis' }]}>
-            <Select placeholder="Sélectionner l'entreprise" options={[
-              { value: 'Boutique Dakar Centre', label: 'Boutique Dakar Centre' },
-              { value: 'Commerce Thiès', label: 'Commerce Thiès' },
-              { value: 'Mini Market Rufisque', label: 'Mini Market Rufisque' },
-              { value: 'Marché Pikine', label: 'Marché Pikine' },
-              { value: 'Super Alimentation', label: 'Super Alimentation' },
-            ]} />
+          <Form.Item name="businessId" label="Entreprise" rules={[{ required: true, message: 'Requis' }]}>
+            <Select
+              placeholder="Sélectionner l'entreprise"
+              options={businesses.map((b) => ({ value: b.id, label: b.name }))}
+              showSearch
+              optionFilterProp="label"
+              loading={inviteOpen && businesses.length === 0}
+            />
           </Form.Item>
         </Form>
       </Modal>

@@ -92,7 +92,7 @@ export default function BackofficeBusinesses() {
   }, [modal, detail, loadBusinesses])
 
   const handleContact = useCallback((biz: Business) => {
-    message.info(`Email envoyé à ${biz.email}`)
+    window.location.href = `mailto:${biz.email}`
   }, [])
 
   if (loading) {
