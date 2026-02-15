@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useDocumentTitle } from './hooks/useDocumentTitle'
 import { ScrollToTop } from './components/ScrollToTop'
+import { OfflineBanner } from './components/OfflineBanner'
 import { Spin, message } from 'antd'
 import { useAuth } from './hooks/useAuth'
 import { RequirePermission } from './components/RequirePermission'
@@ -68,6 +69,7 @@ export default function App() {
     <BrowserRouter>
       <DocumentTitle />
       <ScrollToTop />
+      <OfflineBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

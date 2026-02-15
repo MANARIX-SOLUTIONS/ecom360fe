@@ -33,6 +33,13 @@ npm run build
 npm run preview
 ```
 
+## Tests
+
+```bash
+npm run test        # watch mode
+npm run test:run    # single run
+```
+
 ## Écrans
 
 1. **Login** – Carte centrée, email / mot de passe, états chargement / erreur  

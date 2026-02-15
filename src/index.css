@@ -42,8 +42,29 @@
   box-sizing: border-box;
 }
 
+/* Keyboard focus — visible only when navigating with Tab, not on click */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* Form controls already have custom focus (box-shadow) */
+.ant-input:focus-visible,
+.ant-input-number:focus-visible,
+.ant-select-selector:focus-visible,
+.ant-input-affix-wrapper:focus-visible {
+  outline: none;
+}
+
 html {
   scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 html,
@@ -81,6 +102,11 @@ body {
   border-radius: 0 0 8px 0;
   transform: translateY(-100%);
   transition: transform 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
+  }
 }
 .skip-link:focus {
   transform: translateY(0);
@@ -280,6 +306,14 @@ body {
 
 .pageWrapper {
   animation: pageEnter 0.3s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pageWrapper {
+    animation: none;
+  }
+  .spin-icon {
+    animation: none !important;
+  }
 }
 
 /* Responsive */
