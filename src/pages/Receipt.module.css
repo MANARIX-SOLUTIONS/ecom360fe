@@ -660,13 +660,38 @@
 
 /* ========== Print base (reset) ========== */
 @media print {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
   html,
-  body {
+  body,
+  #root,
+  #root > *,
+  [class*="root"],
+  [class*="Layout"] {
     margin: 0 !important;
     padding: 0 !important;
-    background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: transparent !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -699,8 +724,11 @@
     max-width: none;
     margin: 0;
     padding: 0;
+    min-height: 0 !important;
+    height: auto !important;
     background: #fff;
     align-items: flex-start;
+    page: thermal;
   }
 
   html:not([class*="print-a4"]) .receiptThermal {
@@ -719,6 +747,10 @@
     color: #000;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    page-break-inside: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    break-after: avoid;
   }
 
   html:not([class*="print-a4"]) .header,
@@ -762,10 +794,12 @@
 
   html:not([class*="print-a4"]) .lines tbody td {
     padding: 3px 0;
+    page-break-inside: avoid;
     break-inside: avoid;
   }
 
   html:not([class*="print-a4"]) .lines tbody tr {
+    page-break-inside: avoid;
     break-inside: avoid;
   }
 
@@ -826,99 +860,23 @@
   }
 }
 
-/* Thermal @page - 80mm for ticket printers / Save as PDF */
+/* Thermal page assignment - @page thermal defined in consolidated block below */
 @media print {
-  @page thermal {
-    size: 80mm auto;
-    margin: 3mm;
-  }
-
   html:not([class*="print-a4"]) .receiptThermal {
     page: thermal;
   }
 }
 
-/* ========== Print A4 (reçu client entreprise) ========== */
-@media print {
-  body[data-print-format="a4"] * {
-    visibility: hidden;
-  }
-
-  body[data-print-format="a4"] .wrapper,
-  body[data-print-format="a4"] .wrapper *,
-  body[data-print-format="a4"] #receipt-a4,
-  body[data-print-format="a4"] #receipt-a4 * {
-    visibility: visible;
-  }
-
-  body[data-print-format="a4"] .successBanner,
-  body[data-print-format="a4"] .templateSection,
-  body[data-print-format="a4"] #receipt-print,
-  body[data-print-format="a4"] .actions {
-    display: none !important;
-  }
-
-  body[data-print-format="a4"] .receiptA4 {
-    display: block !important;
-    visibility: visible;
-  }
-
-  body[data-print-format="a4"] .wrapper {
-    position: static;
-    max-width: none;
-    padding: 0;
-    background: #fff;
-    align-items: stretch;
-  }
-
-  body[data-print-format="a4"] .receiptA4 {
-    width: 100%;
-    max-width: none;
-    box-shadow: none;
-    border: none;
-    padding: 0;
-    background: transparent;
-  }
-}
+/* A4 receipt now prints via dedicated window (printA4Receipt) — no in-page print styles needed */
 
 @media print {
-  @page a4 {
-    size: A4;
-    margin: 15mm;
+  @page thermal {
+    size: 80mm auto;
+    margin: 3mm;
   }
 }
 
-.receiptA4 .a4Page {
-  page: a4;
-}
-
-body[data-print-format="a4"] .a4Page {
-  width: 100%;
-  max-width: 210mm;
-  min-height: 267mm;
-  margin: 0 auto;
-  padding: 0;
-  font-family:
-    "Segoe UI",
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #1a1a1a;
-  background: #fff;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-
-body[data-print-format="a4"] .a4Table tbody tr {
-  page-break-inside: avoid;
-}
-
-body[data-print-format="a4"] .a4Header,
-body[data-print-format="a4"] .a4Totals,
-body[data-print-format="a4"] .a4Footer {
-  page-break-inside: avoid;
-}
-
+/* A4 styles kept for potential screen preview; print uses dedicated window */
 /* A4 header */
 .a4Header {
   display: flex;

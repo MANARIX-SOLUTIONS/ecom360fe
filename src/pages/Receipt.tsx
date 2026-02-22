@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Button, Result, Spin, message } from "antd";
 import {
@@ -13,6 +13,7 @@ import {
   Home,
 } from "lucide-react";
 import { t } from "@/i18n";
+import { printA4Receipt } from "@/utils/printA4Receipt";
 import { useStore } from "@/hooks/useStore";
 import { getSale, ApiError } from "@/api";
 import { getBusinessProfile } from "@/api/business";
@@ -91,6 +92,7 @@ export default function Receipt() {
   const [successBannerState, setSuccessBannerState] = useState<"visible" | "exiting" | "hidden">(
     "visible"
   );
+  const printStateRef = useRef<{ originalTitle: string } | null>(null);
 
   useEffect(() => {
     const hideTimer = setTimeout(() => setSuccessBannerState("exiting"), 3500);
@@ -144,18 +146,52 @@ export default function Receipt() {
   }, [receiptId]);
 
   const handlePrint = (format: PrintFormat) => {
+    if (format === "a4") {
+      printA4Receipt({
+        shopName,
+        shopAddress,
+        shopPhone,
+        receiptId: receiptId ?? "",
+        now,
+        lines,
+        subtotal,
+        total: displayTotal,
+        discount: displayDiscount,
+        method,
+        i18n: {
+          invoiceRef: t.receipt.invoiceRef,
+          dateTime: t.receipt.dateTime,
+          name: t.common.name,
+          qtyShort: t.receipt.qtyShort,
+          unitPrice: t.receipt.unitPrice,
+          total: t.common.total,
+          subtotal: t.receipt.subtotal,
+          discount: t.pos.discount,
+          paymentMethod: t.receipt.paymentMethod,
+          thankYouEnterprise: t.receipt.thankYouEnterprise,
+          legalNotice: t.receipt.legalNotice,
+        },
+      });
+      return;
+    }
+    printStateRef.current = { originalTitle: document.title };
     document.body.dataset.printFormat = format;
     document.documentElement.classList.add("print-active", `print-${format}`);
-    // Brief delay so DOM and print styles are applied before dialog opens
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
   };
 
   useEffect(() => {
     const onAfterPrint = () => {
       document.body.removeAttribute("data-print-format");
       document.documentElement.classList.remove("print-active", "print-thermal", "print-a4");
+      if (printStateRef.current) {
+        document.title = printStateRef.current.originalTitle;
+        printStateRef.current = null;
+      }
     };
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
@@ -339,74 +375,76 @@ export default function Receipt() {
         data-print-only
       >
         <div className={styles.a4Page}>
-          <header className={styles.a4Header}>
-            <div className={styles.a4Brand}>
-              <h1 className={styles.a4ShopName}>{shopName}</h1>
-              {shopAddress && <p className={styles.a4Address}>{shopAddress}</p>}
-              {shopPhone && <p className={styles.a4Phone}>{shopPhone}</p>}
-            </div>
-            <div className={styles.a4RefBlock}>
-              <span className={styles.a4RefLabel}>{t.receipt.invoiceRef}</span>
-              <span className={styles.a4RefValue}>{receiptId}</span>
-            </div>
-          </header>
+          <div className={styles.a4Content}>
+            <header className={styles.a4Header}>
+              <div className={styles.a4Brand}>
+                <h1 className={styles.a4ShopName}>{shopName}</h1>
+                {shopAddress && <p className={styles.a4Address}>{shopAddress}</p>}
+                {shopPhone && <p className={styles.a4Phone}>{shopPhone}</p>}
+              </div>
+              <div className={styles.a4RefBlock}>
+                <span className={styles.a4RefLabel}>{t.receipt.invoiceRef}</span>
+                <span className={styles.a4RefValue}>{receiptId}</span>
+              </div>
+            </header>
 
-          <div className={styles.a4Meta}>
-            <time className={styles.a4Datetime} dateTime={now.toISOString()}>
-              {t.receipt.dateTime}:{" "}
-              {now.toLocaleDateString("fr-FR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              à {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-            </time>
-          </div>
+            <div className={styles.a4Meta}>
+              <time className={styles.a4Datetime} dateTime={now.toISOString()}>
+                {t.receipt.dateTime}:{" "}
+                {now.toLocaleDateString("fr-FR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}{" "}
+                à {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+              </time>
+            </div>
 
-          <table className={styles.a4Table} role="table">
-            <thead>
-              <tr>
-                <th>{t.common.name}</th>
-                <th>{t.receipt.qtyShort}</th>
-                <th>{t.receipt.unitPrice}</th>
-                <th>{t.common.total}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, i) => (
-                <tr key={line.productId ?? i}>
-                  <td>{line.productName}</td>
-                  <td>{line.quantity}</td>
-                  <td>{formatPrice(line.unitPrice)}</td>
-                  <td>{formatPrice(line.lineTotal)}</td>
+            <table className={styles.a4Table} role="table">
+              <thead>
+                <tr>
+                  <th>{t.common.name}</th>
+                  <th>{t.receipt.qtyShort}</th>
+                  <th>{t.receipt.unitPrice}</th>
+                  <th>{t.common.total}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {lines.map((line, i) => (
+                  <tr key={line.productId ?? i}>
+                    <td>{line.productName}</td>
+                    <td>{line.quantity}</td>
+                    <td>{formatPrice(line.unitPrice)}</td>
+                    <td>{formatPrice(line.lineTotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          <section className={styles.a4Totals}>
-            {displayDiscount > 0 && (
-              <>
-                <div className={styles.a4TotalRow}>
-                  <span>{t.receipt.subtotal}</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                <div className={styles.a4TotalRow}>
-                  <span>{t.pos.discount}</span>
-                  <span className={styles.a4Discount}>-{formatPrice(displayDiscount)}</span>
-                </div>
-              </>
-            )}
-            <div className={styles.a4TotalFinal}>
-              <span>{t.common.total}</span>
-              <span>{formatPrice(displayTotal)}</span>
+            <section className={styles.a4Totals}>
+              {displayDiscount > 0 && (
+                <>
+                  <div className={styles.a4TotalRow}>
+                    <span>{t.receipt.subtotal}</span>
+                    <span>{formatPrice(subtotal)}</span>
+                  </div>
+                  <div className={styles.a4TotalRow}>
+                    <span>{t.pos.discount}</span>
+                    <span className={styles.a4Discount}>-{formatPrice(displayDiscount)}</span>
+                  </div>
+                </>
+              )}
+              <div className={styles.a4TotalFinal}>
+                <span>{t.common.total}</span>
+                <span>{formatPrice(displayTotal)}</span>
+              </div>
+            </section>
+
+            <div className={styles.a4Payment}>
+              <span className={styles.a4PaymentLabel}>{t.receipt.paymentMethod}</span>
+              <span>{METHOD_LABELS[method] || method}</span>
             </div>
-          </section>
-
-          <div className={styles.a4Payment}>
-            <span className={styles.a4PaymentLabel}>{t.receipt.paymentMethod}</span>
-            <span>{METHOD_LABELS[method] || method}</span>
           </div>
 
           <footer className={styles.a4Footer}>
