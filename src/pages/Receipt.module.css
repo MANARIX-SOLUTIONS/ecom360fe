@@ -2,12 +2,12 @@
 .receipt {
   --receipt-bg: #fff;
   --receipt-border: rgba(0, 0, 0, 0.06);
-  --receipt-divider: rgba(0, 0, 0, 0.12);
+  --receipt-divider: rgba(0, 0, 0, 0.08);
   --receipt-text: var(--color-text);
   --receipt-muted: var(--color-text-muted);
   --receipt-accent: var(--color-primary);
-  --receipt-radius: var(--radius);
-  --receipt-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --receipt-radius: var(--radius-lg);
+  --receipt-shadow: 0 4px 24px rgba(27, 77, 122, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ========== Success banner ========== */
@@ -15,15 +15,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
-  animation: fadeInDown 0.5s ease;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.02) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  animation: fadeInDown 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeInDown {
   from {
     opacity: 0;
-    transform: translateY(-12px);
+    transform: translateY(-16px);
   }
   to {
     opacity: 1;
@@ -33,12 +37,13 @@
 
 .successIcon {
   color: var(--color-success);
-  animation: scaleIn 0.4s ease 0.1s both;
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
+  animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
 }
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.5);
+    transform: scale(0.6);
     opacity: 0;
   }
   to {
@@ -48,9 +53,125 @@
 }
 
 .successText {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: var(--color-success);
+  color: #059669;
+  letter-spacing: -0.01em;
+}
+
+.successBanner {
+  max-height: 120px;
+  overflow: hidden;
+  transition:
+    opacity 0.4s ease,
+    max-height 0.4s ease,
+    margin 0.4s ease,
+    padding 0.4s ease;
+}
+
+.successBannerExiting {
+  opacity: 0;
+  max-height: 0;
+  margin: 0 !important;
+  padding: 0 32px !important;
+  pointer-events: none;
+}
+
+/* ========== Loading state ========== */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 48px 24px;
+  gap: 16px;
+}
+
+.loadingText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* ========== Template selector (collapsible) ========== */
+.templateSection {
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.templateToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.templateToggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(27, 77, 122, 0.03);
+}
+
+.templateToggle span {
+  flex: 1;
+  text-align: left;
+}
+
+.templateCatalog {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.templateCard {
+  flex: 1;
+  min-width: 100px;
+  padding: 12px 16px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.templateCard:hover {
+  border-color: var(--color-primary);
+  background: rgba(27, 77, 122, 0.03);
+}
+
+.templateCardActive {
+  border-color: var(--color-primary);
+  background: rgba(27, 77, 122, 0.08);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.templateCardName {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.templateCardDesc {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 /* ========== Layout ========== */
@@ -59,10 +180,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 420px;
+  max-width: 440px;
   margin: 0 auto;
-  padding: var(--section-gap) 20px 40px;
-  background: var(--color-bg);
+  padding: var(--section-gap) 24px 48px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .receipt {
@@ -70,31 +191,124 @@
   background: var(--receipt-bg);
   border-radius: var(--receipt-radius);
   box-shadow: var(--receipt-shadow);
-  padding: 28px 24px;
+  padding: 32px 28px;
   border: 1px solid var(--receipt-border);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* ========== Template variants (thermal screen) ========== */
+.templateModerne {
+  /* Default - already styled above */
+}
+
+.templateClassique .header {
+  border-bottom-color: #1a1a1a;
+  padding-bottom: 16px;
+}
+
+.templateClassique .shopName {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+.templateClassique .metaBlock {
+  background: transparent;
+  padding: 12px 0;
+  border: 1px solid #e5e5e5;
+}
+
+.templateClassique .receiptId {
+  color: #1a1a1a;
+}
+
+.templateClassique .rowTotal {
+  background: transparent;
+  border-left: none;
+  border-top: 2px solid #1a1a1a;
+  padding: 12px 0;
+}
+
+.templateClassique .payment {
+  background: transparent;
+  border: 1px solid #e5e5e5;
+}
+
+.templateClassique .footer {
+  background: transparent;
+  border-top: 1px solid #e5e5e5;
+}
+
+.templateCompact .header {
+  padding-bottom: 12px;
+  border-bottom-width: 1px;
+}
+
+.templateCompact .shopName {
+  font-size: 18px;
+}
+
+.templateCompact .metaBlock {
+  padding: 10px 12px;
+  background: #fafafa;
+}
+
+.templateCompact .receiptId {
+  font-size: 13px;
+}
+
+.templateCompact .lines thead th {
+  padding: 8px 0 6px;
+  font-size: 9px;
+}
+
+.templateCompact .lines tbody td {
+  padding: 8px 0;
+}
+
+.templateCompact .rowTotal {
+  padding: 10px 12px;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.templateCompact .payment {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.templateCompact .footer {
+  margin-top: 16px;
+  padding: 12px 16px;
+}
+
+.templateCompact.receipt {
+  padding: 24px 20px;
 }
 
 /* ========== Header ========== */
 .header {
   text-align: center;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid rgba(27, 77, 122, 0.15);
 }
 
 .shopName {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--receipt-text);
-  letter-spacing: -0.02em;
-  line-height: 1.25;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
 }
 
 .shopAddress {
-  margin: 6px 0 0;
-  font-size: 12px;
+  margin: 10px 0 0;
+  font-size: 13px;
   color: var(--receipt-muted);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .divider {
@@ -108,21 +322,28 @@
 /* ========== Meta (ticket title, id, date) ========== */
 .metaBlock {
   text-align: center;
+  padding: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: var(--radius-sm);
+  margin: 0 -4px;
 }
 
 .ticketTitle {
   margin: 0;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: var(--receipt-muted);
+  text-transform: uppercase;
 }
 
 .receiptId {
-  margin: 4px 0 0;
-  font-size: 11px;
+  margin: 8px 0 4px;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--receipt-muted);
+  color: var(--receipt-accent);
+  letter-spacing: 0.02em;
 }
 
 .datetime {
@@ -146,10 +367,10 @@
   font-weight: 600;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--receipt-muted);
-  padding: 8px 0 6px;
-  border-bottom: 1px solid var(--receipt-divider);
+  padding: 12px 0 10px;
+  border-bottom: 2px solid var(--receipt-divider);
 }
 
 .lines thead th.colTotal,
@@ -158,14 +379,22 @@
 }
 
 .lines tbody td {
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   vertical-align: top;
   font-variant-numeric: tabular-nums;
 }
 
 .lines tbody tr:last-child td {
   border-bottom: none;
+}
+
+.lines tbody tr td {
+  transition: background 0.2s ease;
+}
+
+.lines tbody tr:hover td {
+  background: rgba(27, 77, 122, 0.04);
 }
 
 .colDesc {
@@ -216,41 +445,54 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 2px solid var(--receipt-accent);
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(27, 77, 122, 0.06) 0%, rgba(27, 77, 122, 0.02) 100%);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--receipt-accent);
   color: var(--receipt-text);
 }
 
 .discount {
-  color: var(--color-success);
-  font-weight: 500;
+  color: #059669;
+  font-weight: 600;
 }
 
 /* ========== Payment & footer ========== */
 .payment {
   margin: 0;
-  font-size: 13px;
+  padding: 12px 16px;
+  font-size: 14px;
   color: var(--receipt-text);
+  background: rgba(27, 77, 122, 0.04);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(27, 77, 122, 0.1);
 }
 
 .paymentLabel {
   color: var(--receipt-muted);
-  margin-right: 6px;
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.paymentValue {
+  font-weight: 600;
+  color: var(--receipt-accent);
 }
 
 .footer {
-  margin-top: 22px;
-  padding-top: 14px;
+  margin-top: 24px;
+  padding: 18px 20px;
   text-align: center;
-  border-top: 1px dashed var(--receipt-divider);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: var(--radius-sm);
 }
 
 .footer p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--receipt-muted);
 }
@@ -258,17 +500,69 @@
 /* ========== Actions (screen only) ========== */
 .actions {
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   margin-top: 28px;
   width: 100%;
-  max-width: 320px;
+  max-width: 420px;
+  padding: 0 8px;
+}
+
+.actionBtnMain {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0e3456 100%) !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(27, 77, 122, 0.35);
+}
+
+.actionBtnMain:hover {
+  background: linear-gradient(135deg, #234d73 0%, #0e3456 100%) !important;
+  box-shadow: 0 4px 12px rgba(27, 77, 122, 0.4);
+}
+
+.actionsSecondary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.actionsSecondary .actionBtn {
+  min-width: 100px;
+  min-height: 44px;
+  flex: 1;
 }
 
 .actions button {
-  min-width: 140px;
-  flex: 1;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.actionBtn {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.actionBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.backLink {
+  margin-top: 8px !important;
+  color: var(--color-text-muted) !important;
+  font-size: 13px !important;
+}
+
+.backLink:hover {
+  color: var(--color-primary) !important;
 }
 
 /* ========== Responsive ========== */
@@ -276,15 +570,28 @@
   .wrapper {
     padding-left: 16px;
     padding-right: 16px;
-    padding-bottom: 32px;
+    padding-bottom: 36px;
+  }
+
+  .successBanner {
+    padding: 20px 24px;
+    margin-bottom: 24px;
   }
 
   .receipt {
-    padding: 20px 18px;
+    padding: 24px 20px;
   }
 
   .shopName {
-    font-size: 18px;
+    font-size: 20px;
+  }
+
+  .metaBlock {
+    padding: 14px;
+  }
+
+  .receiptId {
+    font-size: 14px;
   }
 
   .lines {
@@ -292,11 +599,11 @@
   }
 
   .lines thead th {
-    padding: 6px 0 4px;
+    padding: 10px 0 8px;
   }
 
   .lines tbody td {
-    padding: 6px 0;
+    padding: 10px 0;
   }
 
   .colPrice {
@@ -308,43 +615,83 @@
   }
 
   .rowTotal {
-    font-size: 16px;
+    font-size: 17px;
+    padding: 12px 14px;
+  }
+
+  .templateToggle {
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  .templateCatalog {
+    flex-direction: column;
+  }
+
+  .templateCard {
+    min-width: 0;
   }
 
   .actions {
-    flex-direction: column;
-    margin-top: 24px;
+    margin-top: 28px;
+    gap: 14px;
   }
 
-  .actions button {
+  .actionBtnMain {
+    min-height: 46px;
+    font-size: 15px;
+  }
+
+  .actionsSecondary {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .actionsSecondary .actionBtn {
     width: 100%;
     min-width: 0;
   }
 }
 
-/* ========== Print (machine thermique 58mm / 80mm) ========== */
-@media print {
-  @page {
-    size: 80mm auto;
-    margin: 4mm;
-  }
+/* ========== A4 receipt (screen: hidden) ========== */
+.receiptA4 {
+  display: none;
+}
 
-  body * {
+/* ========== Print base (reset) ========== */
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ========== Print thermal (ticket 80mm) ========== */
+@media print {
+  /* Thermal: only when NOT printing A4 */
+  html:not([class*="print-a4"]) body * {
     visibility: hidden;
   }
 
-  .wrapper,
-  .wrapper *,
-  #receipt-print,
-  #receipt-print * {
+  html:not([class*="print-a4"]) .wrapper,
+  html:not([class*="print-a4"]) .wrapper *,
+  html:not([class*="print-a4"]) #receipt-print,
+  html:not([class*="print-a4"]) #receipt-print * {
     visibility: visible;
   }
 
-  .successBanner {
+  html:not([class*="print-a4"]) .receiptA4,
+  html:not([class*="print-a4"]) .successBanner,
+  html:not([class*="print-a4"]) .templateSection,
+  html:not([class*="print-a4"]) .actions {
     display: none !important;
   }
 
-  .wrapper {
+  html:not([class*="print-a4"]) .wrapper {
     position: absolute;
     left: 0;
     top: 0;
@@ -356,72 +703,74 @@
     align-items: flex-start;
   }
 
-  .receipt {
+  html:not([class*="print-a4"]) .receiptThermal {
     max-width: 80mm;
     width: 80mm;
     min-width: 80mm;
     margin: 0;
-    padding: 6px 4px;
+    padding: 8px 6px;
     box-shadow: none;
     border: none;
     border-radius: 0;
     background: #fff;
-    --receipt-shadow: none;
-    --receipt-border: transparent;
-    --receipt-radius: 0;
-    /* Police monospace pour imprimantes thermiques */
-    font-family: "Courier New", Courier, monospace;
+    font-family: "Courier New", "Consolas", monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  .header,
-  .metaBlock,
-  .lines,
-  .totals,
-  .payment,
-  .footer {
+  html:not([class*="print-a4"]) .header,
+  html:not([class*="print-a4"]) .metaBlock,
+  html:not([class*="print-a4"]) .lines,
+  html:not([class*="print-a4"]) .totals,
+  html:not([class*="print-a4"]) .payment,
+  html:not([class*="print-a4"]) .footer {
     font-family: inherit;
   }
 
-  .shopName {
+  html:not([class*="print-a4"]) .shopName {
     font-size: 14px;
+    font-weight: 700;
   }
 
-  .shopAddress {
+  html:not([class*="print-a4"]) .shopAddress {
     font-size: 10px;
   }
 
-  .ticketTitle {
+  html:not([class*="print-a4"]) .ticketTitle {
     font-size: 9px;
   }
 
-  .receiptId {
+  html:not([class*="print-a4"]) .receiptId {
+    font-size: 11px;
+  }
+
+  html:not([class*="print-a4"]) .datetime {
     font-size: 10px;
   }
 
-  .datetime {
-    font-size: 11px;
+  html:not([class*="print-a4"]) .lines {
+    font-size: 10px;
   }
 
-  .lines {
-    font-size: 11px;
-  }
-
-  .lines thead th {
-    padding: 4px 0 2px;
+  html:not([class*="print-a4"]) .lines thead th {
+    padding: 4px 0 3px;
     font-size: 9px;
   }
 
-  .lines tbody td {
-    padding: 4px 0;
+  html:not([class*="print-a4"]) .lines tbody td {
+    padding: 3px 0;
     break-inside: avoid;
   }
 
-  .lines tbody tr {
+  html:not([class*="print-a4"]) .lines tbody tr {
     break-inside: avoid;
   }
 
-  .productName {
-    max-width: 42mm;
+  html:not([class*="print-a4"]) .productName {
+    max-width: 38mm;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -429,55 +778,343 @@
     font-size: 10px;
   }
 
-  .colDesc {
-    max-width: 42mm;
+  html:not([class*="print-a4"]) .colDesc {
+    max-width: 38mm;
   }
 
-  .colQty {
-    width: 8mm;
+  html:not([class*="print-a4"]) .colQty {
+    width: 10mm;
   }
 
-  .colPrice {
+  html:not([class*="print-a4"]) .colPrice {
     width: 14mm;
   }
 
-  .colTotal {
+  html:not([class*="print-a4"]) .colTotal {
     width: 16mm;
   }
 
-  .row,
-  .payment,
-  .footer p {
-    font-size: 11px;
+  html:not([class*="print-a4"]) .row,
+  html:not([class*="print-a4"]) .payment,
+  html:not([class*="print-a4"]) .footer p {
+    font-size: 10px;
   }
 
-  .rowTotal {
+  html:not([class*="print-a4"]) .rowTotal {
     font-size: 13px;
-    margin-top: 8px;
+    font-weight: 700;
+    margin-top: 6px;
     padding-top: 6px;
   }
 
-  .divider {
-    margin: 10px 0;
+  html:not([class*="print-a4"]) .divider {
+    margin: 6px 0;
   }
 
-  .footer {
-    margin-top: 12px;
-    padding-top: 8px;
+  html:not([class*="print-a4"]) .footer {
+    margin-top: 10px;
+    padding-top: 6px;
   }
 
-  .actions {
+  /* Tear line for thermal paper */
+  html:not([class*="print-a4"]) .footer::after {
+    content: "";
+    display: block;
+    height: 12px;
+    margin-top: 8px;
+    border-top: 2px dashed #333;
+  }
+}
+
+/* Thermal @page - 80mm for ticket printers / Save as PDF */
+@media print {
+  @page thermal {
+    size: 80mm auto;
+    margin: 3mm;
+  }
+
+  html:not([class*="print-a4"]) .receiptThermal {
+    page: thermal;
+  }
+}
+
+/* ========== Print A4 (reçu client entreprise) ========== */
+@media print {
+  body[data-print-format="a4"] * {
+    visibility: hidden;
+  }
+
+  body[data-print-format="a4"] .wrapper,
+  body[data-print-format="a4"] .wrapper *,
+  body[data-print-format="a4"] #receipt-a4,
+  body[data-print-format="a4"] #receipt-a4 * {
+    visibility: visible;
+  }
+
+  body[data-print-format="a4"] .successBanner,
+  body[data-print-format="a4"] .templateSection,
+  body[data-print-format="a4"] #receipt-print,
+  body[data-print-format="a4"] .actions {
     display: none !important;
   }
 
-  /* Fin de ticket - espace pour coupe thermique */
-  .footer::after {
-    content: "";
-    display: block;
-    height: 20px;
-    margin-top: 8px;
-    border-top: 1px dashed #999;
+  body[data-print-format="a4"] .receiptA4 {
+    display: block !important;
+    visibility: visible;
   }
+
+  body[data-print-format="a4"] .wrapper {
+    position: static;
+    max-width: none;
+    padding: 0;
+    background: #fff;
+    align-items: stretch;
+  }
+
+  body[data-print-format="a4"] .receiptA4 {
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+@media print {
+  @page a4 {
+    size: A4;
+    margin: 15mm;
+  }
+}
+
+.receiptA4 .a4Page {
+  page: a4;
+}
+
+body[data-print-format="a4"] .a4Page {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 267mm;
+  margin: 0 auto;
+  padding: 0;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #1a1a1a;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body[data-print-format="a4"] .a4Table tbody tr {
+  page-break-inside: avoid;
+}
+
+body[data-print-format="a4"] .a4Header,
+body[data-print-format="a4"] .a4Totals,
+body[data-print-format="a4"] .a4Footer {
+  page-break-inside: avoid;
+}
+
+/* A4 header */
+.a4Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 24px;
+  border-bottom: 3px solid #1b4d7a;
+  margin-bottom: 24px;
+}
+
+.a4Brand {
+  flex: 1;
+}
+
+.a4ShopName {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.a4Address {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.a4Phone {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.a4RefBlock {
+  text-align: right;
+  padding: 14px 22px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.a4RefLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.a4RefValue {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1b4d7a;
+  letter-spacing: 0.02em;
+}
+
+/* A4 meta */
+.a4Meta {
+  margin-bottom: 24px;
+}
+
+.a4Datetime {
+  font-size: 13px;
+  color: #555;
+}
+
+/* A4 table */
+.a4Table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.a4Table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.a4Table thead th:nth-child(2),
+.a4Table thead th:nth-child(3),
+.a4Table thead th:nth-child(4) {
+  text-align: right;
+}
+
+.a4Table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.a4Table tbody td:nth-child(2),
+.a4Table tbody td:nth-child(3),
+.a4Table tbody td:nth-child(4) {
+  text-align: right;
+}
+
+.a4Table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* A4 totals */
+.a4Totals {
+  margin-bottom: 24px;
+  padding: 24px 0;
+  border-top: 3px solid #1b4d7a;
+}
+
+.a4TotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  margin-bottom: 8px;
+  max-width: 280px;
+  margin-left: auto;
+}
+
+.a4TotalRow span:first-child {
+  color: #555;
+}
+
+.a4TotalRow span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.a4Discount {
+  color: #0d9488;
+  font-weight: 600;
+}
+
+.a4TotalFinal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+  max-width: 280px;
+  margin-left: auto;
+}
+
+.a4TotalFinal span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A4 payment */
+.a4Payment {
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+
+.a4PaymentLabel {
+  color: #555;
+  margin-right: 8px;
+}
+
+/* A4 footer */
+.a4Footer {
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.a4ThankYou {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.a4Legal {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.6;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Variante 58mm (ajouter class="thermal-58" sur html si imprimante 58mm) */
