@@ -15,31 +15,47 @@ import {
   Skeleton,
   message,
   DatePicker,
+  Modal,
+  Space,
 } from "antd";
-import { Plus, Wallet, TrendingUp, BarChart3 } from "lucide-react";
+import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
 import { useStore } from "@/hooks/useStore";
-import { listExpenses, listExpenseCategories, createExpense } from "@/api";
+import {
+  listExpenses,
+  listExpenseCategoriesWithDefaults,
+  listExpenseCategories,
+  createExpenseCategory,
+  updateExpenseCategory,
+  deleteExpenseCategory,
+  createExpense,
+} from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 
 function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
 }
 
-const DEFAULT_CATEGORIES = [
-  { name: "Achats marchandises", color: "blue" },
-  { name: "Transport", color: "orange" },
-  { name: "Loyer", color: "purple" },
-  { name: "Salaires", color: "green" },
-  { name: "Divers", color: "default" },
+const CATEGORY_COLOR_OPTIONS = [
+  { value: "blue", label: "Bleu" },
+  { value: "green", label: "Vert" },
+  { value: "orange", label: "Orange" },
+  { value: "purple", label: "Violet" },
+  { value: "red", label: "Rouge" },
+  { value: "cyan", label: "Cyan" },
+  { value: "default", label: "Gris" },
 ];
 
 export default function Expenses() {
   const { activeStore } = useStore();
   const [form] = Form.useForm();
+  const [categoryForm] = Form.useForm();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [categories, setCategories] = useState<ExpenseCategoryResponse[]>([]);
@@ -53,23 +69,10 @@ export default function Expenses() {
     try {
       const [expRes, catRes] = await Promise.all([
         listExpenses({ page: 0, size: 200, storeId: activeStore?.id }),
-        listExpenseCategories(),
+        listExpenseCategoriesWithDefaults(),
       ]);
       setExpenses(expRes.content);
-      if (catRes.length === 0) {
-        try {
-          const { createExpenseCategory } = await import("@/api");
-          for (const c of DEFAULT_CATEGORIES) {
-            await createExpenseCategory({ name: c.name, color: c.color });
-          }
-          const refreshed = await listExpenseCategories();
-          setCategories(refreshed);
-        } catch {
-          setCategories([]);
-        }
-      } else {
-        setCategories(catRes);
-      }
+      setCategories(catRes);
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur chargement");
       setExpenses([]);
@@ -137,6 +140,68 @@ export default function Expenses() {
     },
   ];
 
+  const openAddCategory = () => {
+    setEditingCategory(null);
+    categoryForm.resetFields();
+    setCategoryModalOpen(true);
+  };
+
+  const openEditCategory = (c: ExpenseCategoryResponse) => {
+    setEditingCategory(c);
+    categoryForm.setFieldsValue({
+      name: c.name,
+      color: c.color || "default",
+      sortOrder: c.sortOrder ?? 0,
+    });
+    setCategoryModalOpen(true);
+  };
+
+  const onCategorySave = () => {
+    categoryForm.validateFields().then(async (values) => {
+      try {
+        let createdId: string | null = null;
+        if (editingCategory) {
+          await updateExpenseCategory(editingCategory.id, {
+            name: values.name,
+            color: values.color,
+            sortOrder: values.sortOrder ?? 0,
+          });
+          message.success("Catégorie mise à jour");
+        } else {
+          const created = await createExpenseCategory({
+            name: values.name,
+            color: values.color,
+            sortOrder: values.sortOrder ?? 0,
+          });
+          createdId = created.id;
+          message.success("Catégorie ajoutée");
+        }
+        setCategoryModalOpen(false);
+        categoryForm.resetFields();
+        const refreshed = await listExpenseCategories();
+        setCategories(refreshed);
+        if (createdId && drawerOpen) {
+          form.setFieldValue("categoryId", createdId);
+        }
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : "Erreur");
+      }
+    });
+  };
+
+  const onCategoryDelete = async (c: ExpenseCategoryResponse) => {
+    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
+    try {
+      await deleteExpenseCategory(c.id);
+      message.success("Catégorie supprimée");
+      const refreshed = await listExpenseCategories();
+      setCategories(refreshed);
+      fetchData();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur");
+    }
+  };
+
   const onFinish = async (values: Record<string, unknown>) => {
     const categoryId = values.categoryId as string;
     if (!categoryId) return;
@@ -183,6 +248,13 @@ export default function Expenses() {
           {t.expenses.title}
         </Typography.Title>
         <div className={styles.toolbar}>
+          <Button
+            icon={<Tags size={18} />}
+            onClick={() => setCategoriesDrawerOpen(true)}
+            style={{ flexShrink: 0 }}
+          >
+            {t.expenses.manageCategories}
+          </Button>
           <Select
             value={categoryFilter}
             onChange={setCategoryFilter}
@@ -300,7 +372,7 @@ export default function Expenses() {
               {t.common.cancel}
             </Button>
             <Button type="primary" onClick={() => form.submit()}>
-              {t.products.save}
+              {t.common.save}
             </Button>
           </div>
         }
@@ -313,10 +385,31 @@ export default function Expenses() {
           >
             <Select
               placeholder={t.expenses.category}
+              showSearch
+              optionFilterProp="label"
               options={categories.map((c) => ({
                 value: c.id,
                 label: c.name,
               }))}
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
+                    <Button
+                      type="text"
+                      block
+                      icon={<Plus size={14} />}
+                      onClick={() => {
+                        setEditingCategory(null);
+                        categoryForm.resetFields();
+                        setCategoryModalOpen(true);
+                      }}
+                    >
+                      {t.expenses.addCategory}
+                    </Button>
+                  </div>
+                </>
+              )}
             />
           </Form.Item>
           <Form.Item
@@ -341,6 +434,92 @@ export default function Expenses() {
           </Form.Item>
         </Form>
       </Drawer>
+
+      <Drawer
+        title={t.expenses.manageCategories}
+        placement="right"
+        width={400}
+        onClose={() => setCategoriesDrawerOpen(false)}
+        open={categoriesDrawerOpen}
+        extra={
+          <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
+            {t.expenses.addCategory}
+          </Button>
+        }
+      >
+        {categories.length === 0 ? (
+          <Typography.Text type="secondary">
+            Aucune catégorie. Cliquez sur &quot;Ajouter une catégorie&quot; pour commencer.
+          </Typography.Text>
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            {categories.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  background: "var(--color-bg-secondary)",
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Tag color={c.color || "default"}>{c.name}</Tag>
+                </div>
+                <Space>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<Pencil size={14} />}
+                    onClick={() => openEditCategory(c)}
+                    aria-label={t.common.edit}
+                  />
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    icon={<Trash2 size={14} />}
+                    onClick={() => onCategoryDelete(c)}
+                    aria-label={t.common.delete}
+                  />
+                </Space>
+              </div>
+            ))}
+          </Space>
+        )}
+      </Drawer>
+
+      <Modal
+        title={editingCategory ? t.expenses.editCategory : t.expenses.addCategory}
+        open={categoryModalOpen}
+        onOk={onCategorySave}
+        onCancel={() => {
+          setCategoryModalOpen(false);
+          setEditingCategory(null);
+          categoryForm.resetFields();
+        }}
+        okText={t.common.save}
+        width={380}
+        destroyOnClose
+      >
+        <Form form={categoryForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="name"
+            label={t.expenses.categoryName}
+            rules={[{ required: true, message: t.validation.nameRequired }]}
+          >
+            <Input placeholder="Ex: Achats, Transport, Loyer..." />
+          </Form.Item>
+          <Form.Item name="color" label={t.expenses.categoryColor} initialValue="default">
+            <Select options={CATEGORY_COLOR_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="sortOrder" label="Ordre" initialValue={0}>
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

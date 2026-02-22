@@ -10,6 +10,7 @@ import {
   cancelSubscription,
   getSubscriptionUsage,
 } from "@/api";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
 
@@ -36,11 +37,18 @@ const comparisonRows: { label: string; key: string }[] = [
   { label: "Support prioritaire", key: "prioritySupport" },
   { label: "Account manager dédié", key: "accountManager" },
   { label: "Personnalisation (logo)", key: "customBranding" },
+  { label: "Alertes stock bas", key: "stockAlerts" },
+  { label: "Historique des données", key: "dataRetention" },
 ];
 
 function formatFCFA(n: number): string {
   if (n === 0) return "Illimité";
   return new Intl.NumberFormat("fr-FR").format(n) + " F";
+}
+
+function formatDataRetention(months: number): string {
+  if (months === 0) return "Illimité";
+  return `${months} mois`;
 }
 
 function planToDisplay(p: PlanResponse) {
@@ -50,6 +58,7 @@ function planToDisplay(p: PlanResponse) {
   const products = p.maxProducts === 0 ? "Illimité" : String(p.maxProducts);
   const clients = p.maxClients === 0 ? "Illimité" : String(p.maxClients);
   const suppliers = p.maxSuppliers === 0 ? "Illimité" : String(p.maxSuppliers);
+  const dataRetention = formatDataRetention(p.dataRetentionMonths ?? 0);
   return {
     key: p.slug,
     name: p.name,
@@ -67,6 +76,8 @@ function planToDisplay(p: PlanResponse) {
       p.featureExportExcel && "Export Excel",
       p.featureClientCredits && "Crédits clients",
       p.featureSupplierTracking && "Suivi fournisseurs",
+      p.featureStockAlerts && "Alertes stock bas",
+      `Historique : ${dataRetention}`,
       p.featureRoleManagement && "Gestion des rôles",
       p.featureApi && "API & intégrations",
       p.featurePrioritySupport && "Support prioritaire",
@@ -96,6 +107,8 @@ function planToDisplay(p: PlanResponse) {
       prioritySupport: p.featurePrioritySupport,
       accountManager: p.featureAccountManager,
       customBranding: p.featureCustomBranding,
+      stockAlerts: p.featureStockAlerts,
+      dataRetention,
     },
     recommended: p.slug === "pro",
   };
@@ -108,6 +121,7 @@ function formatUsage(count: number, limit: number): string {
 
 export default function SettingsSubscription() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [plans, setPlans] = useState<PlanResponse[]>([]);
   const [currentPlanSlug, setCurrentPlanSlug] = useState<string | null>(null);
   const [usage, setUsage] = useState<SubscriptionUsageResponse | null>(null);
@@ -289,7 +303,7 @@ export default function SettingsSubscription() {
                   <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
                   {t.settings.currentPlan}
                 </span>
-              ) : (
+              ) : can("SUBSCRIPTION_UPDATE") ? (
                 <Button
                   type={plan.recommended ? "primary" : "default"}
                   block
@@ -299,6 +313,13 @@ export default function SettingsSubscription() {
                 >
                   {t.settings.choosePlan}
                 </Button>
+              ) : (
+                <span
+                  className={styles.planCardBadge}
+                  style={{ display: "inline-block", marginBottom: 16 }}
+                >
+                  Lecture seule
+                </span>
               )}
               <ul className={styles.planFeatures}>
                 {plan.features.map((f) => (
@@ -372,7 +393,7 @@ export default function SettingsSubscription() {
         </Card>
       </div>
 
-      {currentPlanSlug && (
+      {currentPlanSlug && can("SUBSCRIPTION_UPDATE") && (
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid var(--color-border)" }}>
           <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
             Annuler votre abonnement ? Vous conserverez l'accès jusqu'à la fin de la période payée.

@@ -53,6 +53,34 @@ export async function createExpenseCategory(
   return api.post<ExpenseCategoryResponse>("/expenses/categories", req);
 }
 
+export async function updateExpenseCategory(
+  id: string,
+  req: Partial<ExpenseCategoryRequest>
+): Promise<ExpenseCategoryResponse> {
+  return api.put<ExpenseCategoryResponse>(`/expenses/categories/${id}`, req);
+}
+
+export async function deleteExpenseCategory(id: string): Promise<void> {
+  return api.delete(`/expenses/categories/${id}`);
+}
+
+/** Fetches expense categories, creating defaults for new businesses when empty. */
+export async function listExpenseCategoriesWithDefaults(): Promise<ExpenseCategoryResponse[]> {
+  const list = await api.get<ExpenseCategoryResponse[]>("/expenses/categories");
+  if (list.length > 0) return list;
+  const defaults = [
+    { name: "Achats marchandises", color: "blue" },
+    { name: "Transport", color: "orange" },
+    { name: "Loyer", color: "purple" },
+    { name: "Salaires", color: "green" },
+    { name: "Divers", color: "default" },
+  ];
+  for (const c of defaults) {
+    await createExpenseCategory({ name: c.name, color: c.color });
+  }
+  return api.get<ExpenseCategoryResponse[]>("/expenses/categories");
+}
+
 export async function listExpenses(params?: {
   categoryId?: string;
   storeId?: string;

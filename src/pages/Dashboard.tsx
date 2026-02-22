@@ -77,7 +77,7 @@ function getGreeting() {
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
-  const { canExpenses } = usePlanFeatures();
+  const { canExpenses, canStockAlerts } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -458,52 +458,54 @@ export default function Dashboard() {
               </div>
             </Card>
           </Col>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <AlertTriangle size={20} className={styles.alertIcon} aria-hidden />
-                  {t.dashboard.lowStockAlerts}
-                </span>
-              }
-              bordered={false}
-              className={`${styles.card} ${styles.alertCard}`}
-            >
-              <div className="tableResponsive">
-                <Table
-                  dataSource={lowStock}
-                  rowKey={(r) => `${r.productId}-${r.storeName}`}
-                  pagination={false}
-                  size="small"
-                  className={styles.dataTable}
-                  onRow={(r) => ({
-                    style: { cursor: "pointer" },
-                    onClick: () => navigate(`/products/${r.productId}`),
-                  })}
-                  columns={[
-                    {
-                      title: t.common.name,
-                      dataIndex: "name",
-                      ellipsis: true,
-                    },
-                    {
-                      title: "Stock",
-                      dataIndex: "stock",
-                      width: 88,
-                      render: (
-                        val: number,
-                        r: { productId: string; storeName: string; min: number }
-                      ) => (
-                        <Tag color={val < r.min ? "error" : "default"}>
-                          {val} / {r.min}
-                        </Tag>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-            </Card>
-          </Col>
+          {canStockAlerts ? (
+            <Col xs={24} lg={12}>
+              <Card
+                title={
+                  <span className={styles.cardTitle}>
+                    <AlertTriangle size={20} className={styles.alertIcon} aria-hidden />
+                    {t.dashboard.lowStockAlerts}
+                  </span>
+                }
+                bordered={false}
+                className={`${styles.card} ${styles.alertCard}`}
+              >
+                <div className="tableResponsive">
+                  <Table
+                    dataSource={lowStock}
+                    rowKey={(r) => `${r.productId}-${r.storeName}`}
+                    pagination={false}
+                    size="small"
+                    className={styles.dataTable}
+                    onRow={(r) => ({
+                      style: { cursor: "pointer" },
+                      onClick: () => navigate(`/products/${r.productId}`),
+                    })}
+                    columns={[
+                      {
+                        title: t.common.name,
+                        dataIndex: "name",
+                        ellipsis: true,
+                      },
+                      {
+                        title: "Stock",
+                        dataIndex: "stock",
+                        width: 88,
+                        render: (
+                          val: number,
+                          r: { productId: string; storeName: string; min: number }
+                        ) => (
+                          <Tag color={val < r.min ? "error" : "default"}>
+                            {val} / {r.min}
+                          </Tag>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
+              </Card>
+            </Col>
+          ) : null}
         </Row>
       </section>
 

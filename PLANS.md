@@ -8,8 +8,8 @@
 
 | | **Starter** | **Pro** ⭐ | **Business** |
 |---|:---:|:---:|:---:|
-| **Prix mensuel** | 15 000 F/mois | 35 000 F/mois | 75 000 F/mois |
-| **Prix annuel** | 150 000 F/an | 350 000 F/an | 750 000 F/an |
+| **Prix mensuel** | 15 000 F/mois | 25 000 F/mois | 35 000 F/mois |
+| **Prix annuel** | 120 000 F/an | 250 000 F/an | 350 000 F/an |
 | **Économie annuelle** | — | — | — |
 | **Cible** | Petit commerce | Commerce en croissance | Multi-boutiques / Entreprise |
 

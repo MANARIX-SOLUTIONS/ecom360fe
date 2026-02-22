@@ -22,6 +22,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { HeaderProfile } from "@/components/HeaderProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -86,7 +87,8 @@ export default function MainLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const { can, isSuperAdmin } = useAuthRole();
-  const { canAccess } = usePlanFeatures();
+  const { canAccess: canAccessBackend } = usePermissions();
+  const { canAccess: canAccessPlan } = usePlanFeatures();
   const { notifications, unreadCount, markRead } = useNotifications();
   const { offline } = useNetworkStatus();
 
@@ -156,7 +158,12 @@ export default function MainLayout() {
 
   const navItems = useMemo(() => {
     const items = navConfig
-      .filter((item) => canAccess(item.permission, can(item.permission)))
+      .filter((item) => {
+        const roleCan = can(item.permission);
+        const backendCan = canAccessBackend(item.permission);
+        const planAllows = canAccessPlan(item.permission, backendCan || roleCan);
+        return (backendCan || roleCan) && planAllows;
+      })
       .map(({ key, icon, label }) => ({ key, icon, label }));
     if (isSuperAdmin) {
       items.push({
@@ -166,7 +173,7 @@ export default function MainLayout() {
       });
     }
     return items;
-  }, [can, canAccess, isSuperAdmin]);
+  }, [can, canAccessBackend, canAccessPlan, isSuperAdmin]);
 
   return (
     <Layout className={styles.root}>

@@ -17,9 +17,16 @@ import {
 import { ArrowLeft, Package, Pencil, Trash2, Layers } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
-import { getProduct, updateProduct, deleteProduct, listCategories, ApiError } from "@/api";
+import {
+  getProduct,
+  updateProduct,
+  deleteProduct,
+  listCategoriesWithDefaults,
+  ApiError,
+} from "@/api";
 import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/hooks/useStore";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
@@ -34,6 +41,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeStore, stores } = useStore();
+  const { can } = usePermissions();
   const [product, setProduct] = useState<ProductResponse | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [stockLevels, setStockLevels] = useState<StockLevelResponse[]>([]);
@@ -49,7 +57,10 @@ export default function ProductDetail() {
     if (!id || !localStorage.getItem("ecom360_access_token")) return;
     setLoading(true);
     try {
-      const [productRes, categoriesRes] = await Promise.all([getProduct(id), listCategories()]);
+      const [productRes, categoriesRes] = await Promise.all([
+        getProduct(id),
+        listCategoriesWithDefaults(),
+      ]);
       setProduct(productRes);
       setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
       editForm.setFieldsValue({
@@ -267,19 +278,25 @@ export default function ProductDetail() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button
-              icon={<Layers size={18} />}
-              onClick={openStockModal}
-              disabled={!activeStore?.id}
-            >
-              {t.products.stockAdjustment}
-            </Button>
-            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
-              {t.common.edit}
-            </Button>
-            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
-              {t.common.delete}
-            </Button>
+            {can("STOCK_ADJUST") && (
+              <Button
+                icon={<Layers size={18} />}
+                onClick={openStockModal}
+                disabled={!activeStore?.id}
+              >
+                {t.products.stockAdjustment}
+              </Button>
+            )}
+            {can("PRODUCTS_UPDATE") && (
+              <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
+                {t.common.edit}
+              </Button>
+            )}
+            {can("PRODUCTS_DELETE") && (
+              <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
+                {t.common.delete}
+              </Button>
+            )}
           </div>
         </div>
       </Card>

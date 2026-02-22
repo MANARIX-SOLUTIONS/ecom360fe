@@ -29,6 +29,8 @@ export type PlanResponse = {
   featureCustomBranding: boolean;
   featurePrioritySupport: boolean;
   featureAccountManager: boolean;
+  featureStockAlerts: boolean;
+  dataRetentionMonths: number;
 };
 
 export type SubscriptionResponse = {

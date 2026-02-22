@@ -4,6 +4,7 @@ import { Building2, CreditCard, Users, Shield, LogOut, Store, ChevronRight } fro
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import type { Permission } from "@/constants/roles";
 import { t } from "@/i18n";
@@ -62,21 +63,30 @@ export default function Settings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { can } = useAuthRole();
-  const { canAccess } = usePlanFeatures();
+  const { canAccess: canAccessBackend } = usePermissions();
+  const { canAccess: canAccessPlan } = usePlanFeatures();
 
   const organisationItems = useMemo(
     () =>
-      organisationConfig.filter((item) =>
-        canAccess(item.permission, can(item.permission as Permission))
-      ),
-    [can, canAccess]
+      organisationConfig.filter((item) => {
+        const backendCan = canAccessBackend(
+          item.permission as Parameters<typeof canAccessBackend>[0]
+        );
+        const roleCan = can(item.permission as Permission);
+        return (backendCan || roleCan) && canAccessPlan(item.permission, backendCan || roleCan);
+      }),
+    [can, canAccessBackend, canAccessPlan]
   );
   const accountItems = useMemo(
     () =>
-      accountConfig.filter((item) =>
-        canAccess(item.permission, can(item.permission as Permission))
-      ),
-    [can, canAccess]
+      accountConfig.filter((item) => {
+        const backendCan = canAccessBackend(
+          item.permission as Parameters<typeof canAccessBackend>[0]
+        );
+        const roleCan = can(item.permission as Permission);
+        return (backendCan || roleCan) && canAccessPlan(item.permission, backendCan || roleCan);
+      }),
+    [can, canAccessBackend, canAccessPlan]
   );
 
   const renderItem = (item: SettingItem) => {

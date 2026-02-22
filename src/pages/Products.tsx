@@ -13,11 +13,14 @@ import {
   Typography,
   Skeleton,
   message,
+  Drawer,
+  Space,
 } from "antd";
-import { Search, Plus, Pencil, Package, Trash2 } from "lucide-react";
+import { Search, Plus, Pencil, Package, Trash2, Tags } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import { useStore } from "@/hooks/useStore";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   listProducts,
   createProduct,
@@ -25,27 +28,36 @@ import {
   deleteProduct,
   adjustStock,
   getStockByStore,
+  listCategoriesWithDefaults,
   listCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   initStock,
   getSubscriptionUsage,
 } from "@/api";
-import type { StockLevelResponse } from "@/api";
+import type { StockLevelResponse, CategoryResponse } from "@/api";
+
+const CATEGORY_COLOR_OPTIONS = [
+  { value: "blue", label: "Bleu" },
+  { value: "green", label: "Vert" },
+  { value: "orange", label: "Orange" },
+  { value: "purple", label: "Violet" },
+  { value: "red", label: "Rouge" },
+  { value: "cyan", label: "Cyan" },
+  { value: "default", label: "Gris" },
+];
 
 type Product = {
   id: string;
   name: string;
   category: string;
+  categoryColor?: string;
   salePrice: number;
+  costPrice: number;
   stock: number;
   minStock: number;
   categoryId: string | null;
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Alimentation: "green",
-  Boissons: "blue",
-  Hygiène: "purple",
-  Divers: "default",
 };
 
 function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
@@ -57,6 +69,7 @@ function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical"
 export default function Products() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
+  const { can } = usePermissions();
   const [search, setSearch] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -67,14 +80,26 @@ export default function Products() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [productsAtLimit, setProductsAtLimit] = useState(false);
+  const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null);
+  const [categoryForm] = Form.useForm();
 
   useEffect(() => {
     getSubscriptionUsage()
       .then((u) => setProductsAtLimit(u.productsLimit > 0 && u.productsCount >= u.productsLimit))
       .catch(() => setProductsAtLimit(false));
   }, [products.length]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      return await listCategoriesWithDefaults();
+    } catch {
+      return [];
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -85,11 +110,13 @@ export default function Products() {
     try {
       const [productsRes, categoriesRes, stockList] = await Promise.all([
         listProducts({ page: 0, size: 200, search: search || undefined }),
-        listCategories(),
+        fetchCategories(),
         activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
       ]);
-      setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
-      const catById = Object.fromEntries(categoriesRes.map((c) => [c.id, c.name]));
+      setCategories(categoriesRes);
+      const catById = Object.fromEntries(
+        categoriesRes.map((c) => [c.id, { name: c.name, color: c.color }])
+      );
       const stockByProduct: Record<string, StockLevelResponse> = {};
       for (const s of stockList) {
         stockByProduct[s.productId] = s;
@@ -97,11 +124,14 @@ export default function Products() {
       setProducts(
         productsRes.content.map((p) => {
           const s = stockByProduct[p.id];
+          const cat = p.categoryId ? catById[p.categoryId] : null;
           return {
             id: p.id,
             name: p.name,
-            category: (p.categoryId && catById[p.categoryId]) || "-",
+            category: cat?.name || "-",
+            categoryColor: cat?.color || "default",
             salePrice: p.salePrice,
+            costPrice: p.costPrice,
             stock: s?.quantity ?? 0,
             minStock: s?.minStock ?? 0,
             categoryId: p.categoryId,
@@ -114,7 +144,7 @@ export default function Products() {
     } finally {
       setLoading(false);
     }
-  }, [search, activeStore?.id]);
+  }, [search, activeStore?.id, fetchCategories]);
 
   useEffect(() => {
     fetchData();
@@ -135,12 +165,78 @@ export default function Products() {
     form.resetFields();
     setModalOpen(true);
   };
+  const openCategoryDrawer = () => {
+    setCategoriesDrawerOpen(true);
+  };
+
+  const openAddCategory = () => {
+    setEditingCategory(null);
+    categoryForm.resetFields();
+    setCategoryModalOpen(true);
+  };
+
+  const openEditCategory = (c: CategoryResponse) => {
+    setEditingCategory(c);
+    categoryForm.setFieldsValue({
+      name: c.name,
+      color: c.color || "default",
+      sortOrder: c.sortOrder ?? 0,
+    });
+    setCategoryModalOpen(true);
+  };
+
+  const onCategorySave = () => {
+    categoryForm.validateFields().then(async (values) => {
+      try {
+        let createdId: string | null = null;
+        if (editingCategory) {
+          await updateCategory(editingCategory.id, {
+            name: values.name,
+            color: values.color,
+            sortOrder: values.sortOrder ?? 0,
+          });
+          message.success("Catégorie mise à jour");
+        } else {
+          const created = await createCategory({
+            name: values.name,
+            color: values.color,
+            sortOrder: values.sortOrder ?? 0,
+          });
+          createdId = created.id;
+          message.success("Catégorie ajoutée");
+        }
+        setCategoryModalOpen(false);
+        categoryForm.resetFields();
+        const refreshed = await listCategories();
+        setCategories(refreshed);
+        if (createdId && modalOpen) {
+          form.setFieldValue("categoryId", createdId);
+        }
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : "Erreur");
+      }
+    });
+  };
+
+  const onCategoryDelete = async (c: CategoryResponse) => {
+    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
+    try {
+      await deleteCategory(c.id);
+      message.success("Catégorie supprimée");
+      const refreshed = await listCategories();
+      setCategories(refreshed);
+      fetchData();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur");
+    }
+  };
+
   const openEdit = (p: Product) => {
     setEditing(p);
     form.setFieldsValue({
       name: p.name,
       categoryId: p.categoryId || undefined,
-      costPrice: 0,
+      costPrice: p.costPrice,
       salePrice: p.salePrice,
       initialStock: p.stock,
       minStockAlert: p.minStock,
@@ -154,7 +250,7 @@ export default function Products() {
           await updateProduct(editing.id, {
             name: values.name,
             categoryId: values.categoryId || null,
-            costPrice: values.costPrice ?? 0,
+            costPrice: values.costPrice,
             salePrice: values.salePrice,
             isActive: true,
           });
@@ -163,7 +259,7 @@ export default function Products() {
           const created = await createProduct({
             name: values.name,
             categoryId: values.categoryId || null,
-            costPrice: values.costPrice ?? 0,
+            costPrice: values.costPrice,
             salePrice: values.salePrice,
             isActive: true,
           });
@@ -241,6 +337,15 @@ export default function Products() {
         </Typography.Title>
         <div className={styles.toolbar}>
           <div className={styles.filters}>
+            {(can("CATEGORIES_CREATE") || can("CATEGORIES_UPDATE") || can("CATEGORIES_DELETE")) && (
+              <Button
+                icon={<Tags size={18} />}
+                onClick={openCategoryDrawer}
+                className={styles.catBtn}
+              >
+                {t.products.manageCategories}
+              </Button>
+            )}
             <Input
               prefix={<Search size={18} />}
               placeholder={t.products.search}
@@ -264,11 +369,11 @@ export default function Products() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : (
+          ) : can("PRODUCTS_CREATE") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
               {t.products.addProduct}
             </Button>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -288,7 +393,7 @@ export default function Products() {
               Ajoutez votre premier produit pour commencer à vendre. Gérez les prix, le stock et les
               catégories.
             </Typography.Text>
-            {!productsAtLimit && (
+            {!productsAtLimit && can("PRODUCTS_CREATE") && (
               <Button
                 type="primary"
                 size="large"
@@ -326,8 +431,8 @@ export default function Products() {
                   title: t.products.category,
                   dataIndex: "category",
                   width: 140,
-                  render: (cat: string) => (
-                    <Tag color={CATEGORY_COLORS[cat] || "default"}>{cat}</Tag>
+                  render: (cat: string, r: Product) => (
+                    <Tag color={r.categoryColor || "default"}>{cat}</Tag>
                   ),
                 },
                 {
@@ -361,39 +466,45 @@ export default function Products() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Package size={14} />}
-                        onClick={() => openStockAdjust(r)}
-                        aria-label={t.products.stockAdjustment}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Pencil size={14} />}
-                        onClick={() => openEdit(r)}
-                        aria-label={t.common.edit}
-                      />
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        icon={<Trash2 size={14} />}
-                        onClick={() => {
-                          if (window.confirm(t.common.delete + " ?")) {
-                            deleteProduct(r.id)
-                              .then(() => {
-                                message.success("Produit supprimé");
-                                fetchData();
-                              })
-                              .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur")
-                              );
-                          }
-                        }}
-                        aria-label={t.common.delete}
-                      />
+                      {can("STOCK_ADJUST") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Package size={14} />}
+                          onClick={() => openStockAdjust(r)}
+                          aria-label={t.products.stockAdjustment}
+                        />
+                      )}
+                      {can("PRODUCTS_UPDATE") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={14} />}
+                          onClick={() => openEdit(r)}
+                          aria-label={t.common.edit}
+                        />
+                      )}
+                      {can("PRODUCTS_DELETE") && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={14} />}
+                          onClick={() => {
+                            if (window.confirm(t.common.delete + " ?")) {
+                              deleteProduct(r.id)
+                                .then(() => {
+                                  message.success("Produit supprimé");
+                                  fetchData();
+                                })
+                                .catch((e) =>
+                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                );
+                            }
+                          }}
+                          aria-label={t.common.delete}
+                        />
+                      )}
                     </div>
                   ),
                 },
@@ -424,7 +535,33 @@ export default function Products() {
             <Select
               placeholder={t.products.category}
               allowClear
-              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              showSearch
+              optionFilterProp="label"
+              options={categories.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  {can("CATEGORIES_CREATE") && (
+                    <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
+                      <Button
+                        type="text"
+                        block
+                        icon={<Plus size={14} />}
+                        onClick={() => {
+                          setEditingCategory(null);
+                          categoryForm.resetFields();
+                          setCategoryModalOpen(true);
+                        }}
+                      >
+                        {t.products.addCategory}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             />
           </Form.Item>
           <Form.Item
@@ -494,6 +631,98 @@ export default function Products() {
             </Form.Item>
           </Form>
         )}
+      </Modal>
+
+      <Drawer
+        title={t.products.manageCategories}
+        placement="right"
+        width={400}
+        onClose={() => setCategoriesDrawerOpen(false)}
+        open={categoriesDrawerOpen}
+        extra={
+          can("CATEGORIES_CREATE") ? (
+            <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
+              {t.products.addCategory}
+            </Button>
+          ) : null
+        }
+      >
+        {categories.length === 0 ? (
+          <Typography.Text type="secondary">
+            Aucune catégorie. Cliquez sur &quot;Ajouter une catégorie&quot; pour commencer.
+          </Typography.Text>
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+            {categories.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  background: "var(--color-bg-secondary)",
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Tag color={c.color || "default"}>{c.name}</Tag>
+                </div>
+                <Space>
+                  {can("CATEGORIES_UPDATE") && (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Pencil size={14} />}
+                      onClick={() => openEditCategory(c)}
+                      aria-label={t.common.edit}
+                    />
+                  )}
+                  {can("CATEGORIES_DELETE") && (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<Trash2 size={14} />}
+                      onClick={() => onCategoryDelete(c)}
+                      aria-label={t.common.delete}
+                    />
+                  )}
+                </Space>
+              </div>
+            ))}
+          </Space>
+        )}
+      </Drawer>
+
+      <Modal
+        title={editingCategory ? t.products.editCategory : t.products.addCategory}
+        open={categoryModalOpen}
+        onOk={onCategorySave}
+        onCancel={() => {
+          setCategoryModalOpen(false);
+          setEditingCategory(null);
+          categoryForm.resetFields();
+        }}
+        okText={t.products.save}
+        width={380}
+        destroyOnClose
+      >
+        <Form form={categoryForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="name"
+            label={t.products.categoryName}
+            rules={[{ required: true, message: t.validation.nameRequired }]}
+          >
+            <Input placeholder="Ex: Boissons, Snacks..." />
+          </Form.Item>
+          <Form.Item name="color" label={t.products.categoryColor} initialValue="default">
+            <Select options={CATEGORY_COLOR_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="sortOrder" label="Ordre" initialValue={0}>
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

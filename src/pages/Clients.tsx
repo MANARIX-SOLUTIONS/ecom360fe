@@ -25,6 +25,7 @@ import {
   getSubscriptionUsage,
 } from "@/api";
 import { useStore } from "@/hooks/useStore";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Client = {
   id: string;
@@ -47,6 +48,7 @@ function getInitials(name: string) {
 export default function Clients() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
+  const { can } = usePermissions();
   const [search, setSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [paymentModal, setPaymentModal] = useState<Client | null>(null);
@@ -138,11 +140,11 @@ export default function Clients() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : (
+          ) : can("CLIENTS_CREATE") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddClientOpen(true)}>
               {t.clients.addClient}
             </Button>
-          )}
+          ) : null}
         </div>
       </header>
       <Card bordered={false} className={`${styles.card} contentCard`}>
@@ -160,7 +162,7 @@ export default function Clients() {
             >
               Ajoutez vos clients pour suivre les crédits, les paiements et l'historique des achats.
             </Typography.Text>
-            {!clientsAtLimit && (
+            {!clientsAtLimit && can("CLIENTS_CREATE") && (
               <Button
                 type="primary"
                 size="large"
@@ -227,50 +229,56 @@ export default function Clients() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Wallet size={14} />}
-                        onClick={() => {
-                          setPaymentModal(r);
-                          setPaymentAmount(Math.abs(r.balance));
-                        }}
-                        aria-label={t.clients.addPayment}
-                      />
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Pencil size={14} />}
-                        onClick={() => {
-                          editForm.setFieldsValue({
-                            name: r.name,
-                            phone: r.phone || "",
-                            email: r.email || "",
-                            address: r.address || "",
-                          });
-                          setEditOpen(r);
-                        }}
-                        aria-label={t.common.edit}
-                      />
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        icon={<Trash2 size={14} />}
-                        onClick={() => {
-                          if (window.confirm(t.common.delete + " ?")) {
-                            deleteClient(r.id)
-                              .then(() => {
-                                message.success("Client supprimé");
-                                fetchClients();
-                              })
-                              .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur")
-                              );
-                          }
-                        }}
-                        aria-label={t.common.delete}
-                      />
+                      {can("CLIENTS_UPDATE") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Wallet size={14} />}
+                          onClick={() => {
+                            setPaymentModal(r);
+                            setPaymentAmount(Math.abs(r.balance));
+                          }}
+                          aria-label={t.clients.addPayment}
+                        />
+                      )}
+                      {can("CLIENTS_UPDATE") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={14} />}
+                          onClick={() => {
+                            editForm.setFieldsValue({
+                              name: r.name,
+                              phone: r.phone || "",
+                              email: r.email || "",
+                              address: r.address || "",
+                            });
+                            setEditOpen(r);
+                          }}
+                          aria-label={t.common.edit}
+                        />
+                      )}
+                      {can("CLIENTS_DELETE") && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={14} />}
+                          onClick={() => {
+                            if (window.confirm(t.common.delete + " ?")) {
+                              deleteClient(r.id)
+                                .then(() => {
+                                  message.success("Client supprimé");
+                                  fetchClients();
+                                })
+                                .catch((e) =>
+                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                );
+                            }
+                          }}
+                          aria-label={t.common.delete}
+                        />
+                      )}
                     </div>
                   ),
                 },

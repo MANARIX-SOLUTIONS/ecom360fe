@@ -11,6 +11,7 @@ import {
   updateSupplier,
   getSubscriptionUsage,
 } from "@/api";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Supplier = {
   id: string;
@@ -32,6 +33,7 @@ function getInitials(name: string) {
 
 export default function Suppliers() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [search, setSearch] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,11 +125,11 @@ export default function Suppliers() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : (
+          ) : can("SUPPLIERS_CREATE") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
               {t.suppliers.addSupplier}
             </Button>
-          )}
+          ) : null}
         </div>
       </header>
       <Card bordered={false} className={`${styles.card} contentCard`}>
@@ -145,7 +147,7 @@ export default function Suppliers() {
             >
               Ajoutez vos fournisseurs pour suivre vos achats et gérer vos approvisionnements.
             </Typography.Text>
-            {!suppliersAtLimit && (
+            {!suppliersAtLimit && can("SUPPLIERS_CREATE") && (
               <Button
                 type="primary"
                 size="large"
@@ -208,40 +210,44 @@ export default function Suppliers() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Pencil size={14} />}
-                        onClick={() => {
-                          editForm.setFieldsValue({
-                            name: r.name,
-                            phone: r.phone || "",
-                            email: r.email || "",
-                            zone: r.zone || "",
-                          });
-                          setEditOpen(r);
-                        }}
-                        aria-label={t.common.edit}
-                      />
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        icon={<Trash2 size={14} />}
-                        onClick={() => {
-                          if (window.confirm(t.common.delete + " ?")) {
-                            deleteSupplier(r.id)
-                              .then(() => {
-                                message.success("Fournisseur supprimé");
-                                fetchSuppliers();
-                              })
-                              .catch((e) =>
-                                message.error(e instanceof Error ? e.message : "Erreur")
-                              );
-                          }
-                        }}
-                        aria-label={t.common.delete}
-                      />
+                      {can("SUPPLIERS_UPDATE") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={14} />}
+                          onClick={() => {
+                            editForm.setFieldsValue({
+                              name: r.name,
+                              phone: r.phone || "",
+                              email: r.email || "",
+                              zone: r.zone || "",
+                            });
+                            setEditOpen(r);
+                          }}
+                          aria-label={t.common.edit}
+                        />
+                      )}
+                      {can("SUPPLIERS_DELETE") && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={14} />}
+                          onClick={() => {
+                            if (window.confirm(t.common.delete + " ?")) {
+                              deleteSupplier(r.id)
+                                .then(() => {
+                                  message.success("Fournisseur supprimé");
+                                  fetchSuppliers();
+                                })
+                                .catch((e) =>
+                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                );
+                            }
+                          }}
+                          aria-label={t.common.delete}
+                        />
+                      )}
                     </div>
                   ),
                 },

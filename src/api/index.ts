@@ -7,7 +7,6 @@ export {
   forgotPassword,
   resetPassword,
   changePassword,
-  ApiError as AuthApiError,
 } from "./auth";
 export type { AuthResponse, LoginRequest, RegisterRequest } from "./auth";
 export * from "./stores";
@@ -24,3 +23,4 @@ export * from "./users";
 export * from "./subscription";
 export * from "./backoffice";
 export * from "./notifications";
+export * from "./permissions";

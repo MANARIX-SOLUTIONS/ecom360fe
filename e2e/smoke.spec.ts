@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Smoke tests (no backend required)", () => {
   test("@smoke login page renders", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("heading", { name: /360 PME Commerce/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /360 PME/i })).toBeVisible();
     await expect(page.getByPlaceholder("exemple@domaine.com")).toBeVisible();
     await expect(page.getByPlaceholder("Mot de passe")).toBeVisible();
     await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();

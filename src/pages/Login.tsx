@@ -79,7 +79,7 @@ export default function Login() {
             <ShoppingBag size={28} strokeWidth={1.5} />
           </div>
           <Typography.Title level={2} className={styles.brandTitle}>
-            360 PME Commerce
+            Ecom 360 PME
           </Typography.Title>
           <Typography.Text className={styles.brandSubtitle}>
             La solution tout-en-un pour gérer votre commerce. Ventes, stocks, clients et rapports —

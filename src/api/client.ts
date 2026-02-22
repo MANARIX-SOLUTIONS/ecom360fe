@@ -3,11 +3,10 @@
  * Handles base URL, auth headers, token refresh, and error mapping.
  */
 
-// Dev: use backend directly to avoid proxy 404s. Prod: VITE_API_URL required.
-// Set VITE_API_URL='' to use Vite proxy (/api → localhost:8080).
+// Dev: backend direct. Prod: VITE_API_URL or '' for same-origin proxy.
+// Set VITE_API_URL='' to use Vite proxy (/api → backend).
 const API_BASE =
-  import.meta.env.VITE_API_URL ??
-  (import.meta.env.DEV ? "http://localhost:8080" : "http://localhost:8080");
+  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8080" : "");
 const API_PREFIX = "/api/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -55,6 +54,7 @@ export function setAuth(
     if (user.role) localStorage.setItem("ecom360_role", mapRoleFromBackend(user.role));
     if (user.planSlug != null) localStorage.setItem("ecom360_plan_slug", user.planSlug);
     else localStorage.removeItem("ecom360_plan_slug");
+    window.dispatchEvent(new Event("ecom360:auth-set"));
   }
 }
 
@@ -167,7 +167,13 @@ async function request<T>(path: string, options: RequestInitWithAuth = {}): Prom
     if (refreshed) {
       const newToken = getAccessToken();
       if (newToken) headers.Authorization = `Bearer ${newToken}`;
-      res = await fetch(url, { ...init, headers });
+      const retryController = new AbortController();
+      const retryTimeoutId = setTimeout(() => retryController.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        res = await fetch(url, { ...init, headers, signal: retryController.signal });
+      } finally {
+        clearTimeout(retryTimeoutId);
+      }
     } else {
       clearAuth();
       window.dispatchEvent(new Event("ecom360:auth-expired"));

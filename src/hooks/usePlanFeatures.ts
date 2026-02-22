@@ -16,6 +16,7 @@ type FeatureFlags = {
   settingsUsers: boolean;
   advancedReports: boolean;
   api: boolean;
+  stockAlerts: boolean;
 };
 
 const DEFAULT_FEATURES: FeatureFlags = {
@@ -27,6 +28,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   settingsUsers: true,
   advancedReports: false,
   api: false,
+  stockAlerts: true,
 };
 
 function planToFeatures(p: PlanResponse): FeatureFlags {
@@ -39,6 +41,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
     settingsUsers: p.featureRoleManagement,
     advancedReports: p.featureAdvancedReports,
     api: p.featureApi,
+    stockAlerts: p.featureStockAlerts ?? true,
   };
 }
 
@@ -87,6 +90,7 @@ export function usePlanFeatures() {
     canSettingsUsers: features.settingsUsers,
     canAdvancedReports: features.advancedReports,
     canApi: features.api,
+    canStockAlerts: features.stockAlerts,
     /** Combined: can access this permission (role + plan) */
     canAccess: (permission: string, roleCan: boolean) => {
       if (!roleCan) return false;

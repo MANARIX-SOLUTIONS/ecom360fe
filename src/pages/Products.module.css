@@ -30,6 +30,10 @@
   width: 160px;
 }
 
+.catBtn {
+  flex-shrink: 0;
+}
+
 .card {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
