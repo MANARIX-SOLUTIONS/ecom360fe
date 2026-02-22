@@ -188,6 +188,12 @@ async function request<T>(path: string, options: RequestInitWithAuth = {}): Prom
     } catch {
       body = await res.text().catch(() => null);
     }
+    if (res.status === 402) {
+      const b = body as { code?: string; message?: string } | null;
+      if (b?.code === "SUBSCRIPTION_REQUIRED") {
+        window.dispatchEvent(new CustomEvent("ecom360:subscription-required", { detail: b }));
+      }
+    }
     const requestId = res.headers.get("X-Request-Id");
     const msg = parseErrorMessage(body, res);
     const errMsg = requestId ? `${msg} (ID: ${requestId})` : msg;

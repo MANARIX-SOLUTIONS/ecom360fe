@@ -42,6 +42,9 @@ export type SubscriptionResponse = {
   status: string;
   currentPeriodStart: string;
   currentPeriodEnd: string;
+  cancelAtPeriodEnd?: boolean;
+  daysRemaining?: number;
+  isTrialing?: boolean;
 };
 
 export async function getSubscription(): Promise<SubscriptionResponse | undefined> {
@@ -59,8 +62,12 @@ export async function changePlan(
   return api.post<SubscriptionResponse>("/subscription/change", { planSlug, billingCycle });
 }
 
-export async function cancelSubscription(): Promise<void> {
-  return api.post("/subscription/cancel");
+export async function cancelSubscription(atPeriodEnd = true): Promise<void> {
+  return api.post("/subscription/cancel", { atPeriodEnd });
+}
+
+export async function reactivateSubscription(): Promise<SubscriptionResponse> {
+  return api.post<SubscriptionResponse>("/subscription/reactivate");
 }
 
 export type SubscriptionUsageResponse = {

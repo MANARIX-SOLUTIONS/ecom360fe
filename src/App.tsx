@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OfflineBanner } from "./components/OfflineBanner";
@@ -66,6 +66,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function SubscriptionRequiredHandler() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = () => {
+      navigate("/settings/subscription", { replace: true });
+      message.info("Votre période d'essai est terminée. Veuillez souscrire à un plan.");
+    };
+    window.addEventListener("ecom360:subscription-required", handler);
+    return () => window.removeEventListener("ecom360:subscription-required", handler);
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   useEffect(() => {
     const onExpired = () => message.error("Session expirée — veuillez vous reconnecter");
@@ -78,6 +91,7 @@ export default function App() {
       <DocumentTitle />
       <ScrollToTop />
       <OfflineBanner />
+      <SubscriptionRequiredHandler />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

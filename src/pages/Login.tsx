@@ -1,22 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Card, Form, Input, Button, Typography, message, Select, Alert, Checkbox } from "antd";
+import { Card, Form, Input, Button, Typography, message, Alert, Checkbox } from "antd";
 import { Mail, Lock, ShoppingBag, BarChart3, Users, Smartphone, Shield, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/api";
-import { useAuthRole } from "@/hooks/useAuthRole";
-import { ROLES, type Role } from "@/constants/roles";
+import { ROLES } from "@/constants/roles";
 import { t } from "@/i18n";
 import styles from "./Login.module.css";
-
-const isDev = import.meta.env.DEV;
-
-const ROLE_OPTIONS = [
-  { value: ROLES.SUPER_ADMIN, label: t.roles.superAdmin },
-  { value: ROLES.PROPRIETAIRE, label: t.roles.owner },
-  { value: ROLES.GESTIONNAIRE, label: t.roles.manager },
-  { value: ROLES.CAISSIER, label: t.roles.cashier },
-];
 
 const FEATURES = [
   { icon: Zap, text: "Point de vente rapide et intuitif" },
@@ -32,14 +22,8 @@ export default function Login() {
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
   const { loginWithApi } = useAuth();
-  const { setRole } = useAuthRole();
 
-  const onFinish = async (values: {
-    email: string;
-    password: string;
-    role?: string;
-    remember?: boolean;
-  }) => {
+  const onFinish = async (values: { email: string; password: string; remember?: boolean }) => {
     setError(null);
     setLoading(true);
     try {
@@ -52,9 +36,6 @@ export default function Login() {
         }
         setError(t.auth.invalidCredentials);
         return;
-      }
-      if (values.role && Object.values(ROLES).includes(values.role as Role)) {
-        setRole(values.role as Role);
       }
       message.success(t.auth.loginSuccess);
       const role = localStorage.getItem("ecom360_role") || "proprietaire";
@@ -176,23 +157,6 @@ export default function Login() {
                 autoComplete="current-password"
               />
             </Form.Item>
-
-            {isDev && (
-              <Form.Item
-                name="role"
-                label={
-                  <span>
-                    {t.auth.roleLabel}{" "}
-                    <Typography.Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>
-                      (dev only)
-                    </Typography.Text>
-                  </span>
-                }
-                initialValue={ROLES.PROPRIETAIRE}
-              >
-                <Select placeholder={t.auth.selectRole} options={ROLE_OPTIONS} allowClear={false} />
-              </Form.Item>
-            )}
 
             <div className={styles.rememberRow}>
               <Form.Item

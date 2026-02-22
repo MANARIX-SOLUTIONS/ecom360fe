@@ -8,8 +8,10 @@ import {
   listPlans,
   changePlan,
   cancelSubscription,
+  reactivateSubscription,
   getSubscriptionUsage,
 } from "@/api";
+import type { SubscriptionResponse } from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
@@ -123,15 +125,25 @@ export default function SettingsSubscription() {
   const navigate = useNavigate();
   const { can } = usePermissions();
   const [plans, setPlans] = useState<PlanResponse[]>([]);
-  const [currentPlanSlug, setCurrentPlanSlug] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionResponse | null | undefined>(
+    undefined
+  );
   const [usage, setUsage] = useState<SubscriptionUsageResponse | null>(null);
   const [yearlyBilling, setYearlyBilling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
+
+  const currentPlanSlug = subscription?.planSlug ?? null;
+  const isExpired =
+    !subscription || subscription.status === "expired" || subscription.status === "cancelled";
+  const isTrialing = subscription?.isTrialing === true;
+  const cancelAtPeriodEnd = subscription?.cancelAtPeriodEnd === true;
+  const daysRemaining = subscription?.daysRemaining;
 
   const refreshSubscription = () => {
-    getSubscription().then((sub) => setCurrentPlanSlug(sub?.planSlug ?? null));
+    getSubscription().then(setSubscription);
     getSubscriptionUsage()
       .then(setUsage)
       .catch(() => setUsage(null));
@@ -141,7 +153,7 @@ export default function SettingsSubscription() {
     Promise.all([listPlans(), getSubscription(), getSubscriptionUsage()])
       .then(([plansRes, sub, usageRes]) => {
         setPlans(plansRes);
-        setCurrentPlanSlug(sub?.planSlug ?? null);
+        setSubscription(sub ?? null);
         setUsage(usageRes);
       })
       .catch(() => message.error("Impossible de charger les plans"))
@@ -160,6 +172,7 @@ export default function SettingsSubscription() {
         return changePlan(plan.key, yearlyBilling ? "yearly" : "monthly")
           .then((sub) => {
             message.success(`Plan mis à jour vers ${plan.name} !`);
+            setSubscription(sub);
             if (sub?.planSlug) localStorage.setItem("ecom360_plan_slug", sub.planSlug);
             window.dispatchEvent(new Event("ecom360:plan-updated"));
             refreshSubscription();
@@ -189,6 +202,25 @@ export default function SettingsSubscription() {
         <ArrowLeft size={18} />
         {t.common.back}
       </button>
+
+      {/* Expired / no subscription banner */}
+      {isExpired && (
+        <Card
+          size="small"
+          style={{
+            marginBottom: 24,
+            borderColor: "var(--color-warning)",
+            backgroundColor: "rgba(250, 173, 20, 0.08)",
+          }}
+        >
+          <Typography.Text strong style={{ color: "var(--color-warning)" }}>
+            Votre période d&apos;essai est terminée
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+            Souscrivez à un plan pour continuer à utiliser Ecom360.
+          </Typography.Text>
+        </Card>
+      )}
 
       <header className={styles.settingsPageHeader}>
         <Typography.Title level={4} className={styles.settingsPageTitle}>
@@ -296,13 +328,30 @@ export default function SettingsSubscription() {
                 <span className={styles.planCardPeriod}>{yearlyBilling ? "/an" : "/mois"}</span>
               </div>
               {isCurrent ? (
-                <span
-                  className={styles.planCardBadge}
-                  style={{ display: "inline-block", marginBottom: 16 }}
-                >
-                  <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-                  {t.settings.currentPlan}
-                </span>
+                <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <span
+                    className={styles.planCardBadge}
+                    style={{ display: "inline-flex", alignItems: "center" }}
+                  >
+                    <Zap size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+                    {t.settings.currentPlan}
+                  </span>
+                  {isTrialing && (
+                    <Tag color="blue" style={{ alignSelf: "flex-start" }}>
+                      Essai gratuit
+                    </Tag>
+                  )}
+                  {daysRemaining != null && daysRemaining >= 0 && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Jours restants : {daysRemaining}
+                    </Typography.Text>
+                  )}
+                  {cancelAtPeriodEnd && (
+                    <Tag color="orange" style={{ alignSelf: "flex-start" }}>
+                      Annulé à la fin de la période
+                    </Tag>
+                  )}
+                </div>
               ) : can("SUBSCRIPTION_UPDATE") ? (
                 <Button
                   type={plan.recommended ? "primary" : "default"}
@@ -393,41 +442,104 @@ export default function SettingsSubscription() {
         </Card>
       </div>
 
-      {currentPlanSlug && can("SUBSCRIPTION_UPDATE") && (
+      {currentPlanSlug && can("SUBSCRIPTION_UPDATE") && !isExpired && (
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid var(--color-border)" }}>
-          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-            Annuler votre abonnement ? Vous conserverez l'accès jusqu'à la fin de la période payée.
-          </Typography.Text>
-          <Button
-            type="text"
-            danger
-            loading={cancelling}
-            onClick={() => {
-              Modal.confirm({
-                title: "Annuler l'abonnement ?",
-                content:
-                  "Vous conserverez l'accès jusqu'à la fin de la période en cours. Aucun remboursement ne sera effectué.",
-                okText: "Annuler l'abonnement",
-                okButtonProps: { danger: true },
-                cancelText: "Garder mon abonnement",
-                onOk: () => {
-                  setCancelling(true);
-                  return cancelSubscription()
-                    .then(() => {
-                      message.success("Abonnement annulé");
+          {cancelAtPeriodEnd ? (
+            <>
+              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                Votre abonnement est annulé et prendra fin à la fin de la période en cours.
+              </Typography.Text>
+              <Button
+                type="primary"
+                loading={reactivating}
+                onClick={() => {
+                  setReactivating(true);
+                  reactivateSubscription()
+                    .then((sub) => {
+                      message.success("Abonnement réactivé");
+                      setSubscription(sub);
                       refreshSubscription();
                     })
                     .catch((e) => {
                       message.error(e instanceof Error ? e.message : "Erreur");
-                      return Promise.reject(e);
                     })
-                    .finally(() => setCancelling(false));
-                },
-              });
-            }}
-          >
-            Annuler l'abonnement
-          </Button>
+                    .finally(() => setReactivating(false));
+                }}
+              >
+                Réactiver l&apos;abonnement
+              </Button>
+            </>
+          ) : (
+            <>
+              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                Annuler votre abonnement ? Choisissez de conserver l&apos;accès jusqu&apos;à la fin
+                de la période ou d&apos;arrêter immédiatement.
+              </Typography.Text>
+              <Button
+                type="text"
+                danger
+                loading={cancelling}
+                onClick={() => {
+                  const { destroy } = Modal.confirm({
+                    title: "Annuler l'abonnement ?",
+                    content: (
+                      <div style={{ marginTop: 8 }}>
+                        <p style={{ marginBottom: 12 }}>
+                          <strong>À la fin de la période :</strong> Vous conserverez l&apos;accès
+                          jusqu&apos;à la fin de la période payée.
+                        </p>
+                        <p>
+                          <strong>Immédiatement :</strong> L&apos;accès sera coupé tout de suite.
+                        </p>
+                      </div>
+                    ),
+                    okText: "À la fin de la période",
+                    cancelText: "Garder mon abonnement",
+                    footer: (_, { OkBtn, CancelBtn }) => (
+                      <>
+                        <CancelBtn />
+                        <Button
+                          danger
+                          loading={cancelling}
+                          onClick={async () => {
+                            setCancelling(true);
+                            try {
+                              await cancelSubscription(false);
+                              message.success("Abonnement annulé immédiatement");
+                              destroy();
+                              refreshSubscription();
+                            } catch (e) {
+                              message.error(e instanceof Error ? e.message : "Erreur");
+                            } finally {
+                              setCancelling(false);
+                            }
+                          }}
+                        >
+                          Immédiatement
+                        </Button>
+                        <OkBtn />
+                      </>
+                    ),
+                    onOk: async () => {
+                      setCancelling(true);
+                      try {
+                        await cancelSubscription(true);
+                        message.success("Abonnement annulé à la fin de la période");
+                        refreshSubscription();
+                      } catch (e) {
+                        message.error(e instanceof Error ? e.message : "Erreur");
+                        throw e;
+                      } finally {
+                        setCancelling(false);
+                      }
+                    },
+                  });
+                }}
+              >
+                Annuler l&apos;abonnement
+              </Button>
+            </>
+          )}
         </div>
       )}
     </div>
