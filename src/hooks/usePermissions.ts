@@ -143,11 +143,16 @@ export function usePermissions() {
 
   const canAccess = useCallback(
     (navPerm: NavPermission): boolean => {
+      // Backoffice: platform admin only (role from API or localStorage)
+      if (navPerm === "backoffice") {
+        const r = role ?? localStorage.getItem("ecom360_role") ?? "";
+        return r.toLowerCase() === "super_admin" || r.toLowerCase() === "platform_admin";
+      }
       const needed = NAV_TO_BACKEND[navPerm];
       if (!needed || needed.length === 0) return false;
       return needed.some((p) => permissions.includes(p));
     },
-    [permissions]
+    [permissions, role]
   );
 
   return {

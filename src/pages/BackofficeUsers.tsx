@@ -511,7 +511,11 @@ export default function BackofficeUsers() {
         confirmLoading={inviteLoading}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="name" label="Nom complet">
+          <Form.Item
+            name="name"
+            label="Nom complet"
+            rules={[{ required: true, message: "Nom requis" }]}
+          >
             <Input placeholder="Ex: Moussa Keita" />
           </Form.Item>
           <Form.Item

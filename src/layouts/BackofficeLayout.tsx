@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Layout, Menu, Typography, Button, Badge, Dropdown, Tag } from "antd";
 import {
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { getAdminStats } from "@/api/backoffice";
 import { SkipLink } from "@/components/SkipLink";
 // i18n removed – labels are now inline French
 import styles from "./BackofficeLayout.module.css";
@@ -92,6 +93,16 @@ export default function BackofficeLayout() {
   const { logout } = useAuth();
   const { displayName, initials } = useUserProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [stats, setStats] = useState<{
+    businessesCount: number;
+    usersCount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    getAdminStats()
+      .then((s) => setStats({ businessesCount: s.businessesCount, usersCount: s.usersCount }))
+      .catch(() => setStats(null));
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -179,15 +190,15 @@ export default function BackofficeLayout() {
         {/* Quick stats */}
         <div className={styles.siderStats}>
           <div className={styles.siderStat}>
-            <span className={styles.siderStatValue}>47</span>
+            <span className={styles.siderStatValue}>{stats?.businessesCount ?? "—"}</span>
             <span className={styles.siderStatLabel}>Entreprises</span>
           </div>
           <div className={styles.siderStat}>
-            <span className={styles.siderStatValue}>183</span>
+            <span className={styles.siderStatValue}>{stats?.usersCount ?? "—"}</span>
             <span className={styles.siderStatLabel}>Utilisateurs</span>
           </div>
           <div className={styles.siderStat}>
-            <span className={styles.siderStatValue}>99.9%</span>
+            <span className={styles.siderStatValue}>—</span>
             <span className={styles.siderStatLabel}>Uptime</span>
           </div>
         </div>

@@ -201,11 +201,17 @@ export default function Backoffice() {
               <span className={styles.cardTitle}>
                 <Activity size={18} />
                 Activité récente
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}
+                >
+                  (à venir)
+                </Typography.Text>
               </span>
             }
             extra={
-              <Button type="link" size="small" onClick={() => navigate("/backoffice/system")}>
-                Voir tout
+              <Button type="link" size="small" onClick={() => navigate("/backoffice/businesses")}>
+                Voir les entreprises
               </Button>
             }
           >

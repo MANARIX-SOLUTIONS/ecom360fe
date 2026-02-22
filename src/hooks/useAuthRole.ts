@@ -34,6 +34,12 @@ export function useAuthRole() {
     setRoleState(loadRole());
   }, []);
 
+  useEffect(() => {
+    const onAuthSet = () => setRoleState(loadRole());
+    window.addEventListener("ecom360:auth-set", onAuthSet);
+    return () => window.removeEventListener("ecom360:auth-set", onAuthSet);
+  }, []);
+
   const setRole = useCallback((newRole: Role) => {
     setRoleState(newRole);
     saveRole(newRole);

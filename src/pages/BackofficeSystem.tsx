@@ -166,12 +166,16 @@ const initialLogs: LogEntry[] = [
 
 const FLAGS_KEY = "ecom360_bo_feature_flags";
 
+// Same base URL logic as API client (dev: localhost:8080, prod: VITE_API_URL or '')
 const BACKEND_BASE =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "" : "http://localhost:8080");
+  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8080" : "");
 
 async function fetchHealth(): Promise<{ status: string; ok: boolean }> {
   try {
-    const res = await fetch(`${BACKEND_BASE || ""}/actuator/health`, {
+    const url = BACKEND_BASE
+      ? `${BACKEND_BASE.replace(/\/$/, "")}/actuator/health`
+      : "/actuator/health";
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(5000),
     });
     const data = await res.json().catch(() => ({}));
@@ -322,7 +326,10 @@ export default function BackofficeSystem() {
         </div>
       </div>
 
-      {/* Resource usage cards */}
+      {/* Resource usage cards (demo data) */}
+      <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
+        Ressources — données de démonstration
+      </Typography.Text>
       <Row gutter={[16, 16]} className={styles.systemGrid}>
         {resourceCards.map(({ icon: Icon, label, value, max, pct, color }) => (
           <Col xs={12} sm={6} key={label}>
@@ -401,7 +408,7 @@ export default function BackofficeSystem() {
           </Card>
         </Col>
 
-        {/* Feature flags */}
+        {/* Feature flags (localStorage only) */}
         <Col xs={24} lg={12}>
           <Card
             bordered={false}
@@ -410,6 +417,12 @@ export default function BackofficeSystem() {
               <span className={styles.cardTitle}>
                 <Zap size={18} />
                 Fonctionnalités
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}
+                >
+                  (local)
+                </Typography.Text>
               </span>
             }
           >
@@ -441,7 +454,7 @@ export default function BackofficeSystem() {
         </Col>
       </Row>
 
-      {/* Recent logs */}
+      {/* Recent logs (demo) */}
       <Card
         bordered={false}
         className={styles.card}
@@ -449,6 +462,12 @@ export default function BackofficeSystem() {
           <span className={styles.cardTitle}>
             <Server size={18} />
             Journal système
+            <Typography.Text
+              type="secondary"
+              style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}
+            >
+              (aperçu)
+            </Typography.Text>
           </span>
         }
         style={{ marginTop: 16 }}
