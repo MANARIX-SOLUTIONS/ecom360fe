@@ -304,7 +304,7 @@ export default function SettingsSubscription() {
           return (
             <Card
               key={plan.key}
-              bordered={false}
+              variant="borderless"
               className={`${styles.planCard} ${isCurrent ? styles.planCardCurrent : ""} ${plan.recommended ? styles.planCardRecommended : ""}`}
             >
               <div style={{ marginBottom: 16 }}>
@@ -389,7 +389,7 @@ export default function SettingsSubscription() {
           Comparaison détaillée des plans
         </Typography.Title>
         <Card
-          bordered={false}
+          variant="borderless"
           className={styles.settingsCard}
           style={{ padding: "0 !important", overflow: "auto" }}
         >

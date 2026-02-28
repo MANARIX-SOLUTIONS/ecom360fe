@@ -97,7 +97,7 @@ export default function SettingsStores() {
         ) : null}
       </header>
 
-      <Card bordered={false} className={styles.card}>
+      <Card variant="borderless" className={styles.card}>
         {!hasStores ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>
@@ -185,7 +185,7 @@ export default function SettingsStores() {
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
         okText={editingId ? t.common.save : t.common.add}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" className={styles.form}>
           <Form.Item

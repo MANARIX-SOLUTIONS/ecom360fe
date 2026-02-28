@@ -37,6 +37,7 @@ export function clearAuth() {
   localStorage.removeItem("ecom360_business_id");
   localStorage.removeItem("ecom360_role");
   localStorage.removeItem("ecom360_plan_slug");
+  localStorage.removeItem("ecom360_active_store_id");
 }
 
 export function setAuth(

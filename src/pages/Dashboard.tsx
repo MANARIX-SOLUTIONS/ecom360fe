@@ -229,7 +229,7 @@ export default function Dashboard() {
           <Row gutter={[16, 16]}>
             {[1, 2, 3].map((i) => (
               <Col xs={24} sm={12} lg={8} key={i}>
-                <Card bordered={false} className={styles.statCard}>
+                <Card variant="borderless" className={styles.statCard}>
                   <Skeleton active paragraph={{ rows: 2 }} />
                 </Card>
               </Col>
@@ -239,12 +239,12 @@ export default function Dashboard() {
         <div className={styles.tablesSection}>
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={12}>
-              <Card bordered={false} className={styles.card}>
+              <Card variant="borderless" className={styles.card}>
                 <Skeleton active paragraph={{ rows: 4 }} />
               </Card>
             </Col>
             <Col xs={24} lg={12}>
-              <Card bordered={false} className={styles.card}>
+              <Card variant="borderless" className={styles.card}>
                 <Skeleton active paragraph={{ rows: 4 }} />
               </Card>
             </Col>
@@ -278,7 +278,7 @@ export default function Dashboard() {
             </div>
           </div>
         </header>
-        <Card bordered={false} className={`${styles.card} ${styles.emptyCard}`}>
+        <Card variant="borderless" className={`${styles.card} ${styles.emptyCard}`}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
@@ -377,7 +377,7 @@ export default function Dashboard() {
         <Row gutter={[16, 16]}>
           {statCards.map(({ key, label, value, prevValue, trend, up, variant, icon: Icon }) => (
             <Col xs={24} sm={12} lg={8} key={key}>
-              <Card bordered={false} className={`${styles.statCard} ${styles[variant]}`}>
+              <Card variant="borderless" className={`${styles.statCard} ${styles[variant]}`}>
                 <div className={styles.statCardInner}>
                   <div className={styles.statLabelRow}>
                     <span className={styles.statIconWrap}>
@@ -420,7 +420,7 @@ export default function Dashboard() {
                   {t.dashboard.topProducts}
                 </span>
               }
-              bordered={false}
+              variant="borderless"
               className={styles.card}
             >
               <div className="tableResponsive">
@@ -467,7 +467,7 @@ export default function Dashboard() {
                     {t.dashboard.lowStockAlerts}
                   </span>
                 }
-                bordered={false}
+                variant="borderless"
                 className={`${styles.card} ${styles.alertCard}`}
               >
                 <div className="tableResponsive">
@@ -519,7 +519,7 @@ export default function Dashboard() {
                   {t.dashboard.paymentBreakdown}
                 </span>
               }
-              bordered={false}
+              variant="borderless"
               className={styles.card}
             >
               <div className={styles.paymentList}>
@@ -549,7 +549,7 @@ export default function Dashboard() {
                   Ventes récentes
                 </span>
               }
-              bordered={false}
+              variant="borderless"
               className={styles.card}
               extra={
                 <Button type="link" size="small" onClick={() => navigate("/reports")}>

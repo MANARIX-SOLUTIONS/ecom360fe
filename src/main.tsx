@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntdApp } from "antd";
 import frFR from "antd/locale/fr_FR";
 import { antdTheme } from "./theme";
 import { StoreProvider } from "./contexts/StoreContext";
@@ -12,9 +12,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ConfigProvider theme={antdTheme} locale={frFR}>
-        <StoreProvider>
-          <App />
-        </StoreProvider>
+        <AntdApp>
+          <StoreProvider>
+            <App />
+          </StoreProvider>
+        </AntdApp>
       </ConfigProvider>
     </ErrorBoundary>
   </React.StrictMode>

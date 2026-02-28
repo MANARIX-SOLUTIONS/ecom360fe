@@ -143,7 +143,7 @@ export default function Profile() {
         ) : null}
       </header>
 
-      <Card bordered={false} className={`${styles.card} contentCard`}>
+      <Card variant="borderless" className={`${styles.card} contentCard`}>
         {!editing ? (
           <>
             <div className={styles.detailRow}>

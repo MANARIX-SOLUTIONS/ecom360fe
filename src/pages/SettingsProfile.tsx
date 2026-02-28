@@ -72,7 +72,7 @@ export default function SettingsProfile() {
         </Typography.Text>
       </header>
 
-      <Card bordered={false} className={styles.settingsCard}>
+      <Card variant="borderless" className={styles.settingsCard}>
         <Form
           form={form}
           layout="vertical"

@@ -34,3 +34,21 @@ export async function listNotifications(params?: {
 export async function markNotificationRead(id: string): Promise<NotificationResponse> {
   return api.patch<NotificationResponse>(`/notifications/${id}/read`);
 }
+
+export async function markAllNotificationsRead(): Promise<{ marked: number }> {
+  return api.post<{ marked: number }>("/notifications/mark-all-read");
+}
+
+export type NotificationPreferenceResponse = { type: string; enabled: boolean };
+
+export async function getNotificationPreferences(): Promise<NotificationPreferenceResponse[]> {
+  return api.get<NotificationPreferenceResponse[]>("/notifications/preferences");
+}
+
+export async function updateNotificationPreferences(
+  preferences: Record<string, boolean>
+): Promise<NotificationPreferenceResponse[]> {
+  return api.put<NotificationPreferenceResponse[]>("/notifications/preferences", {
+    preferences,
+  });
+}

@@ -99,7 +99,7 @@ export default function Suppliers() {
             <Skeleton.Button active style={{ width: 180, height: 44 }} />
           </div>
         </div>
-        <Card bordered={false} className={`${styles.card} contentCard`}>
+        <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 4 }} />
         </Card>
       </div>
@@ -132,7 +132,7 @@ export default function Suppliers() {
           ) : null}
         </div>
       </header>
-      <Card bordered={false} className={`${styles.card} contentCard`}>
+      <Card variant="borderless" className={`${styles.card} contentCard`}>
         {suppliers.length === 0 ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>

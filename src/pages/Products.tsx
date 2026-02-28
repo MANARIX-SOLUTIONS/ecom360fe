@@ -16,6 +16,7 @@ import {
   Drawer,
   Space,
 } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Search, Plus, Pencil, Package, Trash2, Tags } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
@@ -322,7 +323,7 @@ export default function Products() {
             <Skeleton.Button active style={{ width: 160, height: 44 }} />
           </div>
         </div>
-        <Card bordered={false} className={`${styles.card} contentCard`}>
+        <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 6 }} />
         </Card>
       </div>
@@ -377,7 +378,7 @@ export default function Products() {
         </div>
       </header>
 
-      <Card bordered={false} className={`${styles.card} contentCard`}>
+      <Card variant="borderless" className={`${styles.card} contentCard`}>
         {filtered.length === 0 && search === "" && filterStock === "all" ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>
@@ -521,7 +522,7 @@ export default function Products() {
         onCancel={() => setModalOpen(false)}
         okText={t.products.save}
         width={440}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -569,7 +570,7 @@ export default function Products() {
             label={t.products.purchasePrice}
             rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
           >
-            <InputNumber min={0} addonAfter="F" style={{ width: "100%" }} />
+            <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             name="salePrice"
@@ -579,7 +580,7 @@ export default function Products() {
               { type: "number", min: 0, message: t.validation.numberMin },
             ]}
           >
-            <InputNumber min={0} addonAfter="F" style={{ width: "100%" }} />
+            <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             name="initialStock"
@@ -608,7 +609,7 @@ export default function Products() {
         }}
         okText={t.products.save}
         width={400}
-        destroyOnClose
+        destroyOnHidden
       >
         {stockProduct && (
           <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
@@ -706,7 +707,7 @@ export default function Products() {
         }}
         okText={t.products.save}
         width={380}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={categoryForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item

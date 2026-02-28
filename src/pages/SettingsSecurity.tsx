@@ -35,7 +35,7 @@ export default function SettingsSecurity() {
         </Typography.Text>
       </header>
 
-      <Card bordered={false} className={styles.settingsCard}>
+      <Card variant="borderless" className={styles.settingsCard}>
         <Typography.Text
           type="secondary"
           className={styles.settingsPageSubtitle}

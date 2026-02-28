@@ -260,7 +260,7 @@ export default function Reports() {
       <Row gutter={[12, 12]} className={styles.kpiRow}>
         {kpiCards.map(({ label, value, icon: Icon, color, bg }) => (
           <Col xs={12} sm={6} key={label}>
-            <Card bordered={false} className={styles.kpiCard}>
+            <Card variant="borderless" className={styles.kpiCard}>
               <div className={styles.kpiInner}>
                 <span className={styles.kpiIcon} style={{ background: bg, color }}>
                   <Icon size={18} />
@@ -276,7 +276,7 @@ export default function Reports() {
       <div className={styles.charts}>
         <Card
           title={t.reports.salesVsExpenses}
-          bordered={false}
+          variant="borderless"
           className={`${styles.card} contentCard`}
         >
           <div className={styles.chartWrap}>
@@ -306,7 +306,7 @@ export default function Reports() {
         </Card>
         <Card
           title={t.reports.paymentDistribution}
-          bordered={false}
+          variant="borderless"
           className={`${styles.card} contentCard`}
         >
           <div className={styles.chartWrap}>
@@ -336,7 +336,7 @@ export default function Reports() {
         {data?.recentSales && data.recentSales.length > 0 && (
           <Card
             title="Ventes récentes"
-            bordered={false}
+            variant="borderless"
             className={`${styles.card} contentCard`}
             style={{ marginTop: 16 }}
           >

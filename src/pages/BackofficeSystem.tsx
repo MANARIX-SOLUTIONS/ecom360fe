@@ -1,5 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, Typography, Row, Col, Tag, Button, Switch, Skeleton, message, Modal } from "antd";
+import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  Typography,
+  Row,
+  Col,
+  Tag,
+  Button,
+  Switch,
+  Skeleton,
+  message,
+  Modal,
+  Table,
+  Select,
+  Space,
+} from "antd";
 import {
   Server,
   Database,
@@ -15,7 +30,9 @@ import {
   Bell,
   Smartphone,
   BarChart3,
+  FileText,
 } from "lucide-react";
+import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
 import styles from "./Backoffice.module.css";
 
 const healthItems = (apiStatus: string | null, apiOk: boolean) => [
@@ -129,42 +146,21 @@ const featureFlagDefs = [
   },
 ];
 
-type LogEntry = { time: string; level: string; msg: string };
-
-const initialLogs: LogEntry[] = [
-  {
-    time: "14:32:01",
-    level: "info",
-    msg: "Backup base de données complété (2.4 GB)",
-  },
-  {
-    time: "14:30:15",
-    level: "info",
-    msg: "Déploiement v1.4.2 réussi — 0 erreurs",
-  },
-  {
-    time: "12:15:33",
-    level: "warn",
-    msg: "Latence élevée sur endpoint /api/reports (850ms)",
-  },
-  {
-    time: "10:00:00",
-    level: "info",
-    msg: "Tâche CRON: nettoyage sessions expirées (47 supprimées)",
-  },
-  {
-    time: "08:45:12",
-    level: "info",
-    msg: "SSL certificat renouvelé automatiquement",
-  },
-  {
-    time: "04:00:00",
-    level: "info",
-    msg: "Backup base de données complété (2.3 GB)",
-  },
-];
-
 const FLAGS_KEY = "ecom360_bo_feature_flags";
+
+const ENTITY_TYPES = ["Auth", "Product", "Sale", "Client", "Supplier", "Store", "Expense"];
+
+function formatAuditAction(action: string): string {
+  const labels: Record<string, string> = {
+    LOGIN: "Connexion",
+    REGISTER: "Inscription",
+    PASSWORD_CHANGE: "Changement mot de passe",
+    CREATE: "Création",
+    UPDATE: "Modification",
+    DELETE: "Suppression",
+  };
+  return labels[action] ?? action;
+}
 
 // Same base URL logic as API client (dev: localhost:8080, prod: VITE_API_URL or '')
 const BACKEND_BASE =
@@ -201,10 +197,16 @@ function saveFlags(flags: Record<string, boolean>) {
 }
 
 export default function BackofficeSystem() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [flags, setFlags] = useState<Record<string, boolean>>(loadFlags);
-  const [logs, setLogs] = useState(initialLogs);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(0);
+  const [auditSize] = useState(20);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditEntityFilter, setAuditEntityFilter] = useState<string | undefined>();
   const [health, setHealth] = useState<{ status: string; ok: boolean } | null>(null);
   const [modal, contextHolder] = Modal.useModal();
 
@@ -212,9 +214,30 @@ export default function BackofficeSystem() {
     fetchHealth().then(setHealth);
   }, []);
 
+  const loadAuditLogs = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const res = await listAdminAuditLogs({
+        page: auditPage,
+        size: auditSize,
+        entityType: auditEntityFilter,
+      });
+      setAuditLogs(res.content);
+      setAuditTotal(res.totalElements);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur chargement journal d'audit");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [auditPage, auditSize, auditEntityFilter]);
+
   useEffect(() => {
     loadHealth();
   }, [loadHealth]);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
 
   useEffect(() => {
     const id = setTimeout(() => setLoading(false), 400);
@@ -224,29 +247,37 @@ export default function BackofficeSystem() {
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     loadHealth();
+    loadAuditLogs();
     setTimeout(() => {
       setRefreshing(false);
-      const now = new Date();
-      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-      setLogs((prev) => [
-        { time, level: "info", msg: "État du système actualisé manuellement" },
-        ...prev,
-      ]);
       message.success("Système actualisé");
-    }, 1200);
-  }, [loadHealth]);
+    }, 800);
+  }, [loadHealth, loadAuditLogs]);
 
-  const handleExportLogs = useCallback(() => {
-    const content = logs.map((l) => `[${l.time}] [${l.level.toUpperCase()}] ${l.msg}`).join("\n");
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `system-logs-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    message.success("Logs exportés");
-  }, [logs]);
+  const handleExportAudit = useCallback(async () => {
+    try {
+      const res = await listAdminAuditLogs({
+        page: 0,
+        size: 500,
+        entityType: auditEntityFilter,
+      });
+      const lines = res.content.map(
+        (l) =>
+          `${l.createdAt}\t${l.action}\t${l.entityType}\t${l.entityId ?? ""}\t${l.businessId ?? ""}\t${l.userId ?? ""}\t${l.ipAddress ?? ""}`
+      );
+      const content = ["Date\tAction\tType\tEntityId\tBusinessId\tUserId\tIP", ...lines].join("\n");
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success("Journal d'audit exporté");
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur export");
+    }
+  }, [auditEntityFilter]);
 
   const handleToggleFlag = useCallback(
     (key: string, label: string, checked: boolean) => {
@@ -264,17 +295,6 @@ export default function BackofficeSystem() {
             saveFlags(next);
             return next;
           });
-          // Add log
-          const now = new Date();
-          const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-          setLogs((prev) => [
-            {
-              time,
-              level: "info",
-              msg: `Feature flag "${label}" ${checked ? "activé" : "désactivé"}`,
-            },
-            ...prev,
-          ]);
           message.success(`${label} ${checked ? "activé" : "désactivé"}`);
         },
       });
@@ -319,8 +339,8 @@ export default function BackofficeSystem() {
             >
               Actualiser
             </Button>
-            <Button icon={<Download size={16} />} onClick={handleExportLogs}>
-              Export logs
+            <Button icon={<Download size={16} />} onClick={handleExportAudit}>
+              Export audit
             </Button>
           </div>
         </div>
@@ -333,7 +353,7 @@ export default function BackofficeSystem() {
       <Row gutter={[16, 16]} className={styles.systemGrid}>
         {resourceCards.map(({ icon: Icon, label, value, max, pct, color }) => (
           <Col xs={12} sm={6} key={label}>
-            <Card bordered={false} className={styles.healthCard}>
+            <Card variant="borderless" className={styles.healthCard}>
               <div className={styles.healthIcon} style={{ background: `${color}10`, color }}>
                 <Icon size={22} />
               </div>
@@ -369,7 +389,7 @@ export default function BackofficeSystem() {
         {/* Services health */}
         <Col xs={24} lg={12}>
           <Card
-            bordered={false}
+            variant="borderless"
             className={styles.card}
             title={
               <span className={styles.cardTitle}>
@@ -411,7 +431,7 @@ export default function BackofficeSystem() {
         {/* Feature flags (localStorage only) */}
         <Col xs={24} lg={12}>
           <Card
-            bordered={false}
+            variant="borderless"
             className={styles.card}
             title={
               <span className={styles.cardTitle}>
@@ -454,51 +474,114 @@ export default function BackofficeSystem() {
         </Col>
       </Row>
 
-      {/* Recent logs (demo) */}
+      {/* Audit trail — real data from backend */}
       <Card
-        bordered={false}
+        variant="borderless"
         className={styles.card}
         title={
           <span className={styles.cardTitle}>
-            <Server size={18} />
-            Journal système
-            <Typography.Text
-              type="secondary"
-              style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}
-            >
-              (aperçu)
-            </Typography.Text>
+            <FileText size={18} />
+            Journal d'audit
           </span>
         }
         style={{ marginTop: 16 }}
         extra={
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {logs.length} entrées
-          </Typography.Text>
+          <Space>
+            <Select
+              placeholder="Filtrer par type"
+              allowClear
+              style={{ width: 140 }}
+              value={auditEntityFilter}
+              onChange={setAuditEntityFilter}
+              options={ENTITY_TYPES.map((t) => ({ label: t, value: t }))}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {auditTotal} entrée(s)
+            </Typography.Text>
+            <Button type="link" size="small" onClick={() => navigate("/backoffice/audit")}>
+              Voir tout
+            </Button>
+          </Space>
         }
       >
-        <div>
-          {logs.map((log, i) => (
-            <div key={`${log.time}-${i}`} className={styles.logRow}>
-              <span className={styles.logTime}>{log.time}</span>
-              <Tag
-                color={
-                  log.level === "warn" ? "warning" : log.level === "error" ? "error" : "default"
-                }
-                style={{
-                  margin: 0,
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  minWidth: 40,
-                  textAlign: "center",
-                }}
-              >
-                {log.level.toUpperCase()}
-              </Tag>
-              <span className={styles.logMsg}>{log.msg}</span>
-            </div>
-          ))}
-        </div>
+        <Table
+          size="small"
+          loading={auditLoading}
+          dataSource={auditLogs}
+          rowKey="id"
+          pagination={{
+            current: auditPage + 1,
+            pageSize: auditSize,
+            total: auditTotal,
+            showSizeChanger: false,
+            showTotal: (t) => `${t} entrées`,
+            onChange: (p) => setAuditPage(p - 1),
+          }}
+          columns={[
+            {
+              title: "Date",
+              dataIndex: "createdAt",
+              key: "createdAt",
+              width: 180,
+              render: (v: string) =>
+                v
+                  ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" })
+                  : "—",
+            },
+            {
+              title: "Action",
+              dataIndex: "action",
+              key: "action",
+              width: 120,
+              render: (v: string) => (
+                <Tag color={v === "DELETE" ? "error" : v === "CREATE" ? "success" : "default"}>
+                  {formatAuditAction(v)}
+                </Tag>
+              ),
+            },
+            {
+              title: "Type",
+              dataIndex: "entityType",
+              key: "entityType",
+              width: 100,
+            },
+            {
+              title: "Entité",
+              dataIndex: "entityId",
+              key: "entityId",
+              ellipsis: true,
+              render: (v: string | null) =>
+                v ? (
+                  <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
+                    {v.slice(0, 8)}…
+                  </Typography.Text>
+                ) : (
+                  "—"
+                ),
+            },
+            {
+              title: "Business",
+              dataIndex: "businessId",
+              key: "businessId",
+              ellipsis: true,
+              render: (v: string | null) =>
+                v ? (
+                  <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
+                    {v.slice(0, 8)}…
+                  </Typography.Text>
+                ) : (
+                  "—"
+                ),
+            },
+            {
+              title: "IP",
+              dataIndex: "ipAddress",
+              key: "ipAddress",
+              width: 110,
+              render: (v: string | null) => v ?? "—",
+            },
+          ]}
+        />
       </Card>
     </div>
   );

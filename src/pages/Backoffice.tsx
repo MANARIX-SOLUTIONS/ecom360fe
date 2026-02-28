@@ -137,7 +137,7 @@ export default function Backoffice() {
         <Row gutter={[16, 16]}>
           {[1, 2, 3, 4].map((i) => (
             <Col xs={12} sm={6} key={i}>
-              <Card bordered={false} className={styles.kpiCard}>
+              <Card variant="borderless" className={styles.kpiCard}>
                 <Skeleton active paragraph={{ rows: 1 }} />
               </Card>
             </Col>
@@ -172,7 +172,7 @@ export default function Backoffice() {
         {kpis.map(({ key, label, value, icon: Icon, color, path }) => (
           <Col xs={12} sm={12} md={6} key={key}>
             <Card
-              bordered={false}
+              variant="borderless"
               className={styles.kpiCard}
               hoverable
               onClick={() => navigate(path)}
@@ -195,7 +195,7 @@ export default function Backoffice() {
         {/* Activity feed */}
         <Col xs={24} lg={14}>
           <Card
-            bordered={false}
+            variant="borderless"
             className={styles.card}
             title={
               <span className={styles.cardTitle}>
@@ -245,7 +245,7 @@ export default function Backoffice() {
         <Col xs={24} lg={10}>
           {/* Plan distribution */}
           <Card
-            bordered={false}
+            variant="borderless"
             className={styles.card}
             title={
               <span className={styles.cardTitle}>
@@ -282,7 +282,7 @@ export default function Backoffice() {
 
           {/* Top businesses */}
           <Card
-            bordered={false}
+            variant="borderless"
             className={styles.card}
             title={
               <span className={styles.cardTitle}>

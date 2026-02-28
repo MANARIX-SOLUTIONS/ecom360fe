@@ -18,6 +18,7 @@ import {
   Modal,
   Space,
 } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
@@ -234,7 +235,7 @@ export default function Expenses() {
             <Skeleton.Button active style={{ width: 180, height: 44 }} />
           </div>
         </div>
-        <Card bordered={false} className={`${styles.card} contentCard`}>
+        <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 5 }} />
         </Card>
       </div>
@@ -274,7 +275,7 @@ export default function Expenses() {
       <Row gutter={[12, 12]} className={styles.summaryRow}>
         {summaryStats.map(({ label, value, icon: Icon, color, bg }) => (
           <Col xs={8} key={label}>
-            <Card bordered={false} className={styles.summaryCard}>
+            <Card variant="borderless" className={styles.summaryCard}>
               <div className={styles.summaryInner}>
                 <span className={styles.summaryIcon} style={{ background: bg, color }}>
                   <Icon size={18} />
@@ -287,7 +288,7 @@ export default function Expenses() {
         ))}
       </Row>
 
-      <Card title={t.expenses.list} bordered={false} className={`${styles.card} contentCard`}>
+      <Card title={t.expenses.list} variant="borderless" className={`${styles.card} contentCard`}>
         {expenses.length === 0 ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>
@@ -427,7 +428,7 @@ export default function Expenses() {
               { type: "number", min: 1, message: t.validation.amountMin },
             ]}
           >
-            <InputNumber min={1} addonAfter="F" style={{ width: "100%" }} placeholder="0" />
+            <CurrencyInput min={1} style={{ width: "100%" }} placeholder="0" />
           </Form.Item>
           <Form.Item name="description" label={t.expenses.description}>
             <Input.TextArea rows={3} placeholder="Description (optionnel)" />
@@ -502,7 +503,7 @@ export default function Expenses() {
         }}
         okText={t.common.save}
         width={380}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={categoryForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item

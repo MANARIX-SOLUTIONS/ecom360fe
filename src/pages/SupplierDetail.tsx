@@ -1,18 +1,7 @@
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
-import {
-  Card,
-  Button,
-  Typography,
-  Table,
-  Tag,
-  Modal,
-  Form,
-  InputNumber,
-  Input,
-  message,
-  Skeleton,
-} from "antd";
+import { Card, Button, Typography, Table, Tag, Modal, Form, Input, message, Skeleton } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
@@ -104,7 +93,7 @@ export default function SupplierDetail() {
         <div className={styles.backWrap}>
           <Skeleton.Button active style={{ width: 80 }} />
         </div>
-        <Card bordered={false} className={styles.heroCard}>
+        <Card variant="borderless" className={styles.heroCard}>
           <Skeleton active avatar paragraph={{ rows: 2 }} />
         </Card>
       </div>
@@ -185,7 +174,7 @@ export default function SupplierDetail() {
       </div>
 
       {/* Hero summary card */}
-      <Card bordered={false} className={styles.heroCard}>
+      <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
           <span className={styles.heroAvatar}>{getInitials(supplier.name)}</span>
           <div className={styles.heroInfo}>
@@ -242,7 +231,7 @@ export default function SupplierDetail() {
 
       <Card
         title={t.suppliers.paymentHistory}
-        bordered={false}
+        variant="borderless"
         className={`${styles.card} contentCard`}
       >
         {payments.length === 0 ? (
@@ -325,11 +314,10 @@ export default function SupplierDetail() {
           </div>
           <Form layout="vertical" style={{ marginTop: 16 }}>
             <Form.Item label={t.expenses.amount}>
-              <InputNumber
+              <CurrencyInput
                 min={1}
                 value={paymentAmount}
                 onChange={(v) => setPaymentAmount(Number(v) || 0)}
-                addonAfter="F"
                 style={{ width: "100%" }}
               />
             </Form.Item>

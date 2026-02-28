@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, Input, Button, InputNumber, Typography, message, Badge, Select } from "antd";
+import { Card, Input, Button, Typography, message, Badge, Select } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import {
   Search,
   Plus,
@@ -353,7 +354,7 @@ export default function POS() {
       </div>
 
       {/* Center: cart */}
-      <Card className={styles.cartCard} bordered={false}>
+      <Card className={styles.cartCard} variant="borderless">
         <div className={styles.cartHeader}>
           <ShoppingBag size={18} />
           <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
@@ -427,7 +428,7 @@ export default function POS() {
 
       {/* Right: payment method selection + total + CTA */}
       <div className={styles.right}>
-        <Card className={styles.totalCard} bordered={false}>
+        <Card className={styles.totalCard} variant="borderless">
           {/* Payment method selection */}
           <div className={styles.paymentSection}>
             <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
@@ -484,11 +485,10 @@ export default function POS() {
           {/* Discount */}
           <div className={styles.discountRow}>
             <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
-            <InputNumber
+            <CurrencyInput
               min={0}
               value={discount}
               onChange={(v) => setDiscount(Number(v) || 0)}
-              addonAfter="F"
               style={{ width: 140 }}
             />
           </div>

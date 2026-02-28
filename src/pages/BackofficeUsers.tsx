@@ -272,7 +272,7 @@ export default function BackofficeUsers() {
       </div>
 
       {/* Table */}
-      <Card bordered={false} className={styles.tableCard}>
+      <Card variant="borderless" className={styles.tableCard}>
         <div className="tableResponsive">
           <Table
             dataSource={users}

@@ -26,7 +26,7 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <div className={styles.wrapper}>
-        <Card className={styles.card} bordered={false}>
+        <Card className={styles.card} variant="borderless">
           <div className={styles.successBlock}>
             <CheckCircle size={48} className={styles.successIcon} />
             <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
@@ -46,7 +46,7 @@ export default function ForgotPassword() {
 
   return (
     <div className={styles.wrapper}>
-      <Card className={styles.card} bordered={false}>
+      <Card className={styles.card} variant="borderless">
         <div className={styles.logoBlock}>
           <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
             {t.auth.forgotPasswordTitle}

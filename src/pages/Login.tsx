@@ -95,7 +95,7 @@ export default function Login() {
 
       {/* Right form panel */}
       <div className={styles.formPanel}>
-        <Card className={styles.card} bordered={false}>
+        <Card className={styles.card} variant="borderless">
           {/* Mobile-only branding */}
           <div className={styles.mobileBrand}>
             <div className={styles.mobileBrandIcon}>

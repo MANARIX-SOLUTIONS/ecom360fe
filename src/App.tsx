@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Backoffice = lazy(() => import("./pages/Backoffice"));
 const BackofficeBusinesses = lazy(() => import("./pages/BackofficeBusinesses"));
 const BackofficeUsers = lazy(() => import("./pages/BackofficeUsers"));
+const BackofficeAudit = lazy(() => import("./pages/BackofficeAudit"));
 const BackofficeSystem = lazy(() => import("./pages/BackofficeSystem"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
@@ -34,6 +35,7 @@ const SettingsProfile = lazy(() => import("./pages/SettingsProfile"));
 const SettingsSubscription = lazy(() => import("./pages/SettingsSubscription"));
 const SettingsUsers = lazy(() => import("./pages/SettingsUsers"));
 const SettingsSecurity = lazy(() => import("./pages/SettingsSecurity"));
+const SettingsNotifications = lazy(() => import("./pages/SettingsNotifications"));
 const SettingsStores = lazy(() => import("./pages/SettingsStores"));
 const Profile = lazy(() => import("./pages/Profile"));
 const More = lazy(() => import("./pages/More"));
@@ -87,7 +89,7 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <DocumentTitle />
       <ScrollToTop />
       <OfflineBanner />
@@ -273,6 +275,16 @@ export default function App() {
             }
           />
           <Route
+            path="settings/notifications"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="settings:notifications">
+                  <SettingsNotifications />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
             path="settings/users"
             element={
               <Suspense fallback={<PageLoader />}>
@@ -322,6 +334,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <BackofficeUsers />
+              </Suspense>
+            }
+          />
+          <Route
+            path="audit"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeAudit />
               </Suspense>
             }
           />

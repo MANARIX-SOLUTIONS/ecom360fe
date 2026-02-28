@@ -3,6 +3,7 @@
  */
 
 import { api } from "./client";
+import type { StoreResponse } from "./stores";
 
 export type UserProfile = {
   id: string;
@@ -41,4 +42,17 @@ export async function inviteBusinessUser(data: {
   role: string;
 }): Promise<BusinessUser> {
   return api.post<BusinessUser>("/business/users", data);
+}
+
+/** Récupère les boutiques assignées à un employé (multi-store) */
+export async function getAssignedStores(businessUserId: string): Promise<StoreResponse[]> {
+  return api.get<StoreResponse[]>(`/business/users/${businessUserId}/stores`);
+}
+
+/** Affecte des boutiques à un employé (multi-store). Remplace les affectations existantes. */
+export async function assignStores(
+  businessUserId: string,
+  storeIds: string[]
+): Promise<StoreResponse[]> {
+  return api.put<StoreResponse[]>(`/business/users/${businessUserId}/stores`, { storeIds });
 }

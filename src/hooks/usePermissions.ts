@@ -72,6 +72,7 @@ export type NavPermission =
   | "settings:subscription"
   | "settings:users"
   | "settings:security"
+  | "settings:notifications"
   | "backoffice";
 
 /** Mapping: permission nav -> permissions backend requises (au moins une) */
@@ -89,6 +90,7 @@ const NAV_TO_BACKEND: Record<NavPermission, BackendPermission[]> = {
   "settings:subscription": ["SUBSCRIPTION_READ"],
   "settings:users": ["BUSINESS_USERS_READ"],
   "settings:security": ["STORES_READ"],
+  "settings:notifications": ["STORES_READ"],
   backoffice: [],
 };
 

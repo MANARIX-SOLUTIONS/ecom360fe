@@ -44,7 +44,7 @@ export default function Register() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.formPanel}>
-        <Card className={styles.card} bordered={false}>
+        <Card className={styles.card} variant="borderless">
           <div className={styles.mobileBrand}>
             <div className={styles.mobileBrandIcon}>
               <ShoppingBag size={22} />

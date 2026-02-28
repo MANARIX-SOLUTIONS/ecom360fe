@@ -104,3 +104,33 @@ export async function inviteAdminUser(params: {
 }): Promise<AdminUser> {
   return api.post<AdminUser>("/admin/users/invite", params);
 }
+
+export type AuditLogEntry = {
+  id: string;
+  businessId: string | null;
+  userId: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  changes: Record<string, unknown> | null;
+  ipAddress: string | null;
+  requestId: string | null;
+  createdAt: string;
+};
+
+export async function listAdminAuditLogs(params?: {
+  page?: number;
+  size?: number;
+  businessId?: string;
+  entityType?: string;
+  userId?: string;
+}): Promise<PageResponse<AuditLogEntry>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.size != null) searchParams.set("size", String(params.size));
+  if (params?.businessId) searchParams.set("businessId", params.businessId);
+  if (params?.entityType) searchParams.set("entityType", params.entityType);
+  if (params?.userId) searchParams.set("userId", params.userId);
+  const q = searchParams.toString();
+  return api.get<PageResponse<AuditLogEntry>>(`/admin/audit-logs${q ? `?${q}` : ""}`);
+}

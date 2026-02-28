@@ -93,67 +93,96 @@ export default function MainLayout() {
   const { offline } = useNetworkStatus();
 
   const notificationItems = useMemo(() => {
+    const items: { key: string; label: React.ReactNode }[] = [];
     if (notifications.length === 0) {
-      return [
-        {
-          key: "empty",
-          label: (
-            <div
-              style={{
-                padding: 16,
-                textAlign: "center",
-                color: "var(--color-text-muted)",
-                fontSize: 13,
-              }}
-            >
-              Aucune notification
-            </div>
-          ),
-        },
-      ];
-    }
-    return notifications.map((n) => {
-      const isWarning = n.type === "low_stock" || n.type === "stock_alert";
-      const Icon = isWarning ? AlertTriangle : CheckCircle;
-      const iconColor = isWarning ? "var(--color-warning)" : "var(--color-success)";
-      return {
-        key: n.id,
+      items.push({
+        key: "empty",
         label: (
           <div
-            role="button"
-            tabIndex={0}
             style={{
-              display: "flex",
-              gap: 10,
-              alignItems: "flex-start",
-              padding: "8px 0",
-              maxWidth: 280,
-              cursor: "pointer",
-              opacity: n.isRead ? 0.8 : 1,
-            }}
-            onClick={() => {
-              if (!n.isRead) markRead(n.id);
-              if (n.actionUrl) navigate(n.actionUrl);
-            }}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                if (!n.isRead) markRead(n.id);
-                if (n.actionUrl) navigate(n.actionUrl);
-              }
+              padding: 16,
+              textAlign: "center",
+              color: "var(--color-text-muted)",
+              fontSize: 13,
             }}
           >
-            <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
-              {n.body && (
-                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body}</div>
-              )}
-            </div>
+            Aucune notification
           </div>
         ),
-      };
+      });
+    } else {
+      items.push(
+        ...notifications.map((n) => {
+          const isWarning = n.type === "low_stock" || n.type === "stock_alert";
+          const Icon = isWarning ? AlertTriangle : CheckCircle;
+          const iconColor = isWarning ? "var(--color-warning)" : "var(--color-success)";
+          return {
+            key: n.id,
+            label: (
+              <div
+                role="button"
+                tabIndex={0}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  padding: "8px 0",
+                  maxWidth: 280,
+                  cursor: "pointer",
+                  opacity: n.isRead ? 0.8 : 1,
+                }}
+                onClick={() => {
+                  if (!n.isRead) markRead(n.id);
+                  if (n.actionUrl) navigate(n.actionUrl);
+                }}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!n.isRead) markRead(n.id);
+                    if (n.actionUrl) navigate(n.actionUrl);
+                  }
+                }}
+              >
+                <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
+                  {n.body && (
+                    <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body}</div>
+                  )}
+                </div>
+              </div>
+            ),
+          };
+        })
+      );
+    }
+    items.push({
+      key: "manage",
+      label: (
+        <div
+          role="button"
+          tabIndex={0}
+          style={{
+            padding: "12px 16px",
+            borderTop: "1px solid var(--color-border)",
+            cursor: "pointer",
+            fontWeight: 500,
+            fontSize: 13,
+            color: "var(--color-primary)",
+          }}
+          onClick={() => navigate("/settings/notifications")}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate("/settings/notifications");
+            }
+          }}
+        >
+          Gérer les notifications
+        </div>
+      ),
     });
+    return items;
   }, [notifications, markRead, navigate]);
 
   const navItems = useMemo(() => {
@@ -204,7 +233,7 @@ export default function MainLayout() {
           </div>
           <div className={styles.logoText}>
             <Typography.Text strong className={styles.logoTitle}>
-              360 PME
+              Ecom 360 PME
             </Typography.Text>
             <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
           </div>

@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Table, Button, Typography, Modal, Form, Input, Select, message, Spin } from "antd";
-import { ArrowLeft, Plus, User } from "lucide-react";
+import { ArrowLeft, Plus, User, Store } from "lucide-react";
 import { t } from "@/i18n";
 import { ROLES } from "@/constants/roles";
 import { Link } from "react-router-dom";
-import { listBusinessUsers, inviteBusinessUser, getSubscriptionUsage } from "@/api";
+import {
+  listBusinessUsers,
+  inviteBusinessUser,
+  getSubscriptionUsage,
+  getAssignedStores,
+  assignStores,
+  listStores,
+} from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { BusinessUser } from "@/api";
+import type { StoreResponse } from "@/api/stores";
 import styles from "./Settings.module.css";
 
 const roleOptions = [
@@ -33,6 +41,12 @@ export default function SettingsUsers() {
   const [inviting, setInviting] = useState(false);
   const [usersAtLimit, setUsersAtLimit] = useState(false);
 
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignUser, setAssignUser] = useState<BusinessUser | null>(null);
+  const [assignForm] = Form.useForm();
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [stores, setStores] = useState<StoreResponse[]>([]);
+
   useEffect(() => {
     listBusinessUsers()
       .then(setUsers)
@@ -45,6 +59,39 @@ export default function SettingsUsers() {
       .then((u) => setUsersAtLimit(u.usersLimit > 0 && u.usersCount >= u.usersLimit))
       .catch(() => setUsersAtLimit(false));
   }, [users.length]);
+
+  const openAssignModal = async (user: BusinessUser) => {
+    setAssignUser(user);
+    setAssignModalOpen(true);
+    setAssignLoading(true);
+    try {
+      const [storesList, assigned] = await Promise.all([listStores(), getAssignedStores(user.id)]);
+      setStores(storesList);
+      assignForm.setFieldsValue({ storeIds: assigned.map((s) => s.id) });
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Impossible de charger les boutiques");
+      setAssignModalOpen(false);
+      setAssignUser(null);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const onAssignStores = async () => {
+    if (!assignUser) return;
+    try {
+      const values = assignForm.getFieldsValue();
+      const storeIds = (values.storeIds ?? []) as string[];
+      await assignStores(assignUser.id, storeIds);
+      message.success("Boutiques mises à jour");
+      setAssignModalOpen(false);
+      setAssignUser(null);
+      assignForm.resetFields();
+    } catch (e) {
+      if (e instanceof Error && e.message?.includes("required")) return;
+      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+    }
+  };
 
   const onInvite = async () => {
     try {
@@ -93,7 +140,7 @@ export default function SettingsUsers() {
         </div>
       </header>
 
-      <Card bordered={false} className={styles.settingsCard}>
+      <Card variant="borderless" className={styles.settingsCard}>
         {loading ? (
           <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
         ) : (
@@ -121,21 +168,74 @@ export default function SettingsUsers() {
                   render: (role: string) => roleToLabel(role),
                 },
                 {
-                  title: "",
-                  width: 100,
-                  align: "right",
+                  title: t.stores.title,
+                  width: 160,
                   render: (_, r) =>
-                    r.role?.toLowerCase() !== "proprietaire" ? (
-                      <Button type="text" size="small">
-                        {t.common.edit}
+                    r.role?.toLowerCase() !== "proprietaire" && can("BUSINESS_USERS_UPDATE") ? (
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<Store size={14} style={{ marginRight: 4 }} />}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          openAssignModal(r);
+                        }}
+                      >
+                        {t.settings.assignStores}
                       </Button>
-                    ) : null,
+                    ) : (
+                      "—"
+                    ),
                 },
               ]}
             />
           </div>
         )}
       </Card>
+
+      <Modal
+        title={t.settings.assignStoresTitle}
+        open={assignModalOpen}
+        onOk={onAssignStores}
+        onCancel={() => {
+          setAssignModalOpen(false);
+          setAssignUser(null);
+          assignForm.resetFields();
+        }}
+        okText={t.common.save}
+        destroyOnClose
+      >
+        {assignUser && (
+          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+            {assignUser.fullName} — {assignUser.email}
+          </Typography.Text>
+        )}
+        <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+          {t.settings.assignStoresDesc}
+        </Typography.Text>
+        {assignLoading ? (
+          <Spin />
+        ) : stores.length === 0 ? (
+          <Typography.Text type="secondary">
+            {t.stores.noStores} — <Link to="/settings/stores">{t.stores.addStore}</Link>
+          </Typography.Text>
+        ) : (
+          <Form form={assignForm} layout="vertical" style={{ marginTop: 16 }}>
+            <Form.Item name="storeIds" label={t.stores.title}>
+              <Select
+                mode="multiple"
+                placeholder={t.stores.selectStore}
+                options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                allowClear
+                showSearch
+                filterOption={(input, opt) =>
+                  (opt?.label ?? "").toString().toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
 
       <Modal
         title={t.settings.inviteUser}

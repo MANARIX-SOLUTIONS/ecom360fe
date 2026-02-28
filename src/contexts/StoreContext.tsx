@@ -29,8 +29,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const hasAuth = !!localStorage.getItem("ecom360_access_token");
 
   const fetchStores = useCallback(async () => {
-    if (!hasAuth) {
+    const isAuthed = !!localStorage.getItem("ecom360_access_token");
+    if (!isAuthed) {
       setStores([]);
+      setActiveIdState(null);
       setLoading(false);
       return;
     }
@@ -40,9 +42,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const list = await listStores();
       setStores(list.map(toStore));
       const saved = loadActiveId();
-      if (saved && !list.some((s) => s.id === saved)) {
-        saveActiveId(list[0]?.id ?? null);
-        setActiveIdState(list[0]?.id ?? null);
+      const savedIsValid = saved && list.some((s) => s.id === saved);
+      if (list.length > 0 && !savedIsValid) {
+        // Aucune boutique valide sélectionnée (premier login ou réaffectation) → première par défaut
+        const defaultId = list[0].id;
+        saveActiveId(defaultId);
+        setActiveIdState(defaultId);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur chargement boutiques");
@@ -50,10 +55,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [hasAuth]);
+  }, []);
 
   useEffect(() => {
     fetchStores();
+  }, [fetchStores, hasAuth]);
+
+  // Réagir à la connexion : refetch dès setAuth (token lu à l'appel dans fetchStores)
+  useEffect(() => {
+    const onAuthSet = () => fetchStores();
+    window.addEventListener("ecom360:auth-set", onAuthSet);
+    return () => window.removeEventListener("ecom360:auth-set", onAuthSet);
   }, [fetchStores]);
 
   const activeStore = activeId ? (stores.find((s) => s.id === activeId) ?? null) : null;

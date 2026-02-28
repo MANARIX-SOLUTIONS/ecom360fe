@@ -27,7 +27,8 @@ export type Permission =
   | "settings:profile"
   | "settings:subscription"
   | "settings:users"
-  | "settings:security";
+  | "settings:security"
+  | "settings:notifications";
 
 const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
   [ROLES.SUPER_ADMIN]: [
@@ -45,6 +46,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings:subscription",
     "settings:users",
     "settings:security",
+    "settings:notifications",
   ],
   [ROLES.PROPRIETAIRE]: [
     "dashboard",
@@ -60,6 +62,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings:subscription",
     "settings:users",
     "settings:security",
+    "settings:notifications",
   ],
   [ROLES.GESTIONNAIRE]: [
     "dashboard",
@@ -72,6 +75,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings",
     "settings:profile",
     "settings:security",
+    "settings:notifications",
   ],
   [ROLES.CAISSIER]: ["dashboard", "pos", "products", "clients"],
 };

@@ -1,6 +1,15 @@
 import { useMemo } from "react";
 import { Card, Typography } from "antd";
-import { Building2, CreditCard, Users, Shield, LogOut, Store, ChevronRight } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  Users,
+  Shield,
+  LogOut,
+  Store,
+  ChevronRight,
+  Bell,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthRole } from "@/hooks/useAuthRole";
@@ -49,6 +58,13 @@ const accountConfig: SettingItem[] = [
     desc: t.settings.usersAndRolesDesc,
     path: "/settings/users",
     permission: "settings:users",
+  },
+  {
+    icon: Bell,
+    title: t.settings.notifications,
+    desc: t.settings.notificationsDesc,
+    path: "/settings/notifications",
+    permission: "settings:notifications",
   },
   {
     icon: Shield,
@@ -126,7 +142,7 @@ export default function Settings() {
           <Typography.Text type="secondary" className={styles.sectionTitle}>
             {t.settings.sectionOrganisation}
           </Typography.Text>
-          <Card bordered={false} className={styles.card}>
+          <Card variant="borderless" className={styles.card}>
             <div className={styles.itemList}>
               {organisationItems.map((item, i) => (
                 <div key={item.path}>
@@ -144,7 +160,7 @@ export default function Settings() {
           <Typography.Text type="secondary" className={styles.sectionTitle}>
             {t.settings.sectionAccount}
           </Typography.Text>
-          <Card bordered={false} className={styles.card}>
+          <Card variant="borderless" className={styles.card}>
             <div className={styles.itemList}>
               {accountItems.map((item, i) => (
                 <div key={item.path}>
@@ -158,7 +174,7 @@ export default function Settings() {
       )}
 
       <section className={styles.section}>
-        <Card bordered={false} className={styles.logoutCard}>
+        <Card variant="borderless" className={styles.logoutCard}>
           <button
             type="button"
             className={styles.logoutBtn}

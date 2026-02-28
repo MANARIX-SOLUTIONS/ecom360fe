@@ -74,7 +74,7 @@ export function SetupChecklist({
   if (completed >= total) return null;
 
   return (
-    <Card bordered={false} className={styles.card}>
+    <Card variant="borderless" className={styles.card}>
       <div className={styles.header}>
         <div>
           <Typography.Text strong className={styles.title}>

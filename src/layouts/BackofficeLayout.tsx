@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   CheckCircle,
   UserPlus,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -30,6 +31,7 @@ const navItems = [
   { key: "/backoffice", icon: <LayoutDashboard size={18} />, label: "Vue d'ensemble" },
   { key: "/backoffice/businesses", icon: <Building2 size={18} />, label: "Entreprises" },
   { key: "/backoffice/users", icon: <Users size={18} />, label: "Utilisateurs" },
+  { key: "/backoffice/audit", icon: <FileText size={18} />, label: "Journal d'audit" },
   { key: "/backoffice/system", icon: <Settings size={18} />, label: "Système" },
 ];
 

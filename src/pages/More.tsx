@@ -105,7 +105,7 @@ export default function More() {
     <div className={`${styles.page} pageWrapper`}>
       {/* Profile card */}
       <Card
-        bordered={false}
+        variant="borderless"
         className={styles.profileCard}
         onClick={() => navigate("/profile")}
         hoverable
@@ -130,7 +130,7 @@ export default function More() {
           <Typography.Text type="secondary" className={styles.sectionTitle}>
             Commerce
           </Typography.Text>
-          <Card bordered={false} className={styles.listCard}>
+          <Card variant="borderless" className={styles.listCard}>
             <div className={styles.itemList}>
               {commerceLinks.map((item, i) => (
                 <div key={item.path}>
@@ -149,7 +149,7 @@ export default function More() {
           <Typography.Text type="secondary" className={styles.sectionTitle}>
             Administration
           </Typography.Text>
-          <Card bordered={false} className={styles.listCard}>
+          <Card variant="borderless" className={styles.listCard}>
             <div className={styles.itemList}>
               {adminLinks.map((item, i) => (
                 <div key={item.path}>

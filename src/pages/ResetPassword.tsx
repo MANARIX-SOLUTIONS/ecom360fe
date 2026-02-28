@@ -35,7 +35,7 @@ export default function ResetPassword() {
   if (!token) {
     return (
       <div className={styles.wrapper}>
-        <Card className={styles.card} bordered={false}>
+        <Card className={styles.card} variant="borderless">
           <Alert
             message="Lien invalide"
             description="Ce lien de réinitialisation est invalide ou a expiré. Demandez un nouveau lien depuis la page Mot de passe oublié."
@@ -55,7 +55,7 @@ export default function ResetPassword() {
   if (success) {
     return (
       <div className={styles.wrapper}>
-        <Card className={styles.card} bordered={false}>
+        <Card className={styles.card} variant="borderless">
           <div className={styles.successBlock}>
             <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
               Mot de passe réinitialisé
@@ -80,7 +80,7 @@ export default function ResetPassword() {
 
   return (
     <div className={styles.wrapper}>
-      <Card className={styles.card} bordered={false}>
+      <Card className={styles.card} variant="borderless">
         <div className={styles.logoBlock}>
           <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
             Nouveau mot de passe

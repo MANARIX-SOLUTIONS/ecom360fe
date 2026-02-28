@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  Card,
-  Table,
-  Tag,
-  Button,
-  Input,
-  Typography,
-  Modal,
-  InputNumber,
-  Form,
-  Skeleton,
-  message,
-} from "antd";
+import { Card, Table, Tag, Button, Input, Typography, Modal, Form, Skeleton, message } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Plus, Search, UserPlus, Users, Pencil, Trash2, Wallet } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
@@ -114,7 +103,7 @@ export default function Clients() {
             <Skeleton.Button active style={{ width: 160, height: 44 }} />
           </div>
         </div>
-        <Card bordered={false} className={`${styles.card} contentCard`}>
+        <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 5 }} />
         </Card>
       </div>
@@ -147,7 +136,7 @@ export default function Clients() {
           ) : null}
         </div>
       </header>
-      <Card bordered={false} className={`${styles.card} contentCard`}>
+      <Card variant="borderless" className={`${styles.card} contentCard`}>
         {clients.length === 0 ? (
           <div className={styles.emptyHero}>
             <div className={styles.emptyIconWrap}>
@@ -325,11 +314,10 @@ export default function Clients() {
             </div>
             <Form layout="vertical" style={{ marginTop: 16 }}>
               <Form.Item label="Montant">
-                <InputNumber
+                <CurrencyInput
                   min={0}
                   value={paymentAmount}
                   onChange={(v) => setPaymentAmount(Number(v) || 0)}
-                  addonAfter="F"
                   style={{ width: "100%" }}
                 />
               </Form.Item>

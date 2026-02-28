@@ -8,12 +8,13 @@ import {
   Tag,
   Modal,
   Form,
-  InputNumber,
   Input,
+  InputNumber,
   Select,
   message,
   Skeleton,
 } from "antd";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { ArrowLeft, Package, Pencil, Trash2, Layers } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
@@ -141,7 +142,7 @@ export default function ProductDetail() {
         <div className={styles.backWrap}>
           <Skeleton.Button active style={{ width: 80 }} />
         </div>
-        <Card bordered={false} className={styles.heroCard}>
+        <Card variant="borderless" className={styles.heroCard}>
           <Skeleton active paragraph={{ rows: 3 }} />
         </Card>
       </div>
@@ -223,7 +224,7 @@ export default function ProductDetail() {
         </Button>
       </div>
 
-      <Card bordered={false} className={styles.heroCard}>
+      <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
           <div className={styles.emptyIconWrap} style={{ width: 56, height: 56 }}>
             <Package size={28} />
@@ -303,7 +304,7 @@ export default function ProductDetail() {
 
       <Card
         title={t.products.details}
-        bordered={false}
+        variant="borderless"
         className={`${styles.card} ${styles.sectionCard} contentCard`}
       >
         <div
@@ -343,7 +344,7 @@ export default function ProductDetail() {
 
       <Card
         title={t.products.stockByStore}
-        bordered={false}
+        variant="borderless"
         className={`${styles.card} ${styles.sectionCard} contentCard`}
       >
         {stockLevels.length === 0 ? (
@@ -388,7 +389,7 @@ export default function ProductDetail() {
       {activeStore?.id && (
         <Card
           title={t.products.movements}
-          bordered={false}
+          variant="borderless"
           className={`${styles.card} contentCard`}
         >
           {movements.length === 0 ? (
@@ -466,7 +467,7 @@ export default function ProductDetail() {
             label={t.products.purchasePrice}
             rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
           >
-            <InputNumber min={0} addonAfter="F" style={{ width: "100%" }} />
+            <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             name="salePrice"
@@ -476,7 +477,7 @@ export default function ProductDetail() {
               { type: "number", min: 0, message: t.validation.numberMin },
             ]}
           >
-            <InputNumber min={0} addonAfter="F" style={{ width: "100%" }} />
+            <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>
