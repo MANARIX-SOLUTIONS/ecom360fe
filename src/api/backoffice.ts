@@ -68,6 +68,65 @@ export async function listAdminBusinesses(params?: {
   return api.get<PageResponse<AdminBusiness>>(`/admin/businesses${q ? `?${q}` : ""}`);
 }
 
+export async function getAdminBusiness(businessId: string): Promise<AdminBusiness> {
+  return api.get<AdminBusiness>(`/admin/businesses/${businessId}`);
+}
+
+export type AdminCreateBusinessPayload = {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  /** Plan slug (e.g. pro, starter). Omit or "trial" for trial. */
+  planSlug?: string;
+  /** Link this user as propriétaire. */
+  ownerUserId?: string;
+};
+
+export async function createAdminBusiness(
+  payload: AdminCreateBusinessPayload
+): Promise<AdminBusiness> {
+  return api.post<AdminBusiness>("/admin/businesses", payload);
+}
+
+export type AdminUpdateBusinessPayload = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+};
+
+export async function updateAdminBusiness(
+  businessId: string,
+  payload: AdminUpdateBusinessPayload
+): Promise<AdminBusiness> {
+  return api.patch<AdminBusiness>(`/admin/businesses/${businessId}`, payload);
+}
+
+export type AdminAssignPlanPayload = {
+  planSlug: string;
+  billingCycle?: string;
+};
+
+export async function assignAdminBusinessPlan(
+  businessId: string,
+  payload: AdminAssignPlanPayload
+): Promise<void> {
+  await api.patch(`/admin/businesses/${businessId}/plan`, payload);
+}
+
+export type AdminPlanItem = {
+  id: string;
+  slug: string;
+  name: string;
+  priceMonthly: number;
+  priceYearly: number;
+};
+
+export async function listAdminPlans(): Promise<AdminPlanItem[]> {
+  return api.get<AdminPlanItem[]>("/admin/businesses/plans");
+}
+
 export async function setBusinessStatus(
   businessId: string,
   status: "active" | "suspended"

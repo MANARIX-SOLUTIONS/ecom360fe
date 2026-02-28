@@ -10,6 +10,7 @@ import {
   Drawer,
   Modal,
   Select,
+  Form,
   message,
   Space,
   Dropdown,
@@ -23,9 +24,22 @@ import {
   Trash2,
   Mail,
   CheckCircle,
+  Plus,
+  Pencil,
+  CreditCard,
 } from "lucide-react";
 import styles from "./Backoffice.module.css";
-import { listAdminBusinesses, setBusinessStatus, type AdminBusiness } from "@/api/backoffice";
+import {
+  listAdminBusinesses,
+  setBusinessStatus,
+  getAdminBusiness,
+  createAdminBusiness,
+  updateAdminBusiness,
+  assignAdminBusinessPlan,
+  listAdminPlans,
+  type AdminBusiness,
+  type AdminPlanItem,
+} from "@/api/backoffice";
 
 type Business = AdminBusiness & { stores: number };
 
@@ -33,11 +47,13 @@ const statusColors: Record<string, string> = {
   active: "success",
   suspended: "error",
   trial: "processing",
+  expired: "default",
 };
 const statusLabels: Record<string, string> = {
   active: "Actif",
   suspended: "Suspendu",
   trial: "Essai",
+  expired: "Expiré",
 };
 const planColors: Record<string, string> = { Starter: "default", Pro: "blue", Business: "gold" };
 
@@ -54,6 +70,25 @@ export default function BackofficeBusinesses() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [detail, setDetail] = useState<Business | null>(null);
   const [modal, contextHolder] = Modal.useModal();
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [assignPlanModalOpen, setAssignPlanModalOpen] = useState(false);
+  const [plans, setPlans] = useState<AdminPlanItem[]>([]);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [assignPlanLoading, setAssignPlanLoading] = useState(false);
+  const [createForm] = Form.useForm();
+  const [editForm] = Form.useForm();
+  const [assignPlanForm] = Form.useForm();
+
+  const loadPlans = useCallback(async () => {
+    try {
+      const list = await listAdminPlans();
+      setPlans(list);
+    } catch {
+      setPlans([]);
+    }
+  }, []);
 
   const loadBusinesses = useCallback(async () => {
     const effectivePage = resetPageRef.current ? 0 : page;
@@ -135,6 +170,136 @@ export default function BackofficeBusinesses() {
     window.location.href = `mailto:${biz.email}`;
   }, []);
 
+  const refreshDetail = useCallback(async (id: string) => {
+    try {
+      const b = await getAdminBusiness(id);
+      setDetail({
+        ...b,
+        stores: b.storesCount,
+        createdAt: b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : "",
+      });
+      setBusinesses((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, ...b, stores: b.storesCount } : x))
+      );
+    } catch {
+      // keep current detail
+    }
+  }, []);
+
+  const detailIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail?.id) {
+      detailIdRef.current = null;
+      return;
+    }
+    if (detailIdRef.current === detail.id) return;
+    detailIdRef.current = detail.id;
+    refreshDetail(detail.id);
+  }, [detail?.id, refreshDetail]);
+
+  const openCreateModal = useCallback(() => {
+    loadPlans();
+    createForm.resetFields();
+    setCreateModalOpen(true);
+  }, [createForm, loadPlans]);
+
+  const handleCreate = useCallback(async () => {
+    try {
+      const values = await createForm.validateFields();
+      setCreateLoading(true);
+      const created = await createAdminBusiness({
+        name: values.name,
+        email: values.email,
+        phone: values.phone || undefined,
+        address: values.address || undefined,
+        planSlug: values.planSlug && values.planSlug !== "trial" ? values.planSlug : undefined,
+      });
+      message.success("Entreprise créée");
+      setCreateModalOpen(false);
+      createForm.resetFields();
+      setDetail({
+        ...created,
+        stores: created.storesCount,
+        createdAt: created.createdAt ? new Date(created.createdAt).toISOString().slice(0, 10) : "",
+      });
+      loadBusinesses();
+    } catch (e) {
+      if (e && typeof e === "object" && "errorFields" in e) return;
+      message.error(e instanceof Error ? e.message : "Erreur lors de la création");
+    } finally {
+      setCreateLoading(false);
+    }
+  }, [createForm, loadBusinesses]);
+
+  const openEditModal = useCallback(() => {
+    if (!detail) return;
+    editForm.setFieldsValue({
+      name: detail.name,
+      email: detail.email,
+      phone: detail.phone || "",
+      address: detail.address || "",
+    });
+    setEditModalOpen(true);
+  }, [detail, editForm]);
+
+  const handleEdit = useCallback(async () => {
+    if (!detail) return;
+    try {
+      const values = await editForm.validateFields();
+      setEditLoading(true);
+      const updated = await updateAdminBusiness(detail.id, {
+        name: values.name,
+        email: values.email,
+        phone: values.phone || undefined,
+        address: values.address || undefined,
+      });
+      message.success("Entreprise mise à jour");
+      setEditModalOpen(false);
+      setDetail({
+        ...updated,
+        stores: updated.storesCount,
+        createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString().slice(0, 10) : "",
+      });
+      setBusinesses((prev) =>
+        prev.map((b) =>
+          b.id === detail.id ? { ...b, ...updated, stores: updated.storesCount } : b
+        )
+      );
+    } catch (e) {
+      if (e && typeof e === "object" && "errorFields" in e) return;
+      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+    } finally {
+      setEditLoading(false);
+    }
+  }, [detail, editForm]);
+
+  const openAssignPlanModal = useCallback(() => {
+    if (!detail) return;
+    loadPlans();
+    assignPlanForm.setFieldsValue({ planSlug: undefined, billingCycle: "monthly" });
+    setAssignPlanModalOpen(true);
+  }, [detail, assignPlanForm, loadPlans]);
+
+  const handleAssignPlan = useCallback(async () => {
+    if (!detail) return;
+    try {
+      const values = await assignPlanForm.validateFields();
+      setAssignPlanLoading(true);
+      await assignAdminBusinessPlan(detail.id, {
+        planSlug: values.planSlug,
+        billingCycle: values.billingCycle || "monthly",
+      });
+      message.success("Plan mis à jour");
+      setAssignPlanModalOpen(false);
+      refreshDetail(detail.id);
+    } catch (e) {
+      if (e && typeof e === "object" && "errorFields" in e) return;
+      message.error(e instanceof Error ? e.message : "Erreur lors du changement de plan");
+    } finally {
+      setAssignPlanLoading(false);
+    }
+  }, [detail, assignPlanForm, refreshDetail]);
+
   if (loading) {
     return (
       <div className="pageWrapper">
@@ -189,7 +354,11 @@ export default function BackofficeBusinesses() {
             ]}
           />
         </div>
-        <div className={styles.toolbarRight} />
+        <div className={styles.toolbarRight}>
+          <Button type="primary" icon={<Plus size={16} />} onClick={openCreateModal}>
+            Nouvelle entreprise
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -380,6 +549,12 @@ export default function BackofficeBusinesses() {
               </div>
             </div>
             <Space style={{ width: "100%", marginTop: 16 }} direction="vertical">
+              <Button block icon={<Pencil size={16} />} onClick={openEditModal}>
+                Modifier l'entreprise
+              </Button>
+              <Button block icon={<CreditCard size={16} />} onClick={openAssignPlanModal}>
+                Changer le plan
+              </Button>
               <Button block icon={<Mail size={16} />} onClick={() => handleContact(detail)}>
                 Contacter le propriétaire
               </Button>
@@ -397,6 +572,141 @@ export default function BackofficeBusinesses() {
           </>
         )}
       </Drawer>
+
+      {/* Create business modal */}
+      <Modal
+        title="Nouvelle entreprise"
+        open={createModalOpen}
+        onCancel={() => setCreateModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
+          <Form.Item
+            name="name"
+            label="Nom de l'entreprise"
+            rules={[{ required: true, message: "Requis" }]}
+          >
+            <Input placeholder="Nom du commerce" />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: "Requis" },
+              { type: "email", message: "Email invalide" },
+            ]}
+          >
+            <Input type="email" placeholder="contact@exemple.com" />
+          </Form.Item>
+          <Form.Item name="phone" label="Téléphone">
+            <Input placeholder="33 123 45 67 89" />
+          </Form.Item>
+          <Form.Item name="address" label="Adresse">
+            <Input.TextArea rows={2} placeholder="Adresse" />
+          </Form.Item>
+          <Form.Item name="planSlug" label="Plan" initialValue="trial">
+            <Select
+              placeholder="Choisir un plan"
+              options={[
+                { value: "trial", label: "Essai gratuit (30 jours)" },
+                ...plans.map((p) => ({
+                  value: p.slug,
+                  label: `${p.name} (${p.priceMonthly} F/mois)`,
+                })),
+              ]}
+            />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
+            <Space>
+              <Button onClick={() => setCreateModalOpen(false)}>Annuler</Button>
+              <Button type="primary" htmlType="submit" loading={createLoading}>
+                Créer
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit business modal */}
+      <Modal
+        title="Modifier l'entreprise"
+        open={editModalOpen}
+        onCancel={() => setEditModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleEdit}>
+          <Form.Item name="name" label="Nom" rules={[{ required: true, message: "Requis" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: "Requis" },
+              { type: "email", message: "Email invalide" },
+            ]}
+          >
+            <Input type="email" />
+          </Form.Item>
+          <Form.Item name="phone" label="Téléphone">
+            <Input />
+          </Form.Item>
+          <Form.Item name="address" label="Adresse">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
+            <Space>
+              <Button onClick={() => setEditModalOpen(false)}>Annuler</Button>
+              <Button type="primary" htmlType="submit" loading={editLoading}>
+                Enregistrer
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Assign plan modal */}
+      <Modal
+        title="Changer le plan"
+        open={assignPlanModalOpen}
+        onCancel={() => setAssignPlanModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={assignPlanForm} layout="vertical" onFinish={handleAssignPlan}>
+          <Form.Item
+            name="planSlug"
+            label="Plan"
+            rules={[{ required: true, message: "Choisir un plan" }]}
+          >
+            <Select
+              placeholder="Choisir un plan"
+              options={plans.map((p) => ({
+                value: p.slug,
+                label: `${p.name} — ${p.priceMonthly} F/mois, ${p.priceYearly} F/an`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="billingCycle" label="Facturation" initialValue="monthly">
+            <Select
+              options={[
+                { value: "monthly", label: "Mensuelle" },
+                { value: "yearly", label: "Annuelle" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
+            <Space>
+              <Button onClick={() => setAssignPlanModalOpen(false)}>Annuler</Button>
+              <Button type="primary" htmlType="submit" loading={assignPlanLoading}>
+                Appliquer
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
