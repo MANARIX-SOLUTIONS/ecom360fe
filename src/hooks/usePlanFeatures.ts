@@ -35,7 +35,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
   return {
     expenses: p.featureExpenses,
     reports: p.featureReports,
-    suppliers: p.maxSuppliers > 0,
+    suppliers: p.featureSupplierTracking,
     multiPayment: p.featureMultiPayment,
     clientCredits: p.featureClientCredits,
     settingsUsers: p.featureRoleManagement,
