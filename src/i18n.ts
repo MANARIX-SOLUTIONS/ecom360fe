@@ -93,6 +93,7 @@ export const t = {
     title: "Dépenses",
     list: "Liste des dépenses",
     addExpense: "Ajouter une dépense",
+    editExpense: "Modifier la dépense",
     category: "Catégorie",
     amount: "Montant",
     description: "Description",

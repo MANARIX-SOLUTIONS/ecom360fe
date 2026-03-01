@@ -18,6 +18,7 @@ import {
   Modal,
   Space,
 } from "antd";
+import dayjs from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
@@ -31,6 +32,7 @@ import {
   updateExpenseCategory,
   deleteExpenseCategory,
   createExpense,
+  updateExpense,
 } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 
@@ -52,8 +54,12 @@ export default function Expenses() {
   const { activeStore } = useStore();
   const [form] = Form.useForm();
   const [categoryForm] = Form.useForm();
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState<number>(now.getMonth() + 1);
+  const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseResponse | null>(null);
   const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategoryResponse | null>(null);
@@ -69,7 +75,14 @@ export default function Expenses() {
     setLoading(true);
     try {
       const [expRes, catRes] = await Promise.all([
-        listExpenses({ page: 0, size: 200, storeId: activeStore?.id }),
+        listExpenses({
+          page: 0,
+          size: 500,
+          storeId: activeStore?.id,
+          month: filterMonth,
+          year: filterYear,
+          categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
+        }),
         listExpenseCategoriesWithDefaults(),
       ]);
       setExpenses(expRes.content);
@@ -80,7 +93,7 @@ export default function Expenses() {
     } finally {
       setLoading(false);
     }
-  }, [activeStore?.id]);
+  }, [activeStore?.id, filterMonth, filterYear, categoryFilter]);
 
   useEffect(() => {
     fetchData();
@@ -94,15 +107,7 @@ export default function Expenses() {
     categories.map((c) => [c.id, c.color || "default"])
   );
 
-  const monthTotal = expenses
-    .filter((e) => {
-      const d = e.expenseDate;
-      const now = new Date();
-      return (
-        d && d.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`)
-      );
-    })
-    .reduce((s, e) => s + (e.amount ?? 0), 0);
+  const monthTotal = expenses.reduce((s, e) => s + (e.amount ?? 0), 0);
 
   const topCategory = expenses.length
     ? [...expenses].reduce(
@@ -203,22 +208,46 @@ export default function Expenses() {
     }
   };
 
+  const openAddExpense = () => {
+    setEditingExpense(null);
+    form.resetFields();
+    setDrawerOpen(true);
+  };
+
+  const openEditExpense = (exp: ExpenseResponse) => {
+    setEditingExpense(exp);
+    form.setFieldsValue({
+      categoryId: exp.categoryId,
+      amount: exp.amount,
+      description: exp.description ?? "",
+      expenseDate: exp.expenseDate ? dayjs(exp.expenseDate) : undefined,
+    });
+    setDrawerOpen(true);
+  };
+
   const onFinish = async (values: Record<string, unknown>) => {
     const categoryId = values.categoryId as string;
     if (!categoryId) return;
+    const payload = {
+      storeId: activeStore?.id ?? null,
+      categoryId,
+      amount: Number(values.amount) || 0,
+      description: (values.description as string) || undefined,
+      expenseDate: values.expenseDate
+        ? (values.expenseDate as { format: (f: string) => string }).format("YYYY-MM-DD")
+        : new Date().toISOString().slice(0, 10),
+    };
     try {
-      await createExpense({
-        storeId: activeStore?.id ?? null,
-        categoryId,
-        amount: Number(values.amount) || 0,
-        description: (values.description as string) || undefined,
-        expenseDate: values.expenseDate
-          ? (values.expenseDate as { format: (f: string) => string }).format("YYYY-MM-DD")
-          : new Date().toISOString().slice(0, 10),
-      });
-      message.success("Dépense ajoutée");
+      if (editingExpense) {
+        await updateExpense(editingExpense.id, payload);
+        message.success("Dépense mise à jour");
+      } else {
+        await createExpense(payload);
+        message.success("Dépense ajoutée");
+      }
       form.resetFields();
       setDrawerOpen(false);
+      setEditingExpense(null);
       fetchData();
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur");
@@ -249,6 +278,24 @@ export default function Expenses() {
           {t.expenses.title}
         </Typography.Title>
         <div className={styles.toolbar}>
+          <Select
+            value={filterMonth}
+            onChange={setFilterMonth}
+            options={Array.from({ length: 12 }, (_, i) => ({
+              value: i + 1,
+              label: new Date(2000, i, 1).toLocaleString("fr-FR", { month: "long" }),
+            }))}
+            style={{ width: 140 }}
+          />
+          <Select
+            value={filterYear}
+            onChange={setFilterYear}
+            options={Array.from({ length: 5 }, (_, i) => {
+              const y = new Date().getFullYear() - 2 + i;
+              return { value: y, label: String(y) };
+            })}
+            style={{ width: 100 }}
+          />
           <Button
             icon={<Tags size={18} />}
             onClick={() => setCategoriesDrawerOpen(true)}
@@ -263,9 +310,9 @@ export default function Expenses() {
               { value: "all", label: t.expenses.allCategories },
               ...categories.map((c) => ({ value: c.id, label: c.name })),
             ]}
-            style={{ width: 200 }}
+            style={{ width: 180 }}
           />
-          <Button type="primary" icon={<Plus size={18} />} onClick={() => setDrawerOpen(true)}>
+          <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
             {t.expenses.addExpense}
           </Button>
         </div>
@@ -308,7 +355,7 @@ export default function Expenses() {
               type="primary"
               size="large"
               icon={<Plus size={16} />}
-              onClick={() => setDrawerOpen(true)}
+              onClick={openAddExpense}
               style={{ marginTop: 20, height: 48 }}
             >
               Ajouter une dépense
@@ -346,18 +393,33 @@ export default function Expenses() {
                   dataIndex: "description",
                   ellipsis: true,
                 },
+                {
+                  title: "",
+                  key: "actions",
+                  width: 80,
+                  render: (_: unknown, r: ExpenseResponse) => (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Pencil size={14} />}
+                      onClick={() => openEditExpense(r)}
+                      aria-label={t.common.edit}
+                    />
+                  ),
+                },
               ]}
             />
           </div>
         )}
       </Card>
 
-      {/* Add expense drawer */}
+      {/* Add / Edit expense drawer */}
       <Drawer
-        title={t.expenses.addExpense}
+        title={editingExpense ? t.expenses.editExpense : t.expenses.addExpense}
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
+          setEditingExpense(null);
           form.resetFields();
         }}
         width={400}

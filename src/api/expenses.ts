@@ -84,12 +84,16 @@ export async function listExpenseCategoriesWithDefaults(): Promise<ExpenseCatego
 export async function listExpenses(params?: {
   categoryId?: string;
   storeId?: string;
+  month?: number;
+  year?: number;
   page?: number;
   size?: number;
 }): Promise<PageResponse<ExpenseResponse>> {
   const search = new URLSearchParams();
   if (params?.categoryId) search.set("categoryId", params.categoryId);
   if (params?.storeId) search.set("storeId", params.storeId);
+  if (params?.month != null) search.set("month", String(params.month));
+  if (params?.year != null) search.set("year", String(params.year));
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.size != null) search.set("size", String(params.size));
   const qs = search.toString();
