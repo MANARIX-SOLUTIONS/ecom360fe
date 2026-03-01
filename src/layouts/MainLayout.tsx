@@ -8,6 +8,7 @@ import {
   FileText,
   Users,
   Truck,
+  Bike,
   Receipt,
   ListOrdered,
   TrendingUp,
@@ -74,6 +75,12 @@ const navConfig = [
     permission: "suppliers" as const,
     icon: <Truck size={20} />,
     label: "Fournisseurs",
+  },
+  {
+    key: "/livreurs",
+    permission: "livreurs" as const,
+    icon: <Bike size={20} />,
+    label: "Livreurs",
   },
   {
     key: "/expenses",

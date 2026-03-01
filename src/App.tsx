@@ -30,6 +30,7 @@ const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const SupplierDetail = lazy(() => import("./pages/SupplierDetail"));
 const Expenses = lazy(() => import("./pages/Expenses"));
+const Livreurs = lazy(() => import("./pages/Livreurs"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SettingsProfile = lazy(() => import("./pages/SettingsProfile"));
@@ -215,6 +216,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="expenses">
                   <Expenses />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="livreurs"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="livreurs">
+                  <Livreurs />
                 </RequirePermission>
               </Suspense>
             }

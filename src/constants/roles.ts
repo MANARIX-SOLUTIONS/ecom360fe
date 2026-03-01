@@ -20,6 +20,7 @@ export type Permission =
   | "products"
   | "clients"
   | "suppliers"
+  | "livreurs"
   | "expenses"
   | "reports"
   | "settings"
@@ -38,6 +39,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "products",
     "clients",
     "suppliers",
+    "livreurs",
     "expenses",
     "reports",
     "settings",
@@ -54,6 +56,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "products",
     "clients",
     "suppliers",
+    "livreurs",
     "expenses",
     "reports",
     "settings",
@@ -70,6 +73,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "products",
     "clients",
     "suppliers",
+    "livreurs",
     "expenses",
     "reports",
     "settings",

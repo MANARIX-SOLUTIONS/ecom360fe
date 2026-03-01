@@ -39,6 +39,10 @@ export type BackendPermission =
   | "EXPENSES_READ"
   | "EXPENSES_UPDATE"
   | "EXPENSES_DELETE"
+  | "DELIVERY_COURIERS_CREATE"
+  | "DELIVERY_COURIERS_READ"
+  | "DELIVERY_COURIERS_UPDATE"
+  | "DELIVERY_COURIERS_DELETE"
   | "STORES_CREATE"
   | "STORES_READ"
   | "STORES_UPDATE"
@@ -64,6 +68,7 @@ export type NavPermission =
   | "products"
   | "clients"
   | "suppliers"
+  | "livreurs"
   | "expenses"
   | "reports"
   | "settings"
@@ -82,6 +87,7 @@ const NAV_TO_BACKEND: Record<NavPermission, BackendPermission[]> = {
   products: ["PRODUCTS_READ"],
   clients: ["CLIENTS_READ"],
   suppliers: ["SUPPLIERS_READ"],
+  livreurs: ["DELIVERY_COURIERS_READ"],
   expenses: ["EXPENSES_READ"],
   reports: ["SALES_READ", "PRODUCTS_READ"],
   settings: ["STORES_READ", "SUBSCRIPTION_READ", "BUSINESS_USERS_READ"],

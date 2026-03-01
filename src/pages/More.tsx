@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography } from "antd";
-import { Users, Truck, Receipt, Settings, Shield, ChevronRight } from "lucide-react";
+import { Users, Truck, Bike, Receipt, Settings, Shield, ChevronRight } from "lucide-react";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
@@ -33,6 +33,14 @@ const linkConfig: MenuLink[] = [
     icon: Truck,
     label: t.suppliers.title,
     desc: "Achats et soldes",
+    group: "commerce",
+  },
+  {
+    path: "/livreurs",
+    permission: "livreurs",
+    icon: Bike,
+    label: t.livreurs.title,
+    desc: "Gestion des livreurs (livraison)",
     group: "commerce",
   },
   {

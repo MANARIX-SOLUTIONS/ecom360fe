@@ -15,6 +15,7 @@ const TITLE_MAP: Record<string, string> = {
   "/products": "Produits",
   "/clients": "Clients",
   "/suppliers": "Fournisseurs",
+  "/livreurs": "Livreurs",
   "/expenses": "Dépenses",
   "/reports": "Rapports",
   "/settings": "Paramètres",

@@ -17,6 +17,7 @@ export * from "./stock";
 export * from "./clients";
 export * from "./sales";
 export * from "./expenses";
+export * from "./livreurs";
 export * from "./suppliers";
 export * from "./business";
 export * from "./users";
