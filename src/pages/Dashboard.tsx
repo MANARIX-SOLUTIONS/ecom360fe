@@ -93,7 +93,9 @@ export default function Dashboard() {
     }
     setLoading(true);
     try {
-      const res = await getDashboard();
+      const res = await getDashboard({
+        storeId: activeStore?.id ?? undefined,
+      });
       setData(res);
       setApiError(null);
     } catch (e) {
@@ -102,7 +104,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeStore?.id]);
 
   useEffect(() => {
     loadData();

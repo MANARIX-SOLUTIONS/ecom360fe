@@ -41,10 +41,12 @@ export type DashboardResponse = {
 export async function getDashboard(params?: {
   periodStart?: string; // YYYY-MM-DD
   periodEnd?: string;
+  storeId?: string;
 }): Promise<DashboardResponse> {
   const search = new URLSearchParams();
   if (params?.periodStart) search.set("periodStart", params.periodStart);
   if (params?.periodEnd) search.set("periodEnd", params.periodEnd);
+  if (params?.storeId) search.set("storeId", params.storeId);
   const qs = search.toString();
   return api.get<DashboardResponse>(`/dashboard${qs ? `?${qs}` : ""}`);
 }

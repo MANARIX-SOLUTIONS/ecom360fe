@@ -73,6 +73,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setActiveStoreId = useCallback((id: string | null) => {
     setActiveIdState(id);
     saveActiveId(id);
+    window.dispatchEvent(new CustomEvent("ecom360:store-changed", { detail: { storeId: id } }));
   }, []);
 
   const addStore = useCallback(

@@ -62,7 +62,7 @@ function escapeCsvCell(v: string | number): string {
 
 export default function Sales() {
   const navigate = useNavigate();
-  const { stores } = useStore();
+  const { stores, activeStore } = useStore();
   const { can } = usePermissions();
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -71,7 +71,16 @@ export default function Sales() {
   const [loading, setLoading] = useState(true);
   const [voidingId, setVoidingId] = useState<string | null>(null);
 
-  const [storeFilter, setStoreFilter] = useState<string | undefined>(undefined);
+  // Filtre boutique synchronisé avec la boutique active (une seule source de vérité)
+  const [storeFilter, setStoreFilter] = useState<string | undefined>(
+    () => activeStore?.id ?? undefined
+  );
+  useEffect(() => {
+    const next = activeStore?.id ?? undefined;
+    setStoreFilter((prev) => (prev !== next ? next : prev));
+    setPage(0);
+  }, [activeStore?.id]);
+
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
