@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -12,6 +12,7 @@ import {
   Skeleton,
   Table,
   Tag,
+  Modal,
 } from "antd";
 import {
   BarChart,
@@ -26,10 +27,11 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { FileDown, Wallet, Receipt, PiggyBank, ShoppingCart } from "lucide-react";
+import { FileDown, Wallet, Receipt, PiggyBank, ShoppingCart, Ban } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Reports.module.css";
-import { getDashboard } from "@/api";
+import { getDashboard, voidSale } from "@/api";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type TabKey = "today" | "week" | "month";
 
@@ -118,21 +120,56 @@ function formatTime(iso: string) {
 
 export default function Reports() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (!localStorage.getItem("ecom360_access_token")) {
       setLoading(false);
       return;
     }
     const { start, end } = getPeriodRange(activeTab);
+    setLoading(true);
     getDashboard({ periodStart: start, periodEnd: end })
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [activeTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleVoidSale = useCallback(
+    (saleId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!can("SALES_DELETE")) return;
+      Modal.confirm({
+        title: "Annuler la vente",
+        content:
+          "La vente sera annulée : le stock sera recrédité et le montant crédit client (si applicable) sera déduit. Cette action est irréversible.",
+        okText: "Annuler la vente",
+        okType: "danger",
+        cancelText: t.common.cancel,
+        onOk: async () => {
+          setVoidingId(saleId);
+          try {
+            await voidSale(saleId);
+            message.success("Vente annulée");
+            loadData();
+          } catch (err) {
+            message.error(err instanceof Error ? err.message : "Impossible d'annuler la vente");
+          } finally {
+            setVoidingId(null);
+          }
+        },
+      });
+    },
+    [can, loadData]
+  );
 
   const chartData = useMemo((): ChartPoint[] => {
     if (!data?.recentSales.length) return [];
@@ -348,6 +385,7 @@ export default function Reports() {
                   receiptNumber: s.receiptNumber,
                   total: s.total,
                   paymentMethod: s.paymentMethod,
+                  status: s.status ?? "completed",
                   createdAt: s.createdAt,
                 }))}
                 pagination={false}
@@ -397,6 +435,38 @@ export default function Reports() {
                       </Tag>
                     ),
                   },
+                  {
+                    title: "Statut",
+                    dataIndex: "status",
+                    width: 100,
+                    render: (status: string) => (
+                      <Tag color={status === "voided" ? "default" : "green"}>
+                        {status === "voided" ? "Annulée" : "Terminée"}
+                      </Tag>
+                    ),
+                  },
+                  ...(can("SALES_DELETE")
+                    ? [
+                        {
+                          title: "",
+                          key: "actions",
+                          width: 120,
+                          render: (_: unknown, r: { saleId: string; status: string }) =>
+                            r.status === "completed" ? (
+                              <Button
+                                type="text"
+                                size="small"
+                                danger
+                                icon={<Ban size={14} />}
+                                loading={voidingId === r.saleId}
+                                onClick={(e) => handleVoidSale(r.saleId, e)}
+                              >
+                                Annuler
+                              </Button>
+                            ) : null,
+                        },
+                      ]
+                    : []),
                 ]}
               />
             </div>

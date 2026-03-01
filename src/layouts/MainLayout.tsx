@@ -9,6 +9,7 @@ import {
   Users,
   Truck,
   Receipt,
+  ListOrdered,
   TrendingUp,
   Settings,
   MoreHorizontal,
@@ -43,6 +44,12 @@ const navConfig = [
     permission: "pos" as const,
     icon: <ShoppingCart size={20} />,
     label: "POS",
+  },
+  {
+    key: "/sales",
+    permission: "pos" as const,
+    icon: <ListOrdered size={20} />,
+    label: "Ventes",
   },
   {
     key: "/products",

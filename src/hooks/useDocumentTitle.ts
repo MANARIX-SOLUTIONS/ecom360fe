@@ -10,6 +10,7 @@ const TITLE_MAP: Record<string, string> = {
   "/reset-password": "Réinitialiser le mot de passe",
   "/dashboard": "Tableau de bord",
   "/pos": "Caisse",
+  "/sales": "Ventes",
   "/receipt": "Reçu",
   "/products": "Produits",
   "/clients": "Clients",

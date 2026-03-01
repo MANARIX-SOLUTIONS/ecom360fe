@@ -23,6 +23,7 @@ const BackofficeSystem = lazy(() => import("./pages/BackofficeSystem"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
 const POS = lazy(() => import("./pages/POS"));
+const Sales = lazy(() => import("./pages/Sales"));
 const Receipt = lazy(() => import("./pages/Receipt"));
 const Clients = lazy(() => import("./pages/Clients"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
@@ -124,6 +125,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="pos">
                   <POS />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="sales"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="pos">
+                  <Sales />
                 </RequirePermission>
               </Suspense>
             }
