@@ -27,6 +27,7 @@ export type DashboardResponse = {
     receiptNumber: string;
     total: number;
     paymentMethod: string;
+    status: string;
     createdAt: string;
   }[];
   topProducts: {
