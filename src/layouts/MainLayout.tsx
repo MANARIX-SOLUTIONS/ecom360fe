@@ -13,6 +13,7 @@ import {
   ListOrdered,
   TrendingUp,
   Settings,
+  Store,
   MoreHorizontal,
   Shield,
   Bell,
@@ -39,6 +40,12 @@ const navConfig = [
     permission: "dashboard" as const,
     icon: <LayoutDashboard size={20} />,
     label: "Dashboard",
+  },
+  {
+    key: "/vue-globale",
+    permission: "globalView" as const,
+    icon: <Store size={20} />,
+    label: "Vue globale",
   },
   {
     key: "/pos",

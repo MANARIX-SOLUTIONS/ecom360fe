@@ -25,10 +25,12 @@ import {
   Plus,
   FileText,
   Users,
+  Store,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/hooks/useStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
@@ -77,7 +79,8 @@ function getGreeting() {
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
-  const { canExpenses, canStockAlerts } = usePlanFeatures();
+  const { can } = useAuthRole();
+  const { canExpenses, canStockAlerts, canAccess: canAccessPlan } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -371,6 +374,18 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Clients</span>
         </button>
+        {(data?.totalStores ?? 0) > 1 && can("globalView") && canAccessPlan("globalView", true) && (
+          <button
+            type="button"
+            className={styles.quickCard}
+            onClick={() => navigate("/vue-globale")}
+          >
+            <span className={styles.quickCardIcon}>
+              <Store size={22} />
+            </span>
+            <span className={styles.quickCardLabel}>Vue globale</span>
+          </button>
+        )}
       </section>
 
       <section className={styles.statsSection} aria-label="Indicateurs du jour">

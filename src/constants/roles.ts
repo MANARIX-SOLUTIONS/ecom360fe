@@ -16,6 +16,7 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
 export type Permission =
   | "backoffice"
   | "dashboard"
+  | "globalView"
   | "pos"
   | "products"
   | "clients"
@@ -35,6 +36,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
   [ROLES.SUPER_ADMIN]: [
     "backoffice",
     "dashboard",
+    "globalView",
     "pos",
     "products",
     "clients",
@@ -52,6 +54,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
   ],
   [ROLES.PROPRIETAIRE]: [
     "dashboard",
+    "globalView",
     "pos",
     "products",
     "clients",
@@ -69,6 +72,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
   ],
   [ROLES.GESTIONNAIRE]: [
     "dashboard",
+    "globalView",
     "pos",
     "products",
     "clients",
@@ -81,7 +85,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings:security",
     "settings:notifications",
   ],
-  [ROLES.CAISSIER]: ["dashboard", "pos", "products", "clients"],
+  [ROLES.CAISSIER]: ["dashboard", "pos", "products", "clients"], // pas globalView
 };
 
 export function getPermissions(role: Role): Permission[] {

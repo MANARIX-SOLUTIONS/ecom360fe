@@ -1,0 +1,352 @@
+/* Vue globale — design percutant */
+
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a1628 0%, #0d2137 24%, var(--color-bg-base) 32%);
+  padding-bottom: 48px;
+}
+
+.hero {
+  padding: 32px 0 40px;
+  text-align: center;
+}
+
+.heroBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.heroTitle {
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 8px;
+}
+
+.heroSubtitle {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+.periodTabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.periodTab {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.periodTab:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.periodTabActive {
+  background: var(--color-bg-elevated);
+  color: #0a1628;
+  border-color: #fff;
+}
+
+.periodSummary {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.kpiCard {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.kpiCardHighlight {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 24px rgba(27, 77, 122, 0.12);
+}
+
+.kpiValueLarge {
+  font-size: 26px;
+}
+
+@media (max-width: 480px) {
+  .kpiValueLarge {
+    font-size: 22px;
+  }
+}
+
+.kpiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.kpiValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.kpiValuePrimary {
+  color: var(--color-primary);
+}
+
+.kpiValueSuccess {
+  color: var(--color-success);
+}
+
+.kpiValueWarning {
+  color: var(--color-warning);
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionHead .sectionTitle {
+  margin-bottom: 0;
+}
+
+.sectionLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.sectionLink:hover {
+  text-decoration: underline;
+}
+
+.sectionTitleIcon {
+  color: var(--color-primary);
+}
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--color-border);
+}
+
+.storeBars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.storeBarRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 36px;
+}
+
+.storeBarName {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.storeBarBg {
+  grid-column: 1 / -1;
+  height: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: -8px;
+}
+
+.storeBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-primary), #2c5282);
+  transition: width 0.5s ease;
+}
+
+.storeBarStats {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.storeBarAmount {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.topProductsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.topProductsTable th,
+.topProductsTable td {
+  padding: 12px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.topProductsTable th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.topProductsTable tr:last-child td {
+  border-bottom: none;
+}
+
+.topProductsTable .amount {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.lowStockList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lowStockItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.lowStockItem:last-child {
+  border-bottom: none;
+}
+
+.lowStockItem a {
+  color: var(--color-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.lowStockItem a:hover {
+  text-decoration: underline;
+}
+
+.lowStockBadge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--color-text-muted);
+}
+
+.emptyStateIcon {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.dataTable {
+  margin: -8px -8px -8px 0;
+}
+
+.dataTable .ant-table-cell {
+  padding: 10px 8px;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+  .storeBarRow {
+    grid-template-columns: 1fr;
+  }
+  .storeBarStats {
+    text-align: left;
+  }
+}

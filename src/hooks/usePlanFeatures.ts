@@ -12,6 +12,7 @@ type FeatureFlags = {
   reports: boolean;
   suppliers: boolean;
   livreurs: boolean;
+  globalView: boolean;
   multiPayment: boolean;
   clientCredits: boolean;
   settingsUsers: boolean;
@@ -25,6 +26,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   reports: true,
   suppliers: true,
   livreurs: false,
+  globalView: false,
   multiPayment: true,
   clientCredits: true,
   settingsUsers: true,
@@ -39,6 +41,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
     reports: p.featureReports,
     suppliers: p.featureSupplierTracking,
     livreurs: p.featureDeliveryCouriers ?? false,
+    globalView: p.featureGlobalView ?? false,
     multiPayment: p.featureMultiPayment,
     clientCredits: p.featureClientCredits,
     settingsUsers: p.featureRoleManagement,
@@ -89,6 +92,7 @@ export function usePlanFeatures() {
     canReports: features.reports,
     canSuppliers: features.suppliers,
     canLivreurs: features.livreurs,
+    canGlobalView: features.globalView,
     canMultiPayment: features.multiPayment,
     canClientCredits: features.clientCredits,
     canSettingsUsers: features.settingsUsers,
@@ -102,6 +106,7 @@ export function usePlanFeatures() {
       if (permission === "reports") return features.reports;
       if (permission === "suppliers") return features.suppliers;
       if (permission === "livreurs") return features.livreurs;
+      if (permission === "globalView") return features.globalView;
       if (permission === "settings:users") return features.settingsUsers;
       return true;
     },

@@ -15,6 +15,7 @@ import BackofficeLayout from "./layouts/BackofficeLayout";
 import NotFound from "./pages/NotFound";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const VueGlobale = lazy(() => import("./pages/VueGlobale"));
 const Backoffice = lazy(() => import("./pages/Backoffice"));
 const BackofficeBusinesses = lazy(() => import("./pages/BackofficeBusinesses"));
 const BackofficeUsers = lazy(() => import("./pages/BackofficeUsers"));
@@ -116,6 +117,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="dashboard">
                   <Dashboard />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="vue-globale"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="globalView">
+                  <VueGlobale />
                 </RequirePermission>
               </Suspense>
             }

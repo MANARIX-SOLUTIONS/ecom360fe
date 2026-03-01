@@ -31,6 +31,7 @@ export type PlanResponse = {
   featureAccountManager: boolean;
   featureStockAlerts: boolean;
   featureDeliveryCouriers: boolean;
+  featureGlobalView: boolean;
   dataRetentionMonths: number;
 };
 
