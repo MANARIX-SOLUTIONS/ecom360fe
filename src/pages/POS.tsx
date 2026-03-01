@@ -19,11 +19,11 @@ import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import {
   getStockByStore,
-  listCategoriesWithDefaults,
   listProducts,
   listClients,
   createSale,
   getSubscriptionUsage,
+  listCategories,
 } from "@/api";
 
 type CartLine = {
@@ -149,7 +149,7 @@ export default function POS() {
       try {
         const [stockList, catsRes, productsRes, clientsRes] = await Promise.all([
           getStockByStore(activeStore.id),
-          listCategoriesWithDefaults(),
+          listCategories(),
           listProducts({ page: 0, size: 500 }),
           listClients({ page: 0, size: 200 }),
         ]);
