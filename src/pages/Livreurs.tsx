@@ -11,12 +11,22 @@ import {
   Form,
   message,
   Switch,
+  InputNumber,
+  Select,
+  Progress,
 } from "antd";
-import { Plus, Search, Bike, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Bike, Pencil, Trash2, PackageCheck } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
-import { listCouriers, createCourier, updateCourier, deleteCourier } from "@/api";
-import type { CourierResponse } from "@/api";
+import {
+  listCouriers,
+  createCourier,
+  updateCourier,
+  deleteCourier,
+  getCouriersStats,
+  createDelivery,
+} from "@/api";
+import type { CourierResponse, CourierStatsResponse } from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
 
 function getInitials(name: string) {
@@ -36,7 +46,10 @@ export default function Livreurs() {
   const [editOpen, setEditOpen] = useState<CourierResponse | null>(null);
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [deliveryForm] = Form.useForm();
   const [activeOnly, setActiveOnly] = useState(false);
+  const [statsMap, setStatsMap] = useState<Record<string, CourierStatsResponse>>({});
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const { can } = usePermissions();
 
   const fetchCouriers = useCallback(async () => {
@@ -46,11 +59,20 @@ export default function Livreurs() {
     }
     setLoading(true);
     try {
-      const res = await listCouriers(activeOnly);
-      setCouriers(res);
+      const [couriersRes, statsRes] = await Promise.all([
+        listCouriers(activeOnly),
+        getCouriersStats(),
+      ]);
+      setCouriers(couriersRes);
+      const map: Record<string, CourierStatsResponse> = {};
+      statsRes.forEach((s) => {
+        map[s.courierId] = s;
+      });
+      setStatsMap(map);
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur chargement");
       setCouriers([]);
+      setStatsMap({});
     } finally {
       setLoading(false);
     }
@@ -110,9 +132,20 @@ export default function Livreurs() {
             </Typography.Text>
           </span>
           {can("DELIVERY_COURIERS_CREATE") && (
-            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
-              {t.livreurs.addCourier}
-            </Button>
+            <>
+              <Button
+                icon={<PackageCheck size={18} />}
+                onClick={() => {
+                  deliveryForm.resetFields();
+                  setDeliveryModalOpen(true);
+                }}
+              >
+                {t.livreurs.recordDelivery}
+              </Button>
+              <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
+                {t.livreurs.addCourier}
+              </Button>
+            </>
           )}
         </div>
       </header>
@@ -183,6 +216,39 @@ export default function Livreurs() {
                   ),
                 },
                 {
+                  title: t.livreurs.parcelsDelivered,
+                  key: "parcels",
+                  width: 110,
+                  sorter: (a: CourierResponse, b: CourierResponse) =>
+                    (statsMap[b.id]?.totalParcelsDelivered ?? 0) -
+                    (statsMap[a.id]?.totalParcelsDelivered ?? 0),
+                  render: (_: unknown, r: CourierResponse) => (
+                    <span style={{ fontWeight: 500 }}>
+                      {statsMap[r.id]?.totalParcelsDelivered ?? 0}
+                    </span>
+                  ),
+                },
+                {
+                  title: t.livreurs.efficiency,
+                  key: "efficiency",
+                  width: 140,
+                  sorter: (a: CourierResponse, b: CourierResponse) =>
+                    (statsMap[a.id]?.successRatePercent ?? 100) -
+                    (statsMap[b.id]?.successRatePercent ?? 100),
+                  render: (_: unknown, r: CourierResponse) => {
+                    const rate = statsMap[r.id]?.successRatePercent ?? 100;
+                    const status = rate >= 90 ? "success" : rate >= 70 ? "normal" : "exception";
+                    return (
+                      <Progress
+                        percent={Math.round(rate)}
+                        size="small"
+                        status={status}
+                        format={(p) => `${p}%`}
+                      />
+                    );
+                  },
+                },
+                {
                   title: "",
                   width: 100,
                   render: (_, r: CourierResponse) => (
@@ -192,7 +258,8 @@ export default function Livreurs() {
                           type="text"
                           size="small"
                           icon={<Pencil size={14} />}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             editForm.setFieldsValue({
                               name: r.name,
                               phone: r.phone ?? "",
@@ -210,15 +277,16 @@ export default function Livreurs() {
                           danger
                           size="small"
                           icon={<Trash2 size={14} />}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (window.confirm(`${t.common.delete} "${r.name}" ?`)) {
                               deleteCourier(r.id)
                                 .then(() => {
                                   message.success("Livreur supprimé");
                                   fetchCouriers();
                                 })
-                                .catch((e) =>
-                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                .catch((err) =>
+                                  message.error(err instanceof Error ? err.message : "Erreur")
                                 );
                             }
                           }}
@@ -338,6 +406,73 @@ export default function Livreurs() {
           </Form.Item>
           <Form.Item name="isActive" label={t.livreurs.status} valuePropName="checked">
             <Switch checkedChildren={t.livreurs.active} unCheckedChildren={t.livreurs.inactive} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={t.livreurs.recordDelivery}
+        open={deliveryModalOpen}
+        onOk={() => {
+          deliveryForm.validateFields().then(async (values) => {
+            try {
+              await createDelivery({
+                courierId: values.courierId,
+                status: values.status,
+                parcelsCount: values.parcelsCount ?? 1,
+                notes: values.notes || undefined,
+              });
+              message.success(t.livreurs.deliveryRecorded);
+              setDeliveryModalOpen(false);
+              deliveryForm.resetFields();
+              fetchCouriers();
+            } catch (e) {
+              message.error(e instanceof Error ? e.message : "Erreur");
+            }
+          });
+        }}
+        onCancel={() => {
+          setDeliveryModalOpen(false);
+          deliveryForm.resetFields();
+        }}
+        okText={t.common.save}
+      >
+        <Form form={deliveryForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="courierId"
+            label={t.livreurs.name}
+            rules={[{ required: true, message: t.validation.requiredField }]}
+          >
+            <Select
+              placeholder="Choisir le livreur"
+              showSearch
+              optionFilterProp="label"
+              options={couriers.map((c) => ({ value: c.id, label: c.name }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="status"
+            label={t.livreurs.deliveryStatus}
+            rules={[{ required: true }]}
+            initialValue="delivered"
+          >
+            <Select
+              options={[
+                { value: "delivered", label: t.livreurs.delivered },
+                { value: "failed", label: t.livreurs.failed },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item
+            name="parcelsCount"
+            label={t.livreurs.parcelsCount}
+            initialValue={1}
+            rules={[{ required: true }, { type: "number", min: 1, message: "Min. 1" }]}
+          >
+            <InputNumber min={1} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="notes" label="Note">
+            <Input.TextArea rows={2} placeholder="Optionnel" />
           </Form.Item>
         </Form>
       </Modal>
