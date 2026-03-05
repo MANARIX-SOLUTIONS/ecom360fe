@@ -16,6 +16,7 @@ export type ProductResponse = {
   id: string;
   businessId: string;
   categoryId: string | null;
+  storeId: string;
   name: string;
   sku: string | null;
   barcode: string | null;
@@ -40,17 +41,20 @@ export type ProductRequest = {
   imageUrl?: string;
   categoryId?: string | null;
   isActive?: boolean;
+  storeId: string;
 };
 
 export async function listProducts(params?: {
   page?: number;
   size?: number;
   search?: string;
+  storeId?: string;
 }): Promise<PageResponse<ProductResponse>> {
   const search = new URLSearchParams();
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.size != null) search.set("size", String(params.size));
   if (params?.search) search.set("search", params.search);
+  if (params?.storeId) search.set("storeId", params.storeId);
   const qs = search.toString();
   return api.get<PageResponse<ProductResponse>>(`/products${qs ? `?${qs}` : ""}`);
 }

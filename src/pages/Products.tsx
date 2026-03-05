@@ -59,6 +59,7 @@ type Product = {
   stock: number;
   minStock: number;
   categoryId: string | null;
+  storeId: string;
 };
 
 function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
@@ -110,7 +111,12 @@ export default function Products() {
     setLoading(true);
     try {
       const [productsRes, categoriesRes, stockList] = await Promise.all([
-        listProducts({ page: 0, size: 200, search: search || undefined }),
+        listProducts({
+          page: 0,
+          size: 200,
+          search: search || undefined,
+          storeId: activeStore?.id,
+        }),
         fetchCategories(),
         activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
       ]);
@@ -128,6 +134,7 @@ export default function Products() {
           const cat = p.categoryId ? catById[p.categoryId] : null;
           return {
             id: p.id,
+            storeId: p.storeId,
             name: p.name,
             category: cat?.name || "-",
             categoryColor: cat?.color || "default",
@@ -247,6 +254,10 @@ export default function Products() {
   const onSave = () => {
     form.validateFields().then(async (values) => {
       try {
+        if (!activeStore?.id) {
+          message.warning("Sélectionnez une boutique pour gérer les produits");
+          return;
+        }
         if (editing) {
           await updateProduct(editing.id, {
             name: values.name,
@@ -254,6 +265,7 @@ export default function Products() {
             costPrice: values.costPrice,
             salePrice: values.salePrice,
             isActive: true,
+            storeId: activeStore.id,
           });
           message.success("Produit mis à jour");
         } else {
@@ -263,6 +275,7 @@ export default function Products() {
             costPrice: values.costPrice,
             salePrice: values.salePrice,
             isActive: true,
+            storeId: activeStore.id,
           });
           if (activeStore?.id && values.initialStock != null && values.initialStock > 0) {
             await initStock({

@@ -162,11 +162,16 @@ export default function ProductDetail() {
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
       try {
+        if (!activeStore?.id) {
+          message.warning("Sélectionnez une boutique pour modifier le produit");
+          return;
+        }
         await updateProduct(id, {
           name: values.name,
           categoryId: values.categoryId || null,
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
+          storeId: activeStore.id,
         });
         message.success("Produit mis à jour");
         setEditOpen(false);

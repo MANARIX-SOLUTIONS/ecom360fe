@@ -150,7 +150,7 @@ export default function POS() {
         const [stockList, catsRes, productsRes, clientsRes] = await Promise.all([
           getStockByStore(activeStore.id),
           listCategories(),
-          listProducts({ page: 0, size: 500 }),
+          listProducts({ page: 0, size: 500, storeId: activeStore.id }),
           listClients({ page: 0, size: 200 }),
         ]);
         const catNames = catsRes.map((c) => c.name);
