@@ -69,6 +69,7 @@ export default function ProductDetail() {
         categoryId: productRes.categoryId || undefined,
         costPrice: productRes.costPrice ?? 0,
         salePrice: productRes.salePrice,
+        storeId: productRes.storeId,
       });
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) {
@@ -162,8 +163,8 @@ export default function ProductDetail() {
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
       try {
-        if (!activeStore?.id) {
-          message.warning("Sélectionnez une boutique pour modifier le produit");
+        if (!values.storeId) {
+          message.warning("Sélectionnez une boutique propriétaire pour le produit");
           return;
         }
         await updateProduct(id, {
@@ -171,7 +172,7 @@ export default function ProductDetail() {
           categoryId: values.categoryId || null,
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
-          storeId: activeStore.id,
+          storeId: values.storeId,
         });
         message.success("Produit mis à jour");
         setEditOpen(false);
@@ -459,6 +460,26 @@ export default function ProductDetail() {
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
             <Input placeholder="Nom du produit" />
+          </Form.Item>
+          <Form.Item
+            name="storeId"
+            label={t.stores.title}
+            rules={[{ required: true, message: "Sélectionnez une boutique" }]}
+          >
+            <>
+              <Select
+                placeholder="Boutique propriétaire"
+                options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              />
+              <Typography.Text
+                type="secondary"
+                style={{ fontSize: 12, marginTop: 4, display: "block" }}
+              >
+                Changer de boutique transfère ce produit dans une autre boutique. Il ne sera plus
+                visible dans la boutique actuelle et son stock reste géré par boutique via les
+                mouvements de stock.
+              </Typography.Text>
+            </>
           </Form.Item>
           <Form.Item name="categoryId" label={t.products.category}>
             <Select
