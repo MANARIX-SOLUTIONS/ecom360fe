@@ -102,6 +102,8 @@ export default function ProductDetail() {
             minStock: 0,
             lowStock: false,
             updatedAt: "",
+            salePrice: null,
+            categoryId: null,
           });
         }
       }
