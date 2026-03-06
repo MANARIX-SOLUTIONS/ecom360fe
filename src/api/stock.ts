@@ -14,6 +14,8 @@ export type StockLevelResponse = {
   minStock: number;
   lowStock: boolean;
   updatedAt: string;
+  salePrice: number | null;
+  categoryId: string | null;
 };
 
 export type StockInitRequest = {

@@ -19,7 +19,6 @@ import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import {
   getStockByStore,
-  listProducts,
   listClients,
   createSale,
   getSubscriptionUsage,
@@ -147,31 +146,25 @@ export default function POS() {
     }
     const load = async () => {
       try {
-        const [stockList, catsRes, productsRes, clientsRes] = await Promise.all([
+        const [stockList, catsRes, clientsRes] = await Promise.all([
           getStockByStore(activeStore.id),
           listCategories(),
-          listProducts({ page: 0, size: 500, storeId: activeStore.id }),
           listClients({ page: 0, size: 200 }),
         ]);
+
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         setClients(clientsRes.content.map((c) => ({ id: c.id, name: c.name })));
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
-        const byProduct = Object.fromEntries(
-          productsRes.content.map((p) => [p.id, { price: p.salePrice, categoryId: p.categoryId }])
-        );
         setProducts(
-          stockList.map((s) => {
-            const info = byProduct[s.productId];
-            return {
-              id: s.productId,
-              name: s.productName,
-              price: info?.price ?? 0,
-              category: (info?.categoryId && byCat[info.categoryId]) || "Divers",
-              stock: s.quantity,
-              minStock: s.minStock,
-            };
-          })
+          stockList.map((s) => ({
+            id: s.productId,
+            name: s.productName,
+            price: s.salePrice ?? 0,
+            category: (s.categoryId && byCat[s.categoryId]) || "Divers",
+            stock: s.quantity,
+            minStock: s.minStock,
+          }))
         );
       } catch (e) {
         message.error(e instanceof Error ? e.message : "Erreur chargement produits");
