@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Card,
@@ -88,6 +88,19 @@ export default function Products() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null);
   const [categoryForm] = Form.useForm();
+  const hasLoadedOnce = useRef(false);
+
+  // Debounce search to avoid refetch on every keystroke (stops flicker)
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset "initial load" when store changes so we show loading again
+  useEffect(() => {
+    hasLoadedOnce.current = false;
+  }, [activeStore?.id]);
 
   useEffect(() => {
     getSubscriptionUsage()
@@ -103,56 +116,62 @@ export default function Products() {
     }
   }, []);
 
-  const fetchData = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [productsRes, categoriesRes, stockList] = await Promise.all([
-        listProducts({
-          page: 0,
-          size: 200,
-          search: search || undefined,
-          storeId: activeStore?.id,
-        }),
-        fetchCategories(),
-        activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
-      ]);
-      setCategories(categoriesRes);
-      const catById = Object.fromEntries(
-        categoriesRes.map((c) => [c.id, { name: c.name, color: c.color }])
-      );
-      const stockByProduct: Record<string, StockLevelResponse> = {};
-      for (const s of stockList) {
-        stockByProduct[s.productId] = s;
+  const fetchData = useCallback(
+    async (silent = false, searchOverride?: string) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!silent) setLoading(false);
+        return;
       }
-      setProducts(
-        productsRes.content.map((p) => {
-          const s = stockByProduct[p.id];
-          const cat = p.categoryId ? catById[p.categoryId] : null;
-          return {
-            id: p.id,
-            storeId: p.storeId,
-            name: p.name,
-            category: cat?.name || "-",
-            categoryColor: cat?.color || "default",
-            salePrice: p.salePrice,
-            costPrice: p.costPrice,
-            stock: s?.quantity ?? 0,
-            minStock: s?.minStock ?? 0,
-            categoryId: p.categoryId,
-          };
-        })
-      );
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [search, activeStore?.id, fetchCategories]);
+      const isInitialLoad = !hasLoadedOnce.current;
+      if (!silent && isInitialLoad) setLoading(true);
+      const searchToUse = searchOverride !== undefined ? searchOverride : debouncedSearch;
+      try {
+        const [productsRes, categoriesRes, stockList] = await Promise.all([
+          listProducts({
+            page: 0,
+            size: 200,
+            search: searchToUse || undefined,
+            storeId: activeStore?.id,
+          }),
+          fetchCategories(),
+          activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
+        ]);
+        setCategories(categoriesRes);
+        const catById = Object.fromEntries(
+          categoriesRes.map((c) => [c.id, { name: c.name, color: c.color }])
+        );
+        const stockByProduct: Record<string, StockLevelResponse> = {};
+        for (const s of stockList) {
+          stockByProduct[s.productId] = s;
+        }
+        setProducts(
+          productsRes.content.map((p) => {
+            const s = stockByProduct[p.id];
+            const cat = p.categoryId ? catById[p.categoryId] : null;
+            return {
+              id: p.id,
+              storeId: p.storeId,
+              name: p.name,
+              category: cat?.name || "-",
+              categoryColor: cat?.color || "default",
+              salePrice: p.salePrice,
+              costPrice: p.costPrice,
+              stock: s?.quantity ?? 0,
+              minStock: s?.minStock ?? 0,
+              categoryId: p.categoryId,
+            };
+          })
+        );
+        hasLoadedOnce.current = true;
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        setProducts([]);
+      } finally {
+        if (!silent && isInitialLoad) setLoading(false);
+      }
+    },
+    [debouncedSearch, activeStore?.id, fetchCategories]
+  );
 
   useEffect(() => {
     fetchData();
@@ -233,7 +252,7 @@ export default function Products() {
       message.success("Catégorie supprimée");
       const refreshed = await listCategories();
       setCategories(refreshed);
-      fetchData();
+      fetchData(true, "");
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur");
     }
@@ -289,7 +308,7 @@ export default function Products() {
         }
         setModalOpen(false);
         form.resetFields();
-        fetchData();
+        fetchData(true, "");
       } catch (e) {
         message.error(e instanceof Error ? e.message : "Erreur");
       }
@@ -319,7 +338,7 @@ export default function Products() {
         setStockModalOpen(false);
         setStockProduct(null);
         stockForm.resetFields();
-        fetchData();
+        fetchData(true, "");
       } catch (e) {
         message.error(e instanceof Error ? e.message : "Erreur");
       }
@@ -509,7 +528,7 @@ export default function Products() {
                               deleteProduct(r.id)
                                 .then(() => {
                                   message.success("Produit supprimé");
-                                  fetchData();
+                                  fetchData(true, "");
                                 })
                                 .catch((e) =>
                                   message.error(e instanceof Error ? e.message : "Erreur")
