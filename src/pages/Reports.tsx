@@ -135,7 +135,10 @@ export default function Reports() {
     setLoading(true);
     getDashboard({ periodStart: start, periodEnd: end })
       .then(setData)
-      .catch(() => setData(null))
+      .catch((e) => {
+        message.error(e instanceof Error ? e.message : "Erreur chargement des données");
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, [activeTab]);
 

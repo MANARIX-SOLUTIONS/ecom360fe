@@ -117,6 +117,7 @@ export default function Receipt() {
           if (e instanceof ApiError && e.status === 404) {
             setSaleNotFound(true);
           } else {
+            message.error(e instanceof Error ? e.message : "Erreur chargement du reçu");
             navigate("/dashboard", { replace: true });
           }
         })
