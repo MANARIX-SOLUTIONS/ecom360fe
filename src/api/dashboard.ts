@@ -36,6 +36,15 @@ export type DashboardResponse = {
     totalQuantity: number;
     totalRevenue: number;
   }[];
+  /** Plan Starter : stats limitées à la journée */
+  analyticsLimitedToToday: boolean;
+  /** Plan Business : marge brute sur la période */
+  periodGrossMargin: number | null;
+  topMarginProducts: {
+    productId: string;
+    productName: string;
+    marginAmount: number;
+  }[];
 };
 
 export async function getDashboard(params?: {

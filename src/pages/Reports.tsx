@@ -32,6 +32,7 @@ import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
 import { usePermissions } from "@/hooks/usePermissions";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 
 type TabKey = "today" | "week" | "month";
 
@@ -121,6 +122,7 @@ function formatTime(iso: string) {
 export default function Reports() {
   const navigate = useNavigate();
   const { can } = usePermissions();
+  const { canExportPdf, canExportExcel } = usePlanFeatures();
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -265,22 +267,26 @@ export default function Reports() {
             Rapports
           </Typography.Title>
           <Space wrap>
-            <Button icon={<FileDown size={16} />} onClick={() => window.print()}>
-              {t.reports.exportPdf}
-            </Button>
-            <Button
-              icon={<FileDown size={16} />}
-              onClick={() => {
-                if (data) {
-                  exportToCsv(data, activeTab);
-                  message.success("Export téléchargé (CSV)");
-                } else {
-                  message.warning("Chargement des données en cours…");
-                }
-              }}
-            >
-              {t.reports.exportExcel}
-            </Button>
+            {canExportPdf && (
+              <Button icon={<FileDown size={16} />} onClick={() => window.print()}>
+                {t.reports.exportPdf}
+              </Button>
+            )}
+            {canExportExcel && (
+              <Button
+                icon={<FileDown size={16} />}
+                onClick={() => {
+                  if (data) {
+                    exportToCsv(data, activeTab);
+                    message.success("Export téléchargé (CSV)");
+                  } else {
+                    message.warning("Chargement des données en cours…");
+                  }
+                }}
+              >
+                {t.reports.exportExcel}
+              </Button>
+            )}
           </Space>
         </div>
       </header>
@@ -373,6 +379,41 @@ export default function Reports() {
             </ResponsiveContainer>
           </div>
         </Card>
+        {data != null && data.periodGrossMargin != null && (
+          <Card
+            title="Marge brute & produits les plus rentables (plan Business)"
+            variant="borderless"
+            className={`${styles.card} contentCard`}
+            style={{ marginTop: 16 }}
+          >
+            <Typography.Title level={4} style={{ marginTop: 0 }}>
+              {formatFCFA(data.periodGrossMargin)}
+            </Typography.Title>
+            {data.topMarginProducts?.length ? (
+              <Table
+                size="small"
+                pagination={false}
+                dataSource={data.topMarginProducts.map((r) => ({
+                  key: r.productId,
+                  ...r,
+                }))}
+                columns={[
+                  { title: "Produit", dataIndex: "productName" },
+                  {
+                    title: "Marge estimée",
+                    dataIndex: "marginAmount",
+                    align: "right",
+                    render: (v: number) => formatFCFA(v),
+                  },
+                ]}
+              />
+            ) : (
+              <Typography.Text type="secondary">
+                Aucune vente sur la période pour estimer la marge.
+              </Typography.Text>
+            )}
+          </Card>
+        )}
         {data?.recentSales && data.recentSales.length > 0 && (
           <Card
             title="Ventes récentes"

@@ -442,6 +442,10 @@
   margin: 0 auto;
 }
 
+.apiError {
+  margin-bottom: 16px !important;
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
   .pageTitle {

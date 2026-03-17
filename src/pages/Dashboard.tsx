@@ -334,6 +334,16 @@ export default function Dashboard() {
         />
       )}
 
+      {data?.analyticsLimitedToToday && (
+        <Alert
+          type="info"
+          showIcon
+          message="Vue du jour (plan Starter)"
+          description="Les chiffres ci-dessous concernent uniquement aujourd’hui. Passez au plan Pro pour analyser la semaine, le mois et exporter des rapports."
+          className={styles.apiError + " mb-4"}
+        />
+      )}
+
       {/* Store setup banner for users with no store */}
       <NoStoreBanner />
 

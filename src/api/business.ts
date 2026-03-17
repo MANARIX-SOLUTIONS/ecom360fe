@@ -10,6 +10,7 @@ export type BusinessProfile = {
   email: string;
   phone?: string;
   address?: string;
+  logoUrl?: string | null;
 };
 
 export async function getBusinessProfile(): Promise<BusinessProfile> {
@@ -23,4 +24,8 @@ export async function updateBusinessProfile(data: {
   address?: string;
 }): Promise<BusinessProfile> {
   return api.put<BusinessProfile>("/business/me", data);
+}
+
+export async function updateBusinessLogo(logoUrl: string): Promise<BusinessProfile> {
+  return api.patch<BusinessProfile>("/business/me/logo", { logoUrl });
 }
