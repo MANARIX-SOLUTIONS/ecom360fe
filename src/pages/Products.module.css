@@ -34,6 +34,17 @@
   flex-shrink: 0;
 }
 
+/* Colonne prix : s’élargit avec le contenu (gros montants), pas de coupure au milieu du nombre */
+.priceColumn {
+  white-space: nowrap;
+}
+
+.priceCell {
+  display: inline-block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .card {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);

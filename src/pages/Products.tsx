@@ -444,6 +444,7 @@ export default function Products() {
               dataSource={filtered}
               rowKey="id"
               pagination={{ pageSize: 10 }}
+              scroll={{ x: "max-content" }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
                 role: "button",
@@ -471,10 +472,15 @@ export default function Products() {
                 {
                   title: "Prix",
                   dataIndex: "salePrice",
-                  width: 100,
+                  key: "salePrice",
+                  minWidth: 140,
+                  align: "right",
+                  className: styles.priceColumn,
                   sorter: (a: Product, b: Product) => a.salePrice - b.salePrice,
                   render: (v: number) => (
-                    <span className="amount">{v.toLocaleString("fr-FR")} F</span>
+                    <span className={`amount ${styles.priceCell}`}>
+                      {v.toLocaleString("fr-FR")} F
+                    </span>
                   ),
                 },
                 {
