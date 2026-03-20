@@ -1,7 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Skeleton, Alert, Button, Table } from "antd";
-import { Store, TrendingUp, Package, AlertTriangle, BarChart3 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Store,
+  TrendingUp,
+  Package,
+  AlertTriangle,
+  BarChart3,
+  CircleDollarSign,
+  Receipt,
+  ShoppingBag,
+  Wallet,
+  TrendingDown,
+} from "lucide-react";
 import { getGlobalView } from "@/api/dashboard";
 import type { GlobalViewResponse } from "@/api/dashboard";
 import { t } from "@/i18n";
@@ -30,8 +42,58 @@ function getPeriodRange(key: PeriodKey): { start: string; end: string } {
   };
 }
 
+const frInteger = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+
 function formatFCFA(n: number) {
-  return n.toLocaleString("fr-FR") + " F";
+  return `${frInteger.format(Math.round(n))} F`;
+}
+
+/** Montant + devise sur la carte KPI : pas de coupure à l’intérieur du nombre, taille fluide (voir CSS container). */
+function KpiMoney({
+  value,
+  large,
+  className,
+}: {
+  value: number;
+  large?: boolean;
+  className?: string;
+}) {
+  const rounded = Math.round(value);
+  const full = `${frInteger.format(rounded)} FCFA`;
+  return (
+    <div className={`${styles.kpiMoney} ${className ?? ""}`} aria-label={full} title={full}>
+      <span className={`${styles.kpiMoneyAmount} ${large ? styles.kpiMoneyAmountLarge : ""}`}>
+        {frInteger.format(rounded)}
+      </span>
+      <span className={styles.kpiMoneyCurrency}>FCFA</span>
+    </div>
+  );
+}
+
+function KpiCard({
+  className,
+  icon: Icon,
+  iconWrapClass,
+  label,
+  children,
+}: {
+  className: string;
+  icon: LucideIcon;
+  iconWrapClass: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card variant="borderless" className={className}>
+      <div className={styles.kpiCardInner}>
+        <div className={`${styles.kpiIconWrap} ${iconWrapClass}`} aria-hidden>
+          <Icon size={24} strokeWidth={2.25} />
+        </div>
+        <div className={styles.kpiLabel}>{label}</div>
+        <div className={styles.kpiValueSlot}>{children}</div>
+      </div>
+    </Card>
+  );
 }
 
 function formatPeriodLabel(key: PeriodKey): string {
@@ -112,7 +174,9 @@ export default function VueGlobale() {
           <div className={styles.kpiGrid} style={{ marginBottom: 32 }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i} variant="borderless" className={styles.kpiCard}>
-                <Skeleton active paragraph={{ rows: 2 }} />
+                <div className={styles.kpiCardInner}>
+                  <Skeleton active paragraph={{ rows: 2 }} />
+                </div>
               </Card>
             ))}
           </div>
@@ -175,49 +239,73 @@ export default function VueGlobale() {
 
         {data && (
           <>
-            <section className={styles.section} aria-label="Indicateurs clés">
+            <section className={styles.section} aria-labelledby="kpi-heading">
+              <div className={styles.kpiSectionIntro}>
+                <h2 id="kpi-heading" className={styles.kpiSectionTitle}>
+                  Synthèse
+                </h2>
+                <p className={styles.kpiSectionDesc}>
+                  Indicateurs agrégés sur la période sélectionnée ci-dessus
+                </p>
+              </div>
               <div className={styles.kpiGrid}>
-                <Card
-                  variant="borderless"
-                  className={`${styles.kpiCard} ${styles.kpiCardHighlight}`}
+                <KpiCard
+                  className={`${styles.kpiCard} ${styles.kpiCardHero}`}
+                  icon={CircleDollarSign}
+                  iconWrapClass={styles.kpiIconPrimary}
+                  label="Chiffre d'affaires"
                 >
-                  <div className={styles.kpiLabel}>Chiffre d&apos;affaires</div>
-                  <div
-                    className={`${styles.kpiValue} ${styles.kpiValuePrimary} ${styles.kpiValueLarge}`}
-                  >
-                    {formatFCFA(data.totalRevenue)}
-                  </div>
-                </Card>
-                <Card variant="borderless" className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>Nombre de ventes</div>
-                  <div className={styles.kpiValue}>{data.totalSalesCount}</div>
-                </Card>
-                <Card variant="borderless" className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>Panier moyen</div>
-                  <div className={styles.kpiValue}>
-                    {formatFCFA(Math.round(data.averageBasket))}
-                  </div>
-                </Card>
-                <Card variant="borderless" className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>Dépenses</div>
-                  <div className={`${styles.kpiValue} ${styles.kpiValueWarning}`}>
-                    {formatFCFA(data.totalExpenses)}
-                  </div>
-                </Card>
-                <Card variant="borderless" className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>Bénéfice</div>
-                  <div
-                    className={`${styles.kpiValue} ${
+                  <KpiMoney value={data.totalRevenue} large className={styles.kpiValuePrimary} />
+                </KpiCard>
+                <KpiCard
+                  className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
+                  icon={Receipt}
+                  iconWrapClass={styles.kpiIconNeutral}
+                  label="Nombre de ventes"
+                >
+                  <div className={styles.kpiValue}>{frInteger.format(data.totalSalesCount)}</div>
+                </KpiCard>
+                <KpiCard
+                  className={`${styles.kpiCard} ${styles.kpiCardToneAccent}`}
+                  icon={ShoppingBag}
+                  iconWrapClass={styles.kpiIconAccent}
+                  label="Panier moyen"
+                >
+                  <KpiMoney value={Math.round(data.averageBasket)} />
+                </KpiCard>
+                <KpiCard
+                  className={`${styles.kpiCard} ${styles.kpiCardToneExpense}`}
+                  icon={Wallet}
+                  iconWrapClass={styles.kpiIconWarning}
+                  label="Dépenses"
+                >
+                  <KpiMoney value={data.totalExpenses} className={styles.kpiValueWarning} />
+                </KpiCard>
+                <KpiCard
+                  className={`${styles.kpiCard} ${
+                    data.totalProfit >= 0 ? styles.kpiCardToneProfit : styles.kpiCardToneLoss
+                  }`}
+                  icon={data.totalProfit >= 0 ? TrendingUp : TrendingDown}
+                  iconWrapClass={
+                    data.totalProfit >= 0 ? styles.kpiIconSuccess : styles.kpiIconWarning
+                  }
+                  label="Bénéfice"
+                >
+                  <KpiMoney
+                    value={data.totalProfit}
+                    className={
                       data.totalProfit >= 0 ? styles.kpiValueSuccess : styles.kpiValueWarning
-                    }`}
-                  >
-                    {formatFCFA(data.totalProfit)}
-                  </div>
-                </Card>
-                <Card variant="borderless" className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>Boutiques</div>
-                  <div className={styles.kpiValue}>{data.storeCount}</div>
-                </Card>
+                    }
+                  />
+                </KpiCard>
+                <KpiCard
+                  className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
+                  icon={Store}
+                  iconWrapClass={styles.kpiIconNeutral}
+                  label="Boutiques"
+                >
+                  <div className={styles.kpiValue}>{frInteger.format(data.storeCount)}</div>
+                </KpiCard>
               </div>
             </section>
 
