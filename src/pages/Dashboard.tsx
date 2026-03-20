@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   Row,
@@ -76,6 +76,16 @@ function getGreeting() {
   return "Bonsoir";
 }
 
+/** Masque le bloc « Configurez votre commerce » 48 h après la création du commerce (serveur). */
+const SETUP_CHECKLIST_MAX_MS = 2 * 24 * 60 * 60 * 1000;
+
+function isSetupChecklistAutoHidden(businessCreatedAt: string | null | undefined): boolean {
+  if (!businessCreatedAt) return false;
+  const t = Date.parse(businessCreatedAt);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t >= SETUP_CHECKLIST_MAX_MS;
+}
+
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
@@ -109,6 +119,11 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const hideSetupChecklist = useMemo(() => {
+    if (!data) return true;
+    return isSetupChecklistAutoHidden(data.businessCreatedAt);
+  }, [data]);
 
   // Welcome toast on first visit
   useEffect(() => {
@@ -347,12 +362,14 @@ export default function Dashboard() {
       {/* Store setup banner for users with no store */}
       <NoStoreBanner />
 
-      {/* Onboarding checklist for new users */}
-      <SetupChecklist
-        hasProducts={(data?.totalProducts ?? 0) > 0}
-        hasFirstSale={(data?.periodSalesCount ?? 0) > 0}
-        hasClients={(data?.totalClients ?? 0) > 0}
-      />
+      {/* Onboarding : max 2 jours après création du commerce */}
+      {!hideSetupChecklist && (
+        <SetupChecklist
+          hasProducts={(data?.totalProducts ?? 0) > 0}
+          hasFirstSale={(data?.periodSalesCount ?? 0) > 0}
+          hasClients={(data?.totalClients ?? 0) > 0}
+        />
+      )}
 
       {/* Quick actions */}
       <section className={styles.quickActions} aria-label="Actions rapides">

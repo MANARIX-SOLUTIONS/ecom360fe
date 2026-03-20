@@ -45,6 +45,8 @@ export type DashboardResponse = {
     productName: string;
     marginAmount: number;
   }[];
+  /** ISO-8601 : création du commerce — le bandeau d’onboarding disparaît après 2 jours côté UI */
+  businessCreatedAt: string | null;
 };
 
 export async function getDashboard(params?: {

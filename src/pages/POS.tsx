@@ -100,17 +100,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function POS() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
-  const { canMultiPayment, canClientCredits } = usePlanFeatures();
+  const { canMultiPayment } = usePlanFeatures();
 
   const paymentMethods = useMemo(
     () =>
       PAYMENT_METHODS.filter((m) => {
         if (m.key === "cash") return true;
         if (m.key === "wave" || m.key === "orange_money") return canMultiPayment;
-        if (m.key === "credit") return canClientCredits;
+        // Crédit client désactivé au POS (côté API : SaleService)
+        if (m.key === "credit") return false;
         return false;
       }),
-    [canMultiPayment, canClientCredits]
+    [canMultiPayment]
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
