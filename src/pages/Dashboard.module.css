@@ -301,6 +301,20 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
+.tableFooterActions {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tableFooterMeta {
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
+
 /* ========== Payment ========== */
 .paymentSection {
   margin-bottom: 0;

@@ -9,6 +9,7 @@ import {
   Skeleton,
   Empty,
   Button,
+  message,
   notification,
   Alert,
 } from "antd";
@@ -34,9 +35,11 @@ import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
-import { getDashboard } from "@/api";
+import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
 import styles from "./Dashboard.module.css";
+
+const DASH_LIST_BATCH = 10;
 
 const PAYMENT_COLORS: Record<string, string> = {
   cash: "var(--color-primary)",
@@ -95,6 +98,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
+  const [extraTopProducts, setExtraTopProducts] = useState<
+    { productId: string; name: string; qty: number; amount: string }[]
+  >([]);
+  const [extraLowStock, setExtraLowStock] = useState<
+    { productId: string; name: string; storeName: string; stock: number; min: number }[]
+  >([]);
+  const [loadingMoreTop, setLoadingMoreTop] = useState(false);
+  const [loadingMoreLow, setLoadingMoreLow] = useState(false);
+  const [topSliceHasNext, setTopSliceHasNext] = useState(false);
+  const [lowSliceHasNext, setLowSliceHasNext] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -119,6 +132,77 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!data) {
+      setExtraTopProducts([]);
+      setExtraLowStock([]);
+      setTopSliceHasNext(false);
+      setLowSliceHasNext(false);
+      return;
+    }
+    setExtraTopProducts([]);
+    setExtraLowStock([]);
+    const topTotal = data.topProductsTotal ?? data.topProducts.length;
+    setTopSliceHasNext(topTotal > data.topProducts.length);
+    const lowTotal = data.lowStockItemsTotal ?? data.lowStockItems.length;
+    setLowSliceHasNext(lowTotal > data.lowStockItems.length);
+  }, [data]);
+
+  const loadMoreTopProducts = useCallback(async () => {
+    if (!data || loadingMoreTop) return;
+    setLoadingMoreTop(true);
+    try {
+      const page = 1 + Math.floor(extraTopProducts.length / DASH_LIST_BATCH);
+      const res = await getDashboardTopProductsSlice({
+        storeId: activeStore?.id,
+        page,
+        size: DASH_LIST_BATCH,
+      });
+      setExtraTopProducts((prev) => [
+        ...prev,
+        ...res.content.map((p) => ({
+          productId: p.productId,
+          name: p.productName,
+          qty: p.totalQuantity,
+          amount: formatFCFA(p.totalRevenue),
+        })),
+      ]);
+      setTopSliceHasNext(res.hasNext);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur chargement");
+    } finally {
+      setLoadingMoreTop(false);
+    }
+  }, [data, activeStore?.id, extraTopProducts.length, loadingMoreTop]);
+
+  const loadMoreLowStock = useCallback(async () => {
+    if (!data || loadingMoreLow || !canStockAlerts) return;
+    setLoadingMoreLow(true);
+    try {
+      const page = 1 + Math.floor(extraLowStock.length / DASH_LIST_BATCH);
+      const res = await getDashboardLowStockSlice({
+        storeId: activeStore?.id,
+        page,
+        size: DASH_LIST_BATCH,
+      });
+      setExtraLowStock((prev) => [
+        ...prev,
+        ...res.content.map((i) => ({
+          productId: i.productId,
+          name: i.productName,
+          storeName: i.storeName,
+          stock: i.quantity,
+          min: i.minStock,
+        })),
+      ]);
+      setLowSliceHasNext(res.hasNext);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur chargement");
+    } finally {
+      setLoadingMoreLow(false);
+    }
+  }, [data, activeStore?.id, extraLowStock.length, loadingMoreLow, canStockAlerts]);
 
   const hideSetupChecklist = useMemo(() => {
     if (!data) return true;
@@ -156,7 +240,7 @@ export default function Dashboard() {
               {
                 key: "expenses",
                 label: t.dashboard.expensesToday,
-                value: formatFCFA(data.periodExpenses),
+                value: formatFCFA(data.todayExpenses ?? 0),
                 prevValue: null,
                 trend: 0,
                 up: false,
@@ -178,22 +262,37 @@ export default function Dashboard() {
       ]
     : [];
 
-  const topProducts =
-    data?.topProducts.map((p) => ({
-      productId: p.productId,
-      name: p.productName,
-      qty: p.totalQuantity,
-      amount: formatFCFA(p.totalRevenue),
-    })) ?? [];
+  const topProducts = useMemo(() => {
+    const base =
+      data?.topProducts.map((p) => ({
+        productId: p.productId,
+        name: p.productName,
+        qty: p.totalQuantity,
+        amount: formatFCFA(p.totalRevenue),
+      })) ?? [];
+    return [...base, ...extraTopProducts];
+  }, [data?.topProducts, extraTopProducts]);
 
-  const lowStock =
-    data?.lowStockItems.map((i) => ({
-      productId: i.productId,
-      name: i.productName,
-      storeName: i.storeName,
-      stock: i.quantity,
-      min: i.minStock,
-    })) ?? [];
+  const lowStock = useMemo(() => {
+    const base =
+      data?.lowStockItems.map((i) => ({
+        productId: i.productId,
+        name: i.productName,
+        storeName: i.storeName,
+        stock: i.quantity,
+        min: i.minStock,
+      })) ?? [];
+    return [...base, ...extraLowStock];
+  }, [data?.lowStockItems, extraLowStock]);
+
+  const topRemaining =
+    data != null
+      ? Math.max(0, (data.topProductsTotal ?? data.topProducts.length) - topProducts.length)
+      : 0;
+  const lowRemaining =
+    data != null
+      ? Math.max(0, (data.lowStockItemsTotal ?? data.lowStockItems.length) - lowStock.length)
+      : 0;
 
   const recentSales =
     data?.recentSales.map((s, i) => ({
@@ -279,7 +378,7 @@ export default function Dashboard() {
     !apiError &&
     data != null &&
     data.todayRevenue === 0 &&
-    data.periodExpenses === 0 &&
+    (data.todayExpenses ?? 0) === 0 &&
     !data.recentSales.length;
 
   if (emptyData) {
@@ -499,6 +598,23 @@ export default function Dashboard() {
                     },
                   ]}
                 />
+                {data && topSliceHasNext ? (
+                  <div className={styles.tableFooterActions}>
+                    <Button
+                      type="default"
+                      size="small"
+                      loading={loadingMoreTop}
+                      onClick={loadMoreTopProducts}
+                    >
+                      Charger {Math.min(DASH_LIST_BATCH, topRemaining)} suivants
+                    </Button>
+                    {topRemaining > 0 ? (
+                      <Typography.Text type="secondary" className={styles.tableFooterMeta}>
+                        Encore {topRemaining} produit{topRemaining > 1 ? "s" : ""} à afficher
+                      </Typography.Text>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </Card>
           </Col>
@@ -546,6 +662,23 @@ export default function Dashboard() {
                       },
                     ]}
                   />
+                  {data && lowSliceHasNext ? (
+                    <div className={styles.tableFooterActions}>
+                      <Button
+                        type="default"
+                        size="small"
+                        loading={loadingMoreLow}
+                        onClick={loadMoreLowStock}
+                      >
+                        Charger {Math.min(DASH_LIST_BATCH, lowRemaining)} suivants
+                      </Button>
+                      {lowRemaining > 0 ? (
+                        <Typography.Text type="secondary" className={styles.tableFooterMeta}>
+                          Encore {lowRemaining} ligne{lowRemaining > 1 ? "s" : ""} à afficher
+                        </Typography.Text>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </Card>
             </Col>

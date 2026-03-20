@@ -7,6 +7,8 @@ import { api } from "./client";
 export type DashboardResponse = {
   todaySalesCount: number;
   todayRevenue: number;
+  /** Dépenses du jour (date de dépense = aujourd’hui). Absent si API ancienne. */
+  todayExpenses?: number;
   periodSalesCount: number;
   periodRevenue: number;
   periodExpenses: number;
@@ -47,6 +49,18 @@ export type DashboardResponse = {
   }[];
   /** ISO-8601 : création du commerce — le bandeau d’onboarding disparaît après 2 jours côté UI */
   businessCreatedAt: string | null;
+  /** Total sur la période (aperçu dans {@code topProducts}). Absent si API ancienne. */
+  topProductsTotal?: number;
+  /** Total alertes stock. Absent si API ancienne. */
+  lowStockItemsTotal?: number;
+};
+
+export type DashboardSliceResponse<T> = {
+  content: T[];
+  total: number;
+  page: number;
+  size: number;
+  hasNext: boolean;
 };
 
 export async function getDashboard(params?: {
@@ -60,6 +74,36 @@ export async function getDashboard(params?: {
   if (params?.storeId) search.set("storeId", params.storeId);
   const qs = search.toString();
   return api.get<DashboardResponse>(`/dashboard${qs ? `?${qs}` : ""}`);
+}
+
+const DASHBOARD_SLICE_DEFAULT = 10;
+
+export async function getDashboardTopProductsSlice(params: {
+  periodStart?: string;
+  periodEnd?: string;
+  storeId?: string;
+  page: number;
+  size?: number;
+}): Promise<DashboardSliceResponse<DashboardResponse["topProducts"][number]>> {
+  const search = new URLSearchParams();
+  if (params.periodStart) search.set("periodStart", params.periodStart);
+  if (params.periodEnd) search.set("periodEnd", params.periodEnd);
+  if (params.storeId) search.set("storeId", params.storeId);
+  search.set("page", String(params.page));
+  search.set("size", String(params.size ?? DASHBOARD_SLICE_DEFAULT));
+  return api.get(`/dashboard/top-products?${search.toString()}`);
+}
+
+export async function getDashboardLowStockSlice(params: {
+  storeId?: string;
+  page: number;
+  size?: number;
+}): Promise<DashboardSliceResponse<DashboardResponse["lowStockItems"][number]>> {
+  const search = new URLSearchParams();
+  if (params.storeId) search.set("storeId", params.storeId);
+  search.set("page", String(params.page));
+  search.set("size", String(params.size ?? DASHBOARD_SLICE_DEFAULT));
+  return api.get(`/dashboard/low-stock-items?${search.toString()}`);
 }
 
 /** Vue globale : agrégation toutes boutiques + répartition par store */
