@@ -1,0 +1,123 @@
+import { useState, useEffect, useCallback } from "react";
+import { getSubscription, listPlans } from "@/api";
+import type { PlanResponse } from "@/api";
+
+/**
+ * Plan-based feature gating.
+ * Fetches plan features from backend when authenticated; falls back to pro (trial) when not.
+ */
+
+type FeatureFlags = {
+  expenses: boolean;
+  reports: boolean;
+  suppliers: boolean;
+  livreurs: boolean;
+  globalView: boolean;
+  multiPayment: boolean;
+  clientCredits: boolean;
+  settingsUsers: boolean;
+  advancedReports: boolean;
+  api: boolean;
+  stockAlerts: boolean;
+  exportPdf: boolean;
+  exportExcel: boolean;
+};
+
+const DEFAULT_FEATURES: FeatureFlags = {
+  expenses: true,
+  reports: true,
+  suppliers: true,
+  livreurs: false,
+  globalView: false,
+  multiPayment: true,
+  clientCredits: true,
+  settingsUsers: true,
+  advancedReports: false,
+  api: false,
+  stockAlerts: true,
+  exportPdf: true,
+  exportExcel: true,
+};
+
+function planToFeatures(p: PlanResponse): FeatureFlags {
+  return {
+    expenses: p.featureExpenses,
+    reports: p.featureReports,
+    suppliers: p.featureSupplierTracking,
+    livreurs: p.featureDeliveryCouriers ?? false,
+    globalView: p.featureGlobalView ?? false,
+    multiPayment: p.featureMultiPayment,
+    clientCredits: p.featureClientCredits,
+    settingsUsers: p.featureRoleManagement,
+    advancedReports: p.featureAdvancedReports,
+    api: p.featureApi,
+    stockAlerts: p.featureStockAlerts ?? true,
+    exportPdf: p.featureExportPdf,
+    exportExcel: p.featureExportExcel,
+  };
+}
+
+export function usePlanFeatures() {
+  const [planSlug, setPlanSlug] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("ecom360_plan_slug") : null
+  );
+  const [features, setFeatures] = useState<FeatureFlags>(DEFAULT_FEATURES);
+
+  const fetchPlanFeatures = useCallback(async () => {
+    if (!localStorage.getItem("ecom360_access_token")) {
+      setFeatures(DEFAULT_FEATURES);
+      return;
+    }
+    try {
+      const [sub, plans] = await Promise.all([getSubscription(), listPlans()]);
+      const slug = sub?.planSlug ?? localStorage.getItem("ecom360_plan_slug");
+      setPlanSlug(slug);
+      const plan = plans.find((p) => p.slug.toLowerCase() === (slug ?? "").toLowerCase());
+      setFeatures(plan ? planToFeatures(plan) : DEFAULT_FEATURES);
+    } catch {
+      setFeatures(DEFAULT_FEATURES);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPlanFeatures();
+  }, [fetchPlanFeatures]);
+
+  useEffect(() => {
+    const onUpdate = () => {
+      setPlanSlug(localStorage.getItem("ecom360_plan_slug"));
+      fetchPlanFeatures();
+    };
+    window.addEventListener("ecom360:plan-updated", onUpdate);
+    return () => window.removeEventListener("ecom360:plan-updated", onUpdate);
+  }, [fetchPlanFeatures]);
+
+  return {
+    planSlug,
+    canExpenses: features.expenses,
+    canReports: features.reports,
+    canSuppliers: features.suppliers,
+    canLivreurs: features.livreurs,
+    canGlobalView: features.globalView,
+    canMultiPayment: features.multiPayment,
+    canClientCredits: features.clientCredits,
+    canSettingsUsers: features.settingsUsers,
+    canAdvancedReports: features.advancedReports,
+    canApi: features.api,
+    canStockAlerts: features.stockAlerts,
+    canExportPdf: features.exportPdf,
+    canExportExcel: features.exportExcel,
+    /** Combined: can access this permission (role + plan) */
+    canAccess: (permission: string, roleCan: boolean) => {
+      if (!roleCan) return false;
+      if (permission === "expenses") return features.expenses;
+      if (permission === "reports") return features.reports;
+      if (permission === "suppliers") return features.suppliers;
+      if (permission === "livreurs") return features.livreurs;
+      if (permission === "globalView") return features.globalView;
+      if (permission === "settings:users" || permission === "settings:roles")
+        return features.settingsUsers;
+      return true;
+    },
+  };
+}
