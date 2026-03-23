@@ -14,7 +14,7 @@ import {
   getSubscriptionUsage,
 } from "@/api";
 import { useStore } from "@/hooks/useStore";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 
 type Client = {
   id: string;
@@ -37,7 +37,7 @@ function getInitials(name: string) {
 export default function Clients() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [paymentModal, setPaymentModal] = useState<Client | null>(null);
@@ -129,7 +129,7 @@ export default function Clients() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : can("CLIENTS_CREATE") ? (
+          ) : matrixCan("CLIENTS_CREATE", "clients") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddClientOpen(true)}>
               {t.clients.addClient}
             </Button>
@@ -151,7 +151,7 @@ export default function Clients() {
             >
               Ajoutez vos clients pour suivre les crédits, les paiements et l'historique des achats.
             </Typography.Text>
-            {!clientsAtLimit && can("CLIENTS_CREATE") && (
+            {!clientsAtLimit && matrixCan("CLIENTS_CREATE", "clients") && (
               <Button
                 type="primary"
                 size="large"
@@ -218,7 +218,7 @@ export default function Clients() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {can("CLIENTS_UPDATE") && (
+                      {matrixCan("CLIENTS_UPDATE", "clients") && (
                         <Button
                           type="text"
                           size="small"
@@ -230,7 +230,7 @@ export default function Clients() {
                           aria-label={t.clients.addPayment}
                         />
                       )}
-                      {can("CLIENTS_UPDATE") && (
+                      {matrixCan("CLIENTS_UPDATE", "clients") && (
                         <Button
                           type="text"
                           size="small"
@@ -247,7 +247,7 @@ export default function Clients() {
                           aria-label={t.common.edit}
                         />
                       )}
-                      {can("CLIENTS_DELETE") && (
+                      {matrixCan("CLIENTS_DELETE", "clients") && (
                         <Button
                           type="text"
                           danger

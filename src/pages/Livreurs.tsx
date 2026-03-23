@@ -27,7 +27,7 @@ import {
   createDelivery,
 } from "@/api";
 import type { CourierResponse, CourierStatsResponse } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 
 function getInitials(name: string) {
   return name
@@ -50,7 +50,7 @@ export default function Livreurs() {
   const [activeOnly, setActiveOnly] = useState(false);
   const [statsMap, setStatsMap] = useState<Record<string, CourierStatsResponse>>({});
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
 
   const fetchCouriers = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -131,7 +131,7 @@ export default function Livreurs() {
               {activeOnly ? "Actifs uniquement" : "Tous"}
             </Typography.Text>
           </span>
-          {can("DELIVERY_COURIERS_CREATE") && (
+          {matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") && (
             <>
               <Button
                 icon={<PackageCheck size={18} />}
@@ -164,7 +164,7 @@ export default function Livreurs() {
             >
               {t.livreurs.emptyDesc}
             </Typography.Text>
-            {can("DELIVERY_COURIERS_CREATE") && (
+            {matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") && (
               <Button
                 type="primary"
                 size="large"
@@ -253,7 +253,7 @@ export default function Livreurs() {
                   width: 100,
                   render: (_, r: CourierResponse) => (
                     <div role="group">
-                      {can("DELIVERY_COURIERS_UPDATE") && (
+                      {matrixCan("DELIVERY_COURIERS_UPDATE", "livreurs") && (
                         <Button
                           type="text"
                           size="small"
@@ -271,7 +271,7 @@ export default function Livreurs() {
                           aria-label={t.common.edit}
                         />
                       )}
-                      {can("DELIVERY_COURIERS_DELETE") && (
+                      {matrixCan("DELIVERY_COURIERS_DELETE", "livreurs") && (
                         <Button
                           type="text"
                           danger

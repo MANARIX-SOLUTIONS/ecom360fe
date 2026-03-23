@@ -11,7 +11,7 @@ import {
   updateSupplier,
   getSubscriptionUsage,
 } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 
 type Supplier = {
   id: string;
@@ -33,7 +33,7 @@ function getInitials(name: string) {
 
 export default function Suppliers() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +125,7 @@ export default function Suppliers() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : can("SUPPLIERS_CREATE") ? (
+          ) : matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
               {t.suppliers.addSupplier}
             </Button>
@@ -147,7 +147,7 @@ export default function Suppliers() {
             >
               Ajoutez vos fournisseurs pour suivre vos achats et gérer vos approvisionnements.
             </Typography.Text>
-            {!suppliersAtLimit && can("SUPPLIERS_CREATE") && (
+            {!suppliersAtLimit && matrixCan("SUPPLIERS_CREATE", "suppliers") && (
               <Button
                 type="primary"
                 size="large"
@@ -210,7 +210,7 @@ export default function Suppliers() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {can("SUPPLIERS_UPDATE") && (
+                      {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
                         <Button
                           type="text"
                           size="small"
@@ -227,7 +227,7 @@ export default function Suppliers() {
                           aria-label={t.common.edit}
                         />
                       )}
-                      {can("SUPPLIERS_DELETE") && (
+                      {matrixCan("SUPPLIERS_DELETE", "suppliers") && (
                         <Button
                           type="text"
                           danger

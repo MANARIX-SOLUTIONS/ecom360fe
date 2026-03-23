@@ -12,7 +12,7 @@ import {
   getSubscriptionUsage,
 } from "@/api";
 import type { SubscriptionResponse } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
 
@@ -129,7 +129,7 @@ function formatUsage(count: number, limit: number): string {
 
 export default function SettingsSubscription() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [plans, setPlans] = useState<PlanResponse[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null | undefined>(
     undefined
@@ -358,7 +358,7 @@ export default function SettingsSubscription() {
                     </Tag>
                   )}
                 </div>
-              ) : can("SUBSCRIPTION_UPDATE") ? (
+              ) : matrixCan("SUBSCRIPTION_UPDATE", "settings:subscription") ? (
                 <Button
                   type={plan.recommended ? "primary" : "default"}
                   block
@@ -448,106 +448,110 @@ export default function SettingsSubscription() {
         </Card>
       </div>
 
-      {currentPlanSlug && can("SUBSCRIPTION_UPDATE") && !isExpired && (
-        <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid var(--color-border)" }}>
-          {cancelAtPeriodEnd ? (
-            <>
-              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                Votre abonnement est annulé et prendra fin à la fin de la période en cours.
-              </Typography.Text>
-              <Button
-                type="primary"
-                loading={reactivating}
-                onClick={() => {
-                  setReactivating(true);
-                  reactivateSubscription()
-                    .then((sub) => {
-                      message.success("Abonnement réactivé");
-                      setSubscription(sub);
-                      refreshSubscription();
-                    })
-                    .catch((e) => {
-                      message.error(e instanceof Error ? e.message : "Erreur");
-                    })
-                    .finally(() => setReactivating(false));
-                }}
-              >
-                Réactiver l&apos;abonnement
-              </Button>
-            </>
-          ) : (
-            <>
-              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                Annuler votre abonnement ? Choisissez de conserver l&apos;accès jusqu&apos;à la fin
-                de la période ou d&apos;arrêter immédiatement.
-              </Typography.Text>
-              <Button
-                type="text"
-                danger
-                loading={cancelling}
-                onClick={() => {
-                  const { destroy } = Modal.confirm({
-                    title: "Annuler l'abonnement ?",
-                    content: (
-                      <div style={{ marginTop: 8 }}>
-                        <p style={{ marginBottom: 12 }}>
-                          <strong>À la fin de la période :</strong> Vous conserverez l&apos;accès
-                          jusqu&apos;à la fin de la période payée.
-                        </p>
-                        <p>
-                          <strong>Immédiatement :</strong> L&apos;accès sera coupé tout de suite.
-                        </p>
-                      </div>
-                    ),
-                    okText: "À la fin de la période",
-                    cancelText: "Garder mon abonnement",
-                    footer: (_, { OkBtn, CancelBtn }) => (
-                      <>
-                        <CancelBtn />
-                        <Button
-                          danger
-                          loading={cancelling}
-                          onClick={async () => {
-                            setCancelling(true);
-                            try {
-                              await cancelSubscription(false);
-                              message.success("Abonnement annulé immédiatement");
-                              destroy();
-                              refreshSubscription();
-                            } catch (e) {
-                              message.error(e instanceof Error ? e.message : "Erreur");
-                            } finally {
-                              setCancelling(false);
-                            }
-                          }}
-                        >
-                          Immédiatement
-                        </Button>
-                        <OkBtn />
-                      </>
-                    ),
-                    onOk: async () => {
-                      setCancelling(true);
-                      try {
-                        await cancelSubscription(true);
-                        message.success("Abonnement annulé à la fin de la période");
+      {currentPlanSlug &&
+        matrixCan("SUBSCRIPTION_UPDATE", "settings:subscription") &&
+        !isExpired && (
+          <div
+            style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid var(--color-border)" }}
+          >
+            {cancelAtPeriodEnd ? (
+              <>
+                <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                  Votre abonnement est annulé et prendra fin à la fin de la période en cours.
+                </Typography.Text>
+                <Button
+                  type="primary"
+                  loading={reactivating}
+                  onClick={() => {
+                    setReactivating(true);
+                    reactivateSubscription()
+                      .then((sub) => {
+                        message.success("Abonnement réactivé");
+                        setSubscription(sub);
                         refreshSubscription();
-                      } catch (e) {
+                      })
+                      .catch((e) => {
                         message.error(e instanceof Error ? e.message : "Erreur");
-                        throw e;
-                      } finally {
-                        setCancelling(false);
-                      }
-                    },
-                  });
-                }}
-              >
-                Annuler l&apos;abonnement
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+                      })
+                      .finally(() => setReactivating(false));
+                  }}
+                >
+                  Réactiver l&apos;abonnement
+                </Button>
+              </>
+            ) : (
+              <>
+                <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                  Annuler votre abonnement ? Choisissez de conserver l&apos;accès jusqu&apos;à la
+                  fin de la période ou d&apos;arrêter immédiatement.
+                </Typography.Text>
+                <Button
+                  type="text"
+                  danger
+                  loading={cancelling}
+                  onClick={() => {
+                    const { destroy } = Modal.confirm({
+                      title: "Annuler l'abonnement ?",
+                      content: (
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ marginBottom: 12 }}>
+                            <strong>À la fin de la période :</strong> Vous conserverez l&apos;accès
+                            jusqu&apos;à la fin de la période payée.
+                          </p>
+                          <p>
+                            <strong>Immédiatement :</strong> L&apos;accès sera coupé tout de suite.
+                          </p>
+                        </div>
+                      ),
+                      okText: "À la fin de la période",
+                      cancelText: "Garder mon abonnement",
+                      footer: (_, { OkBtn, CancelBtn }) => (
+                        <>
+                          <CancelBtn />
+                          <Button
+                            danger
+                            loading={cancelling}
+                            onClick={async () => {
+                              setCancelling(true);
+                              try {
+                                await cancelSubscription(false);
+                                message.success("Abonnement annulé immédiatement");
+                                destroy();
+                                refreshSubscription();
+                              } catch (e) {
+                                message.error(e instanceof Error ? e.message : "Erreur");
+                              } finally {
+                                setCancelling(false);
+                              }
+                            }}
+                          >
+                            Immédiatement
+                          </Button>
+                          <OkBtn />
+                        </>
+                      ),
+                      onOk: async () => {
+                        setCancelling(true);
+                        try {
+                          await cancelSubscription(true);
+                          message.success("Abonnement annulé à la fin de la période");
+                          refreshSubscription();
+                        } catch (e) {
+                          message.error(e instanceof Error ? e.message : "Erreur");
+                          throw e;
+                        } finally {
+                          setCancelling(false);
+                        }
+                      },
+                    });
+                  }}
+                >
+                  Annuler l&apos;abonnement
+                </Button>
+              </>
+            )}
+          </div>
+        )}
     </div>
   );
 }

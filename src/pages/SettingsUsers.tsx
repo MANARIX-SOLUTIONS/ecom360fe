@@ -13,7 +13,7 @@ import {
   assignStores,
   listStores,
 } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { BusinessUser } from "@/api";
 import type { StoreResponse } from "@/api/stores";
 import styles from "./Settings.module.css";
@@ -35,7 +35,7 @@ function roleToLabel(role: string, roleName?: string): string {
 
 export default function SettingsUsers() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [form] = Form.useForm();
   const [users, setUsers] = useState<BusinessUser[]>([]);
@@ -134,7 +134,7 @@ export default function SettingsUsers() {
             <Typography.Text type="secondary" style={{ marginRight: 8 }}>
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : can("BUSINESS_USERS_CREATE") ? (
+          ) : matrixCan("BUSINESS_USERS_CREATE", "settings:users") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setInviteOpen(true)}>
               {t.settings.inviteUser}
             </Button>
@@ -174,7 +174,7 @@ export default function SettingsUsers() {
                   width: 160,
                   render: (_, r) =>
                     !["admin", "proprietaire"].includes(r.role?.toLowerCase() ?? "") &&
-                    can("BUSINESS_USERS_UPDATE") ? (
+                    matrixCan("BUSINESS_USERS_UPDATE", "settings:users") ? (
                       <Button
                         type="text"
                         size="small"

@@ -10,12 +10,12 @@ import {
   assignRolePermissions,
   type BusinessRoleDto,
 } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import styles from "./Settings.module.css";
 
 export default function SettingsRoles() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [roles, setRoles] = useState<BusinessRoleDto[]>([]);
   const [catalog, setCatalog] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,7 @@ export default function SettingsRoles() {
     }
   };
 
-  const canEdit = can("BUSINESS_USERS_UPDATE");
+  const canEdit = matrixCan("BUSINESS_USERS_UPDATE", "settings:roles");
 
   return (
     <div className={`${styles.settingsPage} pageWrapper`}>

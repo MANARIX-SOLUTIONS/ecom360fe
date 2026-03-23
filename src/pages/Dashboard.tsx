@@ -32,6 +32,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/hooks/useStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
@@ -93,6 +94,7 @@ export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
   const { can } = useAuthRole();
+  const { matrixCan, matrixNavAccess } = useMatrixCan();
   const { canExpenses, canStockAlerts, canAccess: canAccessPlan } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -235,7 +237,7 @@ export default function Dashboard() {
           variant: "sales" as const,
           icon: Wallet,
         },
-        ...(canExpenses
+        ...(canExpenses && can("expenses")
           ? [
               {
                 key: "expenses",
@@ -488,7 +490,7 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Ajouter produit</span>
         </button>
-        {canExpenses && (
+        {canExpenses && can("expenses") && (
           <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
             <span className={styles.quickCardIcon}>
               <FileText size={22} />
@@ -502,18 +504,20 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Clients</span>
         </button>
-        {(data?.totalStores ?? 0) > 1 && can("globalView") && canAccessPlan("globalView", true) && (
-          <button
-            type="button"
-            className={styles.quickCard}
-            onClick={() => navigate("/vue-globale")}
-          >
-            <span className={styles.quickCardIcon}>
-              <Store size={22} />
-            </span>
-            <span className={styles.quickCardLabel}>Vue globale</span>
-          </button>
-        )}
+        {(data?.totalStores ?? 0) > 1 &&
+          matrixCan("GLOBAL_VIEW_READ", "globalView") &&
+          canAccessPlan("globalView", matrixNavAccess("globalView")) && (
+            <button
+              type="button"
+              className={styles.quickCard}
+              onClick={() => navigate("/vue-globale")}
+            >
+              <span className={styles.quickCardIcon}>
+                <Store size={22} />
+              </span>
+              <span className={styles.quickCardLabel}>Vue globale</span>
+            </button>
+          )}
       </section>
 
       <section className={styles.statsSection} aria-label="Indicateurs du jour">
@@ -729,9 +733,12 @@ export default function Dashboard() {
               variant="borderless"
               className={styles.card}
               extra={
-                <Button type="link" size="small" onClick={() => navigate("/reports")}>
-                  Voir tout
-                </Button>
+                matrixNavAccess("reports") &&
+                canAccessPlan("reports", matrixNavAccess("reports")) ? (
+                  <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                    Voir tout
+                  </Button>
+                ) : null
               }
             >
               <div className={styles.recentList}>

@@ -21,7 +21,7 @@ import { Search, Plus, Pencil, Package, Trash2, Tags } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import { useStore } from "@/hooks/useStore";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import {
   listProducts,
   createProduct,
@@ -71,7 +71,7 @@ function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical"
 export default function Products() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -370,7 +370,9 @@ export default function Products() {
         </Typography.Title>
         <div className={styles.toolbar}>
           <div className={styles.filters}>
-            {(can("CATEGORIES_CREATE") || can("CATEGORIES_UPDATE") || can("CATEGORIES_DELETE")) && (
+            {(matrixCan("CATEGORIES_CREATE", "products") ||
+              matrixCan("CATEGORIES_UPDATE", "products") ||
+              matrixCan("CATEGORIES_DELETE", "products")) && (
               <Button
                 icon={<Tags size={18} />}
                 onClick={openCategoryDrawer}
@@ -402,7 +404,7 @@ export default function Products() {
             <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : can("PRODUCTS_CREATE") ? (
+          ) : matrixCan("PRODUCTS_CREATE", "products") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
               {t.products.addProduct}
             </Button>
@@ -426,7 +428,7 @@ export default function Products() {
               Ajoutez votre premier produit pour commencer à vendre. Gérez les prix, le stock et les
               catégories.
             </Typography.Text>
-            {!productsAtLimit && can("PRODUCTS_CREATE") && (
+            {!productsAtLimit && matrixCan("PRODUCTS_CREATE", "products") && (
               <Button
                 type="primary"
                 size="large"
@@ -505,7 +507,7 @@ export default function Products() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {can("STOCK_ADJUST") && (
+                      {matrixCan("STOCK_ADJUST", "products") && (
                         <Button
                           type="text"
                           size="small"
@@ -514,7 +516,7 @@ export default function Products() {
                           aria-label={t.products.stockAdjustment}
                         />
                       )}
-                      {can("PRODUCTS_UPDATE") && (
+                      {matrixCan("PRODUCTS_UPDATE", "products") && (
                         <Button
                           type="text"
                           size="small"
@@ -523,7 +525,7 @@ export default function Products() {
                           aria-label={t.common.edit}
                         />
                       )}
-                      {can("PRODUCTS_DELETE") && (
+                      {matrixCan("PRODUCTS_DELETE", "products") && (
                         <Button
                           type="text"
                           danger
@@ -583,7 +585,7 @@ export default function Products() {
               dropdownRender={(menu) => (
                 <>
                   {menu}
-                  {can("CATEGORIES_CREATE") && (
+                  {matrixCan("CATEGORIES_CREATE", "products") && (
                     <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
                       <Button
                         type="text"
@@ -679,7 +681,7 @@ export default function Products() {
         onClose={() => setCategoriesDrawerOpen(false)}
         open={categoriesDrawerOpen}
         extra={
-          can("CATEGORIES_CREATE") ? (
+          matrixCan("CATEGORIES_CREATE", "products") ? (
             <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
               {t.products.addCategory}
             </Button>
@@ -708,7 +710,7 @@ export default function Products() {
                   <Tag color={c.color || "default"}>{c.name}</Tag>
                 </div>
                 <Space>
-                  {can("CATEGORIES_UPDATE") && (
+                  {matrixCan("CATEGORIES_UPDATE", "products") && (
                     <Button
                       type="text"
                       size="small"
@@ -717,7 +719,7 @@ export default function Products() {
                       aria-label={t.common.edit}
                     />
                   )}
-                  {can("CATEGORIES_DELETE") && (
+                  {matrixCan("CATEGORIES_DELETE", "products") && (
                     <Button
                       type="text"
                       danger

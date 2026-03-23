@@ -31,7 +31,7 @@ import { FileDown, Wallet, Receipt, PiggyBank, ShoppingCart, Ban } from "lucide-
 import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 
 type TabKey = "today" | "week" | "month";
@@ -121,7 +121,7 @@ function formatTime(iso: string) {
 
 export default function Reports() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const { canExportPdf, canExportExcel } = usePlanFeatures();
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
@@ -151,7 +151,7 @@ export default function Reports() {
   const handleVoidSale = useCallback(
     (saleId: string, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!can("SALES_DELETE")) return;
+      if (!matrixCan("SALES_DELETE", "reports")) return;
       Modal.confirm({
         title: "Annuler la vente",
         content:
@@ -173,7 +173,7 @@ export default function Reports() {
         },
       });
     },
-    [can, loadData]
+    [matrixCan, loadData]
   );
 
   const chartData = useMemo((): ChartPoint[] => {
@@ -489,7 +489,7 @@ export default function Reports() {
                       </Tag>
                     ),
                   },
-                  ...(can("SALES_DELETE")
+                  ...(matrixCan("SALES_DELETE", "reports")
                     ? [
                         {
                           title: "",
