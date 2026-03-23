@@ -1,0 +1,8 @@
+# 360 PME Commerce — robots.txt
+User-agent: *
+Allow: /
+
+# SPA: all routes serve the same HTML; crawlers may need JS to render
+# Disallow specific paths if needed, e.g.:
+# Disallow: /dashboard
+# Disallow: /backoffice
