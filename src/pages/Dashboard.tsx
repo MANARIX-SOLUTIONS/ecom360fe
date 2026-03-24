@@ -38,6 +38,7 @@ import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
+import { ROLES } from "@/constants/roles";
 import styles from "./Dashboard.module.css";
 
 const DASH_LIST_BATCH = 10;
@@ -93,7 +94,7 @@ function isSetupChecklistAutoHidden(businessCreatedAt: string | null | undefined
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
-  const { can } = useAuthRole();
+  const { can, role } = useAuthRole();
   const { matrixCan, matrixNavAccess } = useMatrixCan();
   const { canExpenses, canStockAlerts, canAccess: canAccessPlan } = usePlanFeatures();
   const navigate = useNavigate();
@@ -251,18 +252,25 @@ export default function Dashboard() {
               },
             ]
           : []),
-        {
-          key: "profit",
-          label: t.dashboard.profitEstimate,
-          value: formatFCFA(data.periodProfit),
-          prevValue: null,
-          trend: 0,
-          up: data.periodProfit >= 0,
-          variant: "profit" as const,
-          icon: PiggyBank,
-        },
+        ...(role === ROLES.PROPRIETAIRE
+          ? [
+              {
+                key: "profit",
+                label: t.dashboard.profitEstimate,
+                value: formatFCFA(data.periodProfit),
+                prevValue: null,
+                trend: 0,
+                up: data.periodProfit >= 0,
+                variant: "profit" as const,
+                icon: PiggyBank,
+              },
+            ]
+          : []),
       ]
     : [];
+
+  const statCardSkeletonCount =
+    1 + (canExpenses && can("expenses") ? 1 : 0) + (role === ROLES.PROPRIETAIRE ? 1 : 0);
 
   const topProducts = useMemo(() => {
     const base =
@@ -348,7 +356,7 @@ export default function Dashboard() {
         </div>
         <div className={styles.statsSection}>
           <Row gutter={[16, 16]}>
-            {[1, 2, 3].map((i) => (
+            {Array.from({ length: statCardSkeletonCount }, (_, i) => (
               <Col xs={24} sm={12} lg={8} key={i}>
                 <Card variant="borderless" className={styles.statCard}>
                   <Skeleton active paragraph={{ rows: 2 }} />
