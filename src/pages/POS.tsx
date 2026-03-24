@@ -2,17 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Input, Button, Typography, message, Badge, Select } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
-import {
-  Search,
-  Plus,
-  Minus,
-  Trash2,
-  Banknote,
-  Waves,
-  Smartphone,
-  UserCheck,
-  ShoppingBag,
-} from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./POS.module.css";
 import { useStore } from "@/hooks/useStore";
@@ -46,37 +36,42 @@ type ProductForPOS = {
 const PAYMENT_METHODS: {
   key: PaymentMethod;
   label: string;
-  icon: typeof Banknote;
+  hint: string;
+  image: string;
   color: string;
   bg: string;
 }[] = [
   {
     key: "cash",
     label: t.pos.cash,
-    icon: Banknote,
+    hint: t.pos.paymentHintCash,
+    image: "/images/payments/cash.svg",
     color: "var(--color-success)",
-    bg: "rgba(46,204,113,0.10)",
+    bg: "rgba(46,204,113,0.12)",
   },
   {
     key: "wave",
     label: t.pos.wave,
-    icon: Waves,
+    hint: t.pos.paymentHintWave,
+    image: "/images/payments/wave.png",
     color: "#1BA3E8",
-    bg: "rgba(27,163,232,0.10)",
+    bg: "rgba(27,163,232,0.12)",
   },
   {
     key: "orange_money",
     label: t.pos.orangeMoney,
-    icon: Smartphone,
+    hint: t.pos.paymentHintOrange,
+    image: "/images/payments/orange-money.png",
     color: "#F39C12",
-    bg: "rgba(243,156,18,0.10)",
+    bg: "rgba(243,156,18,0.12)",
   },
   {
     key: "credit",
     label: t.pos.credit,
-    icon: UserCheck,
+    hint: t.pos.paymentHintCredit,
+    image: "/images/payments/credit.svg",
     color: "var(--color-primary)",
-    bg: "rgba(31,58,95,0.10)",
+    bg: "rgba(31,58,95,0.12)",
   },
 ];
 
@@ -433,11 +428,13 @@ export default function POS() {
             <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
               Mode de paiement
             </Typography.Text>
-            <div className={styles.paymentGrid}>
-              {paymentMethods.map(({ key, label, icon: Icon, color, bg }) => (
+            <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
+              {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
                 <button
                   key={key}
                   type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === key}
                   className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
                   onClick={() => {
                     setPaymentMethod(key);
@@ -452,13 +449,21 @@ export default function POS() {
                       : undefined
                   }
                 >
-                  <Icon
-                    size={20}
-                    style={{
-                      color: paymentMethod === key ? color : undefined,
-                    }}
-                  />
-                  <span>{label}</span>
+                  <span className={styles.payMethodVisual} aria-hidden>
+                    <img
+                      src={image}
+                      alt=""
+                      className={
+                        key === "wave" || key === "orange_money"
+                          ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
+                          : styles.payMethodImg
+                      }
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </span>
+                  <span className={styles.payMethodLabel}>{label}</span>
+                  <span className={styles.payMethodHint}>{hint}</span>
                 </button>
               ))}
             </div>
