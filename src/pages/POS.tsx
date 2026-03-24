@@ -100,18 +100,17 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function POS() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
-  const { canMultiPayment } = usePlanFeatures();
+  const { canMultiPayment, canClientCredits } = usePlanFeatures();
 
   const paymentMethods = useMemo(
     () =>
       PAYMENT_METHODS.filter((m) => {
         if (m.key === "cash") return true;
         if (m.key === "wave" || m.key === "orange_money") return canMultiPayment;
-        // Crédit client désactivé au POS (côté API : SaleService)
-        if (m.key === "credit") return false;
+        if (m.key === "credit") return canClientCredits;
         return false;
       }),
-    [canMultiPayment]
+    [canMultiPayment, canClientCredits]
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -121,7 +120,7 @@ export default function POS() {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductForPOS[]>([]);
   const [categories, setCategories] = useState<string[]>(["Tous"]);
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; creditBalance: number }[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
@@ -155,7 +154,13 @@ export default function POS() {
 
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
-        setClients(clientsRes.content.map((c) => ({ id: c.id, name: c.name })));
+        setClients(
+          clientsRes.content.map((c) => ({
+            id: c.id,
+            name: c.name,
+            creditBalance: c.creditBalance ?? 0,
+          }))
+        );
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
         setProducts(
           stockList.map((s) => ({
@@ -470,7 +475,23 @@ export default function POS() {
                 options={clients.map((c) => ({ value: c.id, label: c.name }))}
                 style={{ width: "100%" }}
                 size="large"
+                showSearch
+                optionFilterProp="label"
               />
+              {selectedClientId &&
+                (() => {
+                  const before = clients.find((c) => c.id === selectedClientId)?.creditBalance ?? 0;
+                  const after = before + total;
+                  return (
+                    <Typography.Text
+                      type="secondary"
+                      style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                    >
+                      Dette actuelle : {before.toLocaleString("fr-FR")} F · Après cette vente :{" "}
+                      <strong>{after.toLocaleString("fr-FR")} F</strong>
+                    </Typography.Text>
+                  );
+                })()}
             </div>
           )}
 
