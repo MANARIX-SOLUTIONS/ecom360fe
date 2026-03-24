@@ -14,6 +14,7 @@ import {
   message,
   Space,
   Dropdown,
+  Switch,
 } from "antd";
 import {
   Search,
@@ -41,11 +42,18 @@ import {
   listAdminBusinessMembers,
   listAdminBusinessRoleOptions,
   updateAdminBusinessMemberRole,
+  listAdminBusinessStores,
+  getAdminBusinessSubscriptionUsage,
+  createAdminBusinessStore,
+  updateAdminBusinessStore,
+  deleteAdminBusinessStore,
   type AdminBusiness,
   type AdminPlanItem,
   type AdminBusinessMember,
   type AdminBusinessRoleOption,
 } from "@/api/backoffice";
+import type { StoreResponse } from "@/api/stores";
+import type { SubscriptionUsageResponse } from "@/api/subscription";
 
 type Business = AdminBusiness & { stores: number };
 
@@ -90,6 +98,13 @@ export default function BackofficeBusinesses() {
   const [roleOptions, setRoleOptions] = useState<AdminBusinessRoleOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [adminStores, setAdminStores] = useState<StoreResponse[]>([]);
+  const [storeUsage, setStoreUsage] = useState<SubscriptionUsageResponse | null>(null);
+  const [storesLoading, setStoresLoading] = useState(false);
+  const [storeModalOpen, setStoreModalOpen] = useState(false);
+  const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
+  const [storeSaving, setStoreSaving] = useState(false);
+  const [storeForm] = Form.useForm();
 
   const loadPlans = useCallback(async () => {
     try {
@@ -212,6 +227,33 @@ export default function BackofficeBusinesses() {
       // keep current detail
     }
   }, []);
+
+  const loadStoresForBusiness = useCallback(async (businessId: string) => {
+    setStoresLoading(true);
+    try {
+      const [stores, usage] = await Promise.all([
+        listAdminBusinessStores(businessId),
+        getAdminBusinessSubscriptionUsage(businessId),
+      ]);
+      setAdminStores(stores);
+      setStoreUsage(usage);
+    } catch {
+      setAdminStores([]);
+      setStoreUsage(null);
+      message.error("Impossible de charger les boutiques");
+    } finally {
+      setStoresLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!detail?.id) {
+      setAdminStores([]);
+      setStoreUsage(null);
+      return;
+    }
+    loadStoresForBusiness(detail.id);
+  }, [detail?.id, loadStoresForBusiness]);
 
   const detailIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -344,14 +386,95 @@ export default function BackofficeBusinesses() {
       });
       message.success("Plan mis à jour");
       setAssignPlanModalOpen(false);
-      refreshDetail(detail.id);
+      await refreshDetail(detail.id);
+      await loadStoresForBusiness(detail.id);
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
       message.error(e instanceof Error ? e.message : "Erreur lors du changement de plan");
     } finally {
       setAssignPlanLoading(false);
     }
-  }, [detail, assignPlanForm, refreshDetail]);
+  }, [detail, assignPlanForm, loadStoresForBusiness, refreshDetail]);
+
+  const atStoreLimit =
+    storeUsage != null &&
+    storeUsage.storesLimit > 0 &&
+    storeUsage.storesCount >= storeUsage.storesLimit;
+
+  const openAddStore = useCallback(() => {
+    setEditingStoreId(null);
+    storeForm.resetFields();
+    storeForm.setFieldsValue({ isActive: true });
+    setStoreModalOpen(true);
+  }, [storeForm]);
+
+  const openEditStore = useCallback(
+    (s: StoreResponse) => {
+      setEditingStoreId(s.id);
+      storeForm.setFieldsValue({
+        name: s.name,
+        address: s.address ?? "",
+        phone: s.phone ?? "",
+        isActive: s.isActive,
+      });
+      setStoreModalOpen(true);
+    },
+    [storeForm]
+  );
+
+  const handleStoreSubmit = useCallback(async () => {
+    if (!detail?.id) return;
+    try {
+      const values = await storeForm.validateFields();
+      setStoreSaving(true);
+      const payload = {
+        name: values.name as string,
+        address: (values.address as string) || undefined,
+        phone: (values.phone as string) || undefined,
+        isActive: values.isActive !== false,
+      };
+      if (editingStoreId) {
+        await updateAdminBusinessStore(detail.id, editingStoreId, payload);
+        message.success("Boutique mise à jour");
+      } else {
+        await createAdminBusinessStore(detail.id, payload);
+        message.success("Boutique créée");
+      }
+      setStoreModalOpen(false);
+      storeForm.resetFields();
+      await loadStoresForBusiness(detail.id);
+      await refreshDetail(detail.id);
+    } catch (e) {
+      if (e && typeof e === "object" && "errorFields" in e) return;
+      message.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setStoreSaving(false);
+    }
+  }, [detail?.id, editingStoreId, loadStoresForBusiness, refreshDetail, storeForm]);
+
+  const handleDeleteStore = useCallback(
+    (store: StoreResponse) => {
+      if (!detail?.id) return;
+      modal.confirm({
+        title: `Supprimer « ${store.name} » ?`,
+        content: "Cette action est irréversible.",
+        okText: "Supprimer",
+        okButtonProps: { danger: true },
+        cancelText: "Annuler",
+        onOk: async () => {
+          try {
+            await deleteAdminBusinessStore(detail.id, store.id);
+            message.success("Boutique supprimée");
+            await loadStoresForBusiness(detail.id);
+            await refreshDetail(detail.id);
+          } catch (e) {
+            message.error(e instanceof Error ? e.message : "Erreur");
+          }
+        },
+      });
+    },
+    [detail?.id, loadStoresForBusiness, modal, refreshDetail]
+  );
 
   if (loading) {
     return (
@@ -594,12 +717,108 @@ export default function BackofficeBusinesses() {
               <span className={styles.drawerSectionTitle}>Activité</span>
               <div className={styles.drawerRow}>
                 <span className={styles.drawerLabel}>Boutiques</span>
-                <span className={styles.drawerValue}>{detail.stores}</span>
+                <span className={styles.drawerValue}>
+                  {storeUsage
+                    ? storeUsage.storesLimit === 0
+                      ? `${storeUsage.storesCount} (illimité)`
+                      : `${storeUsage.storesCount} / ${storeUsage.storesLimit}`
+                    : detail.stores}
+                </span>
               </div>
               <div className={styles.drawerRow}>
                 <span className={styles.drawerLabel}>Revenu mensuel</span>
                 <span className={styles.drawerValue}>{detail.revenue}</span>
               </div>
+            </div>
+            <div className={styles.drawerSection}>
+              <span className={styles.drawerSectionTitle}>
+                <Store size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                Gestion des boutiques
+              </span>
+              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 10 }}>
+                Les mêmes limites que pour le propriétaire dans Paramètres → Boutiques : création
+                bloquée si le quota du plan est atteint.
+              </Typography.Text>
+              <div style={{ marginBottom: 10 }}>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<Plus size={14} />}
+                  disabled={atStoreLimit}
+                  onClick={openAddStore}
+                >
+                  Ajouter une boutique
+                </Button>
+                {atStoreLimit && (
+                  <Typography.Text type="secondary" style={{ marginLeft: 12 }}>
+                    Limite du plan atteinte — changez de plan pour ajouter des points de vente.
+                  </Typography.Text>
+                )}
+              </div>
+              {storesLoading ? (
+                <Skeleton active paragraph={{ rows: 2 }} />
+              ) : adminStores.length === 0 ? (
+                <Typography.Text type="secondary">Aucune boutique.</Typography.Text>
+              ) : (
+                <div className="tableResponsive">
+                  <Table
+                    size="small"
+                    pagination={false}
+                    rowKey="id"
+                    dataSource={adminStores}
+                    columns={[
+                      {
+                        title: "Nom",
+                        dataIndex: "name",
+                        key: "name",
+                      },
+                      {
+                        title: "Adresse",
+                        dataIndex: "address",
+                        key: "address",
+                        ellipsis: true,
+                        render: (a: string) => a || "—",
+                      },
+                      {
+                        title: "Actif",
+                        key: "active",
+                        width: 72,
+                        render: (_, row) => (
+                          <Tag color={row.isActive ? "success" : "default"}>
+                            {row.isActive ? "Oui" : "Non"}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: "",
+                        key: "actions",
+                        width: 88,
+                        render: (_, row) => (
+                          <Space size={4}>
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<Pencil size={14} />}
+                              onClick={() => openEditStore(row)}
+                            >
+                              Modifier
+                            </Button>
+                            <Button
+                              type="link"
+                              size="small"
+                              danger
+                              icon={<Trash2 size={14} />}
+                              onClick={() => handleDeleteStore(row)}
+                            >
+                              Supprimer
+                            </Button>
+                          </Space>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
             <div className={styles.drawerSection}>
               <span className={styles.drawerSectionTitle}>
@@ -810,6 +1029,49 @@ export default function BackofficeBusinesses() {
               <Button onClick={() => setAssignPlanModalOpen(false)}>Annuler</Button>
               <Button type="primary" htmlType="submit" loading={assignPlanLoading}>
                 Appliquer
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editingStoreId ? "Modifier la boutique" : "Nouvelle boutique"}
+        open={storeModalOpen}
+        onCancel={() => {
+          setStoreModalOpen(false);
+          storeForm.resetFields();
+        }}
+        footer={null}
+        destroyOnClose
+      >
+        <Form form={storeForm} layout="vertical" onFinish={handleStoreSubmit}>
+          <Form.Item name="name" label="Nom" rules={[{ required: true, message: "Requis" }]}>
+            <Input placeholder="Point de vente" />
+          </Form.Item>
+          <Form.Item name="address" label="Adresse">
+            <Input.TextArea rows={2} placeholder="Adresse" />
+          </Form.Item>
+          <Form.Item name="phone" label="Téléphone">
+            <Input placeholder="Optionnel" />
+          </Form.Item>
+          {editingStoreId ? (
+            <Form.Item name="isActive" label="Actif" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          ) : null}
+          <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setStoreModalOpen(false);
+                  storeForm.resetFields();
+                }}
+              >
+                Annuler
+              </Button>
+              <Button type="primary" htmlType="submit" loading={storeSaving}>
+                {editingStoreId ? "Enregistrer" : "Créer"}
               </Button>
             </Space>
           </Form.Item>
