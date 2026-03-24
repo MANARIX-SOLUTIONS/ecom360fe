@@ -40,7 +40,7 @@ const navConfig = [
     key: "/dashboard",
     permission: "dashboard" as const,
     icon: <LayoutDashboard size={20} />,
-    label: "Dashboard",
+    label: "Tableau de bord",
   },
   {
     key: "/vue-globale",
