@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, Input, Button, Typography, message, Badge, Select } from "antd";
+import { Card, Input, Button, Typography, message, Badge, Select, Modal, Form } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { t } from "@/i18n";
@@ -13,6 +13,7 @@ import {
   createSale,
   getSubscriptionUsage,
   listCategories,
+  createClient,
 } from "@/api";
 
 type CartLine = {
@@ -119,6 +120,9 @@ export default function POS() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
+  const [quickClientOpen, setQuickClientOpen] = useState(false);
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [quickClientForm] = Form.useForm<{ name: string; phone?: string }>();
   const searchRef = useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
 
   useEffect(() => {
@@ -232,6 +236,30 @@ export default function POS() {
     setCart((prev) => prev.filter((l) => l.id !== id));
   };
 
+  const handleQuickClientCreate = () =>
+    quickClientForm.validateFields().then(async (values) => {
+      setCreatingClient(true);
+      try {
+        const c = await createClient({
+          name: values.name.trim(),
+          phone: values.phone?.trim() || undefined,
+        });
+        setClients((prev) => [
+          ...prev,
+          { id: c.id, name: c.name, creditBalance: c.creditBalance ?? 0 },
+        ]);
+        setSelectedClientId(c.id);
+        message.success(t.pos.clientCreatedSelected);
+        setQuickClientOpen(false);
+        quickClientForm.resetFields();
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : "Erreur");
+        throw e;
+      } finally {
+        setCreatingClient(false);
+      }
+    });
+
   const validateSale = async () => {
     if (cart.length === 0) {
       message.warning(t.pos.addAtLeastOne);
@@ -278,280 +306,342 @@ export default function POS() {
   };
 
   return (
-    <div className={styles.pos}>
-      {/* Left: search + categories + product grid */}
-      <div className={styles.left}>
-        <Input
-          ref={searchRef}
-          prefix={<Search size={20} />}
-          placeholder={`${t.products.search} (appuyez /)`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          size="large"
-          className={styles.search}
-          allowClear
-          /* eslint-disable-next-line jsx-a11y/no-autofocus -- POS: search is primary action, focus on load improves checkout speed */
-          autoFocus
-        />
-        <div className={styles.categories}>
-          {categories.map((c) => (
-            <Button
-              key={c}
-              type={category === c ? "primary" : "default"}
-              onClick={() => setCategory(c)}
-              className={styles.catBtn}
-            >
-              {c}
-            </Button>
-          ))}
-        </div>
-        <div className={styles.productGrid}>
-          {filteredProducts.map((p) => {
-            const cartItem = cart.find((l) => l.id === p.id);
-            const availableStock = p.stock - (cartItem?.qty ?? 0);
-            const level = stockLevel(availableStock, p.minStock);
-            const outOfStock = availableStock <= 0;
-            const catColor = CATEGORY_COLORS[p.category] || "#999";
-            return (
-              <button
-                type="button"
-                key={p.id}
-                className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
-                onClick={() => addToCart(p)}
-                disabled={outOfStock}
-                aria-disabled={outOfStock}
+    <>
+      <div className={styles.pos}>
+        {/* Left: search + categories + product grid */}
+        <div className={styles.left}>
+          <Input
+            ref={searchRef}
+            prefix={<Search size={20} />}
+            placeholder={`${t.products.search} (appuyez /)`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            size="large"
+            className={styles.search}
+            allowClear
+            /* eslint-disable-next-line jsx-a11y/no-autofocus -- POS: search is primary action, focus on load improves checkout speed */
+            autoFocus
+          />
+          <div className={styles.categories}>
+            {categories.map((c) => (
+              <Button
+                key={c}
+                type={category === c ? "primary" : "default"}
+                onClick={() => setCategory(c)}
+                className={styles.catBtn}
               >
-                <div className={styles.productTop}>
-                  <span
-                    className={styles.productAvatar}
-                    style={{ background: catColor + "20", color: catColor }}
-                  >
-                    {categoryInitial(p.category)}
-                  </span>
-                  {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
-                </div>
-                <span className={styles.productName}>{p.name}</span>
-                <span className={`amount ${styles.productPrice}`}>
-                  {p.price.toLocaleString("fr-FR")} F
-                </span>
-                <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-                  {outOfStock
-                    ? t.pos.outOfStock
-                    : level === "low"
-                      ? `Stock: ${availableStock} ⚠`
-                      : `Stock: ${availableStock}`}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Center: cart */}
-      <Card className={styles.cartCard} variant="borderless">
-        <div className={styles.cartHeader}>
-          <ShoppingBag size={18} />
-          <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
-            Panier
-          </Typography.Text>
-          {itemCount > 0 && (
-            <>
-              <Badge count={itemCount} style={{ backgroundColor: "var(--color-primary)" }} />
-              <button
-                type="button"
-                className={styles.clearCartBtn}
-                onClick={() => setCart([])}
-                aria-label="Vider le panier"
-              >
-                Vider
-              </button>
-            </>
-          )}
-        </div>
-        {cart.length === 0 ? (
-          <div className={styles.cartEmpty}>
-            <ShoppingBag size={32} strokeWidth={1.5} />
-            <span>Aucun article</span>
-            <span className={styles.cartEmptyHint}>Cliquez sur un produit pour l'ajouter</span>
-          </div>
-        ) : (
-          <div className={styles.cartList}>
-            {cart.map((l) => (
-              <div key={l.id} className={styles.cartLine}>
-                <div className={styles.cartLineInfo}>
-                  <span className={styles.cartLineName}>{l.name}</span>
-                  <span className={styles.cartLineMeta}>
-                    {l.price.toLocaleString("fr-FR")} F × {l.qty}
-                  </span>
-                </div>
-                <div className={styles.cartLineActions}>
-                  <button
-                    type="button"
-                    className={styles.qtyBtn}
-                    onClick={() => updateQty(l.id, -1)}
-                    aria-label="Diminuer"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
-                  <button
-                    type="button"
-                    className={styles.qtyBtn}
-                    onClick={() => updateQty(l.id, 1)}
-                    aria-label="Augmenter"
-                  >
-                    <Plus size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
-                    onClick={() => removeLine(l.id)}
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <span className={`amount ${styles.lineTotal}`}>
-                  {(l.price * l.qty).toLocaleString("fr-FR")} F
-                </span>
-              </div>
+                {c}
+              </Button>
             ))}
           </div>
-        )}
-      </Card>
-
-      {/* Right: payment method selection + total + CTA */}
-      <div className={styles.right}>
-        <Card className={styles.totalCard} variant="borderless">
-          {/* Payment method selection */}
-          <div className={styles.paymentSection}>
-            <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
-              Mode de paiement
-            </Typography.Text>
-            <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
-              {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
+          <div className={styles.productGrid}>
+            {filteredProducts.map((p) => {
+              const cartItem = cart.find((l) => l.id === p.id);
+              const availableStock = p.stock - (cartItem?.qty ?? 0);
+              const level = stockLevel(availableStock, p.minStock);
+              const outOfStock = availableStock <= 0;
+              const catColor = CATEGORY_COLORS[p.category] || "#999";
+              return (
                 <button
-                  key={key}
                   type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === key}
-                  className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
-                  onClick={() => {
-                    setPaymentMethod(key);
-                    if (key !== "credit") setSelectedClientId(null);
-                  }}
-                  style={
-                    paymentMethod === key
-                      ? {
-                          borderColor: color,
-                          background: bg,
-                        }
-                      : undefined
-                  }
+                  key={p.id}
+                  className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
+                  onClick={() => addToCart(p)}
+                  disabled={outOfStock}
+                  aria-disabled={outOfStock}
                 >
-                  <span className={styles.payMethodVisual} aria-hidden>
-                    <img
-                      src={image}
-                      alt=""
-                      className={
-                        key === "wave" || key === "orange_money"
-                          ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
-                          : styles.payMethodImg
-                      }
-                      loading="lazy"
-                      decoding="async"
-                    />
+                  <div className={styles.productTop}>
+                    <span
+                      className={styles.productAvatar}
+                      style={{ background: catColor + "20", color: catColor }}
+                    >
+                      {categoryInitial(p.category)}
+                    </span>
+                    {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
+                  </div>
+                  <span className={styles.productName}>{p.name}</span>
+                  <span className={`amount ${styles.productPrice}`}>
+                    {p.price.toLocaleString("fr-FR")} F
                   </span>
-                  <span className={styles.payMethodLabel}>{label}</span>
-                  <span className={styles.payMethodHint}>{hint}</span>
+                  <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+                    {outOfStock
+                      ? t.pos.outOfStock
+                      : level === "low"
+                        ? `Stock: ${availableStock} ⚠`
+                        : `Stock: ${availableStock}`}
+                  </span>
                 </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Center: cart */}
+        <Card className={styles.cartCard} variant="borderless">
+          <div className={styles.cartHeader}>
+            <ShoppingBag size={18} />
+            <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
+              Panier
+            </Typography.Text>
+            {itemCount > 0 && (
+              <>
+                <Badge count={itemCount} style={{ backgroundColor: "var(--color-primary)" }} />
+                <button
+                  type="button"
+                  className={styles.clearCartBtn}
+                  onClick={() => setCart([])}
+                  aria-label="Vider le panier"
+                >
+                  Vider
+                </button>
+              </>
+            )}
+          </div>
+          {cart.length === 0 ? (
+            <div className={styles.cartEmpty}>
+              <ShoppingBag size={32} strokeWidth={1.5} />
+              <span>Aucun article</span>
+              <span className={styles.cartEmptyHint}>Cliquez sur un produit pour l'ajouter</span>
+            </div>
+          ) : (
+            <div className={styles.cartList}>
+              {cart.map((l) => (
+                <div key={l.id} className={styles.cartLine}>
+                  <div className={styles.cartLineInfo}>
+                    <span className={styles.cartLineName}>{l.name}</span>
+                    <span className={styles.cartLineMeta}>
+                      {l.price.toLocaleString("fr-FR")} F × {l.qty}
+                    </span>
+                  </div>
+                  <div className={styles.cartLineActions}>
+                    <button
+                      type="button"
+                      className={styles.qtyBtn}
+                      onClick={() => updateQty(l.id, -1)}
+                      aria-label="Diminuer"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
+                    <button
+                      type="button"
+                      className={styles.qtyBtn}
+                      onClick={() => updateQty(l.id, 1)}
+                      aria-label="Augmenter"
+                    >
+                      <Plus size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
+                      onClick={() => removeLine(l.id)}
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <span className={`amount ${styles.lineTotal}`}>
+                    {(l.price * l.qty).toLocaleString("fr-FR")} F
+                  </span>
+                </div>
               ))}
             </div>
-          </div>
-
-          {paymentMethod === "credit" && (
-            <div className={styles.clientRow}>
-              <Typography.Text type="secondary">Client (crédit)</Typography.Text>
-              <Select
-                placeholder="Sélectionner un client"
-                allowClear
-                value={selectedClientId}
-                onChange={setSelectedClientId}
-                options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                style={{ width: "100%" }}
-                size="large"
-                showSearch
-                optionFilterProp="label"
-              />
-              {selectedClientId &&
-                (() => {
-                  const before = clients.find((c) => c.id === selectedClientId)?.creditBalance ?? 0;
-                  const after = before + total;
-                  return (
-                    <Typography.Text
-                      type="secondary"
-                      style={{ display: "block", marginTop: 8, fontSize: 13 }}
-                    >
-                      Dette actuelle : {before.toLocaleString("fr-FR")} F · Après cette vente :{" "}
-                      <strong>{after.toLocaleString("fr-FR")} F</strong>
-                    </Typography.Text>
-                  );
-                })()}
-            </div>
           )}
-
-          <div className={styles.totalDivider} />
-
-          {/* Discount */}
-          <div className={styles.discountRow}>
-            <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
-            <CurrencyInput
-              min={0}
-              value={discount}
-              onChange={(v) => setDiscount(Number(v) || 0)}
-              style={{ width: 140 }}
-            />
-          </div>
-
-          {/* Total */}
-          <div className={styles.totalRow}>
-            <Typography.Text type="secondary">Total</Typography.Text>
-            <Typography.Title level={2} className={styles.totalAmount}>
-              {total.toLocaleString("fr-FR")} F
-            </Typography.Title>
-          </div>
-
-          {salesAtLimit && (
-            <div
-              style={{
-                padding: 12,
-                marginBottom: 12,
-                background: "rgba(239,68,68,0.08)",
-                borderRadius: 8,
-                fontSize: 13,
-                color: "var(--color-danger)",
-              }}
-            >
-              Limite des ventes mensuelles atteinte.{" "}
-              <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
-                Passer à un plan supérieur
-              </Link>
-            </div>
-          )}
-          {/* Single validate CTA */}
-          <Button
-            type="primary"
-            size="large"
-            block
-            className={styles.validateBtn}
-            onClick={validateSale}
-            loading={loading}
-            disabled={cart.length === 0 || salesAtLimit}
-          >
-            {t.pos.validateSale}
-          </Button>
         </Card>
+
+        {/* Right: payment method selection + total + CTA */}
+        <div className={styles.right}>
+          <Card className={styles.totalCard} variant="borderless">
+            {/* Payment method selection */}
+            <div className={styles.paymentSection}>
+              <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
+                Mode de paiement
+              </Typography.Text>
+              <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
+                {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === key}
+                    className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
+                    onClick={() => {
+                      setPaymentMethod(key);
+                      if (key !== "credit") setSelectedClientId(null);
+                    }}
+                    style={
+                      paymentMethod === key
+                        ? {
+                            borderColor: color,
+                            background: bg,
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className={styles.payMethodVisual} aria-hidden>
+                      <img
+                        src={image}
+                        alt=""
+                        className={
+                          key === "wave" || key === "orange_money"
+                            ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
+                            : styles.payMethodImg
+                        }
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </span>
+                    <span className={styles.payMethodLabel}>{label}</span>
+                    <span className={styles.payMethodHint}>{hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {paymentMethod === "credit" && (
+              <div className={styles.clientRow}>
+                <div className={styles.clientRowHeader}>
+                  <Typography.Text type="secondary">Client (crédit)</Typography.Text>
+                  <Button
+                    type="link"
+                    size="small"
+                    className={styles.quickAddClientBtn}
+                    icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
+                    onClick={() => setQuickClientOpen(true)}
+                  >
+                    {t.pos.quickAddClient}
+                  </Button>
+                </div>
+                <Typography.Text type="secondary" className={styles.clientCreditHint}>
+                  {t.pos.quickAddClientHint}
+                </Typography.Text>
+                <Select
+                  placeholder="Sélectionner un client"
+                  allowClear
+                  value={selectedClientId}
+                  onChange={setSelectedClientId}
+                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                  style={{ width: "100%" }}
+                  size="large"
+                  showSearch
+                  optionFilterProp="label"
+                  notFoundContent={
+                    <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
+                  }
+                />
+                {selectedClientId &&
+                  (() => {
+                    const before =
+                      clients.find((c) => c.id === selectedClientId)?.creditBalance ?? 0;
+                    const after = before + total;
+                    return (
+                      <Typography.Text
+                        type="secondary"
+                        style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                      >
+                        Dette actuelle : {before.toLocaleString("fr-FR")} F · Après cette vente :{" "}
+                        <strong>{after.toLocaleString("fr-FR")} F</strong>
+                      </Typography.Text>
+                    );
+                  })()}
+              </div>
+            )}
+
+            <div className={styles.totalDivider} />
+
+            {/* Discount */}
+            <div className={styles.discountRow}>
+              <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
+              <CurrencyInput
+                min={0}
+                value={discount}
+                onChange={(v) => setDiscount(Number(v) || 0)}
+                style={{ width: 140 }}
+              />
+            </div>
+
+            {/* Total */}
+            <div className={styles.totalRow}>
+              <Typography.Text type="secondary">Total</Typography.Text>
+              <Typography.Title level={2} className={styles.totalAmount}>
+                {total.toLocaleString("fr-FR")} F
+              </Typography.Title>
+            </div>
+
+            {salesAtLimit && (
+              <div
+                style={{
+                  padding: 12,
+                  marginBottom: 12,
+                  background: "rgba(239,68,68,0.08)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: "var(--color-danger)",
+                }}
+              >
+                Limite des ventes mensuelles atteinte.{" "}
+                <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
+                  Passer à un plan supérieur
+                </Link>
+              </div>
+            )}
+            {/* Single validate CTA */}
+            <Button
+              type="primary"
+              size="large"
+              block
+              className={styles.validateBtn}
+              onClick={validateSale}
+              loading={loading}
+              disabled={cart.length === 0 || salesAtLimit}
+            >
+              {t.pos.validateSale}
+            </Button>
+          </Card>
+        </div>
       </div>
-    </div>
+
+      <Modal
+        title={t.pos.quickAddClientTitle}
+        open={quickClientOpen}
+        onCancel={() => {
+          setQuickClientOpen(false);
+          quickClientForm.resetFields();
+        }}
+        okText={t.common.save}
+        cancelText={t.common.cancel}
+        confirmLoading={creatingClient}
+        destroyOnClose
+        maskClosable={!creatingClient}
+        onOk={handleQuickClientCreate}
+      >
+        <Form
+          form={quickClientForm}
+          layout="vertical"
+          style={{ marginTop: 8 }}
+          requiredMark="optional"
+        >
+          <Form.Item
+            name="name"
+            label={t.common.name}
+            rules={[{ required: true, message: t.validation.nameRequired }]}
+          >
+            <Input placeholder="Nom affiché sur le ticket" size="large" autoFocus />
+          </Form.Item>
+          <Form.Item
+            name="phone"
+            label={t.common.phone}
+            rules={[
+              {
+                pattern: /^[\d\s+()-]{0,20}$/,
+                message: t.validation.phoneInvalid,
+              },
+            ]}
+          >
+            <Input placeholder="77 123 45 67 (facultatif)" size="large" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
   );
 }

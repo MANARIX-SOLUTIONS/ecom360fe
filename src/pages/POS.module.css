@@ -471,6 +471,35 @@
   margin-bottom: 12px;
 }
 
+.clientRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quickAddClientBtn {
+  padding: 0 4px !important;
+  height: auto !important;
+  font-weight: 600;
+}
+
+.clientCreditHint {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: -4px !important;
+}
+
+.selectEmptyHint {
+  display: block;
+  padding: 8px 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
 .clientRow .ant-select .ant-select-selector {
   min-height: 40px;
 }
