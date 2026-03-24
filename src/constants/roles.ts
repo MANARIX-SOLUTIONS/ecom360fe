@@ -29,6 +29,7 @@ export type Permission =
   | "settings:profile"
   | "settings:subscription"
   | "settings:users"
+  | "settings:roles"
   | "settings:security"
   | "settings:notifications";
 
@@ -49,6 +50,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings:profile",
     "settings:subscription",
     "settings:users",
+    "settings:roles",
     "settings:security",
     "settings:notifications",
   ],
@@ -67,6 +69,7 @@ const PERMISSIONS_BY_ROLE: Record<Role, Permission[]> = {
     "settings:profile",
     "settings:subscription",
     "settings:users",
+    "settings:roles",
     "settings:security",
     "settings:notifications",
   ],

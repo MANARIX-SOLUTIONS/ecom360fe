@@ -14,6 +14,7 @@ import {
   ApiError,
 } from "@/api";
 import { useStore } from "@/hooks/useStore";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ClientResponse } from "@/api";
@@ -32,6 +33,7 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const { canClientCredits } = usePlanFeatures();
+  const { matrixCan } = useMatrixCan();
   const [client, setClient] = useState<ClientResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -211,7 +213,7 @@ export default function ClientDetail() {
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {canClientCredits && (
+            {canClientCredits && matrixCan("CLIENTS_UPDATE", "clients") && (
               <Button
                 type="primary"
                 icon={<Plus size={18} />}
@@ -223,12 +225,16 @@ export default function ClientDetail() {
                 {t.clients.addPayment}
               </Button>
             )}
-            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
-              {t.common.edit}
-            </Button>
-            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
-              {t.common.delete}
-            </Button>
+            {matrixCan("CLIENTS_UPDATE", "clients") && (
+              <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
+                {t.common.edit}
+              </Button>
+            )}
+            {matrixCan("CLIENTS_DELETE", "clients") && (
+              <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
+                {t.common.delete}
+              </Button>
+            )}
           </div>
         </div>
       </Card>

@@ -13,7 +13,7 @@ import {
   assignStores,
   listStores,
 } from "@/api";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { BusinessUser } from "@/api";
 import type { StoreResponse } from "@/api/stores";
 import styles from "./Settings.module.css";
@@ -24,16 +24,18 @@ const roleOptions = [
   { value: ROLES.PROPRIETAIRE, label: t.roles.owner },
 ];
 
-function roleToLabel(role: string): string {
+function roleToLabel(role: string, roleName?: string): string {
+  if (roleName) return roleName;
   const r = role?.toLowerCase();
-  if (r === "proprietaire") return t.roles.owner;
-  if (r === "gestionnaire") return t.roles.manager;
-  return t.roles.cashier;
+  if (r === "admin" || r === "proprietaire") return t.roles.owner;
+  if (r === "manager" || r === "gestionnaire") return t.roles.manager;
+  if (r === "seller" || r === "caissier") return t.roles.cashier;
+  return role || "—";
 }
 
 export default function SettingsUsers() {
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [form] = Form.useForm();
   const [users, setUsers] = useState<BusinessUser[]>([]);
@@ -132,7 +134,7 @@ export default function SettingsUsers() {
             <Typography.Text type="secondary" style={{ marginRight: 8 }}>
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
-          ) : can("BUSINESS_USERS_CREATE") ? (
+          ) : matrixCan("BUSINESS_USERS_CREATE", "settings:users") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setInviteOpen(true)}>
               {t.settings.inviteUser}
             </Button>
@@ -165,13 +167,14 @@ export default function SettingsUsers() {
                 {
                   title: t.settings.role,
                   dataIndex: "role",
-                  render: (role: string) => roleToLabel(role),
+                  render: (role: string, row) => roleToLabel(role, row.roleName),
                 },
                 {
                   title: t.stores.title,
                   width: 160,
                   render: (_, r) =>
-                    r.role?.toLowerCase() !== "proprietaire" && can("BUSINESS_USERS_UPDATE") ? (
+                    !["admin", "proprietaire"].includes(r.role?.toLowerCase() ?? "") &&
+                    matrixCan("BUSINESS_USERS_UPDATE", "settings:users") ? (
                       <Button
                         type="text"
                         size="small"

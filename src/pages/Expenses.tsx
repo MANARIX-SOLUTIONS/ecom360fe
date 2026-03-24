@@ -24,6 +24,7 @@ import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucid
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
 import { useStore } from "@/hooks/useStore";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import {
   listExpenses,
   listExpenseCategoriesWithDefaults,
@@ -52,6 +53,7 @@ const CATEGORY_COLOR_OPTIONS = [
 
 export default function Expenses() {
   const { activeStore } = useStore();
+  const { matrixCan } = useMatrixCan();
   const [form] = Form.useForm();
   const [categoryForm] = Form.useForm();
   const now = new Date();
@@ -296,13 +298,15 @@ export default function Expenses() {
             })}
             style={{ width: 100 }}
           />
-          <Button
-            icon={<Tags size={18} />}
-            onClick={() => setCategoriesDrawerOpen(true)}
-            style={{ flexShrink: 0 }}
-          >
-            {t.expenses.manageCategories}
-          </Button>
+          {matrixCan("EXPENSES_UPDATE", "expenses") && (
+            <Button
+              icon={<Tags size={18} />}
+              onClick={() => setCategoriesDrawerOpen(true)}
+              style={{ flexShrink: 0 }}
+            >
+              {t.expenses.manageCategories}
+            </Button>
+          )}
           <Select
             value={categoryFilter}
             onChange={setCategoryFilter}
@@ -312,9 +316,11 @@ export default function Expenses() {
             ]}
             style={{ width: 180 }}
           />
-          <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
-            {t.expenses.addExpense}
-          </Button>
+          {matrixCan("EXPENSES_CREATE", "expenses") && (
+            <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
+              {t.expenses.addExpense}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -351,15 +357,17 @@ export default function Expenses() {
               Enregistrez vos dépenses pour suivre vos charges et mieux comprendre votre
               rentabilité.
             </Typography.Text>
-            <Button
-              type="primary"
-              size="large"
-              icon={<Plus size={16} />}
-              onClick={openAddExpense}
-              style={{ marginTop: 20, height: 48 }}
-            >
-              Ajouter une dépense
-            </Button>
+            {matrixCan("EXPENSES_CREATE", "expenses") && (
+              <Button
+                type="primary"
+                size="large"
+                icon={<Plus size={16} />}
+                onClick={openAddExpense}
+                style={{ marginTop: 20, height: 48 }}
+              >
+                Ajouter une dépense
+              </Button>
+            )}
           </div>
         ) : (
           <div className="tableResponsive">
@@ -397,15 +405,16 @@ export default function Expenses() {
                   title: "",
                   key: "actions",
                   width: 80,
-                  render: (_: unknown, r: ExpenseResponse) => (
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<Pencil size={14} />}
-                      onClick={() => openEditExpense(r)}
-                      aria-label={t.common.edit}
-                    />
-                  ),
+                  render: (_: unknown, r: ExpenseResponse) =>
+                    matrixCan("EXPENSES_UPDATE", "expenses") ? (
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<Pencil size={14} />}
+                        onClick={() => openEditExpense(r)}
+                        aria-label={t.common.edit}
+                      />
+                    ) : null,
                 },
               ]}
             />
@@ -457,20 +466,22 @@ export default function Expenses() {
               dropdownRender={(menu) => (
                 <>
                   {menu}
-                  <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
-                    <Button
-                      type="text"
-                      block
-                      icon={<Plus size={14} />}
-                      onClick={() => {
-                        setEditingCategory(null);
-                        categoryForm.resetFields();
-                        setCategoryModalOpen(true);
-                      }}
-                    >
-                      {t.expenses.addCategory}
-                    </Button>
-                  </div>
+                  {matrixCan("EXPENSES_CREATE", "expenses") && (
+                    <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
+                      <Button
+                        type="text"
+                        block
+                        icon={<Plus size={14} />}
+                        onClick={() => {
+                          setEditingCategory(null);
+                          categoryForm.resetFields();
+                          setCategoryModalOpen(true);
+                        }}
+                      >
+                        {t.expenses.addCategory}
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
             />
@@ -505,9 +516,11 @@ export default function Expenses() {
         onClose={() => setCategoriesDrawerOpen(false)}
         open={categoriesDrawerOpen}
         extra={
-          <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
-            {t.expenses.addCategory}
-          </Button>
+          matrixCan("EXPENSES_CREATE", "expenses") ? (
+            <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
+              {t.expenses.addCategory}
+            </Button>
+          ) : null
         }
       >
         {categories.length === 0 ? (
@@ -532,21 +545,25 @@ export default function Expenses() {
                   <Tag color={c.color || "default"}>{c.name}</Tag>
                 </div>
                 <Space>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<Pencil size={14} />}
-                    onClick={() => openEditCategory(c)}
-                    aria-label={t.common.edit}
-                  />
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<Trash2 size={14} />}
-                    onClick={() => onCategoryDelete(c)}
-                    aria-label={t.common.delete}
-                  />
+                  {matrixCan("EXPENSES_UPDATE", "expenses") && (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<Pencil size={14} />}
+                      onClick={() => openEditCategory(c)}
+                      aria-label={t.common.edit}
+                    />
+                  )}
+                  {matrixCan("EXPENSES_DELETE", "expenses") && (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<Trash2 size={14} />}
+                      onClick={() => onCategoryDelete(c)}
+                      aria-label={t.common.delete}
+                    />
+                  )}
                 </Space>
               </div>
             ))}

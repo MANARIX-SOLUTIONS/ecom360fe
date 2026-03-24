@@ -32,11 +32,13 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "@/hooks/useStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
+import { ROLES } from "@/constants/roles";
 import styles from "./Dashboard.module.css";
 
 const DASH_LIST_BATCH = 10;
@@ -92,7 +94,8 @@ function isSetupChecklistAutoHidden(businessCreatedAt: string | null | undefined
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
-  const { can } = useAuthRole();
+  const { can, role } = useAuthRole();
+  const { matrixCan, matrixNavAccess } = useMatrixCan();
   const { canExpenses, canStockAlerts, canAccess: canAccessPlan } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -235,7 +238,7 @@ export default function Dashboard() {
           variant: "sales" as const,
           icon: Wallet,
         },
-        ...(canExpenses
+        ...(canExpenses && can("expenses")
           ? [
               {
                 key: "expenses",
@@ -249,18 +252,25 @@ export default function Dashboard() {
               },
             ]
           : []),
-        {
-          key: "profit",
-          label: t.dashboard.profitEstimate,
-          value: formatFCFA(data.periodProfit),
-          prevValue: null,
-          trend: 0,
-          up: data.periodProfit >= 0,
-          variant: "profit" as const,
-          icon: PiggyBank,
-        },
+        ...(role === ROLES.PROPRIETAIRE
+          ? [
+              {
+                key: "profit",
+                label: t.dashboard.profitEstimate,
+                value: formatFCFA(data.periodProfit),
+                prevValue: null,
+                trend: 0,
+                up: data.periodProfit >= 0,
+                variant: "profit" as const,
+                icon: PiggyBank,
+              },
+            ]
+          : []),
       ]
     : [];
+
+  const statCardSkeletonCount =
+    1 + (canExpenses && can("expenses") ? 1 : 0) + (role === ROLES.PROPRIETAIRE ? 1 : 0);
 
   const topProducts = useMemo(() => {
     const base =
@@ -346,7 +356,7 @@ export default function Dashboard() {
         </div>
         <div className={styles.statsSection}>
           <Row gutter={[16, 16]}>
-            {[1, 2, 3].map((i) => (
+            {Array.from({ length: statCardSkeletonCount }, (_, i) => (
               <Col xs={24} sm={12} lg={8} key={i}>
                 <Card variant="borderless" className={styles.statCard}>
                   <Skeleton active paragraph={{ rows: 2 }} />
@@ -488,7 +498,7 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Ajouter produit</span>
         </button>
-        {canExpenses && (
+        {canExpenses && can("expenses") && (
           <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
             <span className={styles.quickCardIcon}>
               <FileText size={22} />
@@ -502,18 +512,20 @@ export default function Dashboard() {
           </span>
           <span className={styles.quickCardLabel}>Clients</span>
         </button>
-        {(data?.totalStores ?? 0) > 1 && can("globalView") && canAccessPlan("globalView", true) && (
-          <button
-            type="button"
-            className={styles.quickCard}
-            onClick={() => navigate("/vue-globale")}
-          >
-            <span className={styles.quickCardIcon}>
-              <Store size={22} />
-            </span>
-            <span className={styles.quickCardLabel}>Vue globale</span>
-          </button>
-        )}
+        {(data?.totalStores ?? 0) > 1 &&
+          matrixCan("GLOBAL_VIEW_READ", "globalView") &&
+          canAccessPlan("globalView", matrixNavAccess("globalView")) && (
+            <button
+              type="button"
+              className={styles.quickCard}
+              onClick={() => navigate("/vue-globale")}
+            >
+              <span className={styles.quickCardIcon}>
+                <Store size={22} />
+              </span>
+              <span className={styles.quickCardLabel}>Vue globale</span>
+            </button>
+          )}
       </section>
 
       <section className={styles.statsSection} aria-label="Indicateurs du jour">
@@ -729,9 +741,12 @@ export default function Dashboard() {
               variant="borderless"
               className={styles.card}
               extra={
-                <Button type="link" size="small" onClick={() => navigate("/reports")}>
-                  Voir tout
-                </Button>
+                matrixNavAccess("reports") &&
+                canAccessPlan("reports", matrixNavAccess("reports")) ? (
+                  <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                    Voir tout
+                  </Button>
+                ) : null
               }
             >
               <div className={styles.recentList}>

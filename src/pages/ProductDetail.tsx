@@ -27,7 +27,7 @@ import {
 } from "@/api";
 import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/hooks/useStore";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
@@ -42,7 +42,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { activeStore, stores } = useStore();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [product, setProduct] = useState<ProductResponse | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [stockLevels, setStockLevels] = useState<StockLevelResponse[]>([]);
@@ -287,7 +287,7 @@ export default function ProductDetail() {
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {can("STOCK_ADJUST") && (
+            {matrixCan("STOCK_ADJUST", "products") && (
               <Button
                 icon={<Layers size={18} />}
                 onClick={openStockModal}
@@ -296,12 +296,12 @@ export default function ProductDetail() {
                 {t.products.stockAdjustment}
               </Button>
             )}
-            {can("PRODUCTS_UPDATE") && (
+            {matrixCan("PRODUCTS_UPDATE", "products") && (
               <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
                 {t.common.edit}
               </Button>
             )}
-            {can("PRODUCTS_DELETE") && (
+            {matrixCan("PRODUCTS_DELETE", "products") && (
               <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
                 {t.common.delete}
               </Button>

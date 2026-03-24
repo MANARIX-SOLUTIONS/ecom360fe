@@ -17,7 +17,7 @@ import { FileDown, Ban } from "lucide-react";
 import type { SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
 import { useStore } from "@/hooks/useStore";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { t } from "@/i18n";
 import styles from "./Sales.module.css";
 import type { Dayjs } from "dayjs";
@@ -63,7 +63,7 @@ function escapeCsvCell(v: string | number): string {
 export default function Sales() {
   const navigate = useNavigate();
   const { stores, activeStore } = useStore();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -118,7 +118,7 @@ export default function Sales() {
   const handleVoid = useCallback(
     (sale: SaleResponse, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!can("SALES_DELETE") || sale.status !== "completed") return;
+      if (!matrixCan("SALES_DELETE", "pos") || sale.status !== "completed") return;
       Modal.confirm({
         title: t.sales.voidSale,
         content:
@@ -140,7 +140,7 @@ export default function Sales() {
         },
       });
     },
-    [can, fetchSales]
+    [matrixCan, fetchSales]
   );
 
   const exportCsv = useCallback(() => {
@@ -323,7 +323,7 @@ export default function Sales() {
                     </Tag>
                   ),
                 },
-                ...(can("SALES_DELETE")
+                ...(matrixCan("SALES_DELETE", "pos")
                   ? [
                       {
                         title: "",

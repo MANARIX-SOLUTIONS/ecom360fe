@@ -37,6 +37,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const SettingsProfile = lazy(() => import("./pages/SettingsProfile"));
 const SettingsSubscription = lazy(() => import("./pages/SettingsSubscription"));
 const SettingsUsers = lazy(() => import("./pages/SettingsUsers"));
+const SettingsRoles = lazy(() => import("./pages/SettingsRoles"));
 const SettingsSecurity = lazy(() => import("./pages/SettingsSecurity"));
 const SettingsNotifications = lazy(() => import("./pages/SettingsNotifications"));
 const SettingsStores = lazy(() => import("./pages/SettingsStores"));
@@ -323,6 +324,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="settings:users">
                   <SettingsUsers />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="settings/roles"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="settings:roles">
+                  <SettingsRoles />
                 </RequirePermission>
               </Suspense>
             }

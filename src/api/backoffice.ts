@@ -5,6 +5,8 @@
 
 import { api } from "./client";
 import type { PageResponse } from "./products";
+import type { StoreRequest, StoreResponse } from "./stores";
+import type { SubscriptionUsageResponse } from "./subscription";
 
 export type AdminBusiness = {
   id: string;
@@ -72,6 +74,35 @@ export async function getAdminBusiness(businessId: string): Promise<AdminBusines
   return api.get<AdminBusiness>(`/admin/businesses/${businessId}`);
 }
 
+export async function getAdminBusinessSubscriptionUsage(
+  businessId: string
+): Promise<SubscriptionUsageResponse> {
+  return api.get<SubscriptionUsageResponse>(`/admin/businesses/${businessId}/subscription/usage`);
+}
+
+export async function listAdminBusinessStores(businessId: string): Promise<StoreResponse[]> {
+  return api.get<StoreResponse[]>(`/admin/businesses/${businessId}/stores`);
+}
+
+export async function createAdminBusinessStore(
+  businessId: string,
+  payload: StoreRequest
+): Promise<StoreResponse> {
+  return api.post<StoreResponse>(`/admin/businesses/${businessId}/stores`, payload);
+}
+
+export async function updateAdminBusinessStore(
+  businessId: string,
+  storeId: string,
+  payload: StoreRequest
+): Promise<StoreResponse> {
+  return api.put<StoreResponse>(`/admin/businesses/${businessId}/stores/${storeId}`, payload);
+}
+
+export async function deleteAdminBusinessStore(businessId: string, storeId: string): Promise<void> {
+  await api.delete(`/admin/businesses/${businessId}/stores/${storeId}`);
+}
+
 export type AdminCreateBusinessPayload = {
   name: string;
   email: string;
@@ -132,6 +163,45 @@ export async function setBusinessStatus(
   status: "active" | "suspended"
 ): Promise<void> {
   await api.patch(`/admin/businesses/${businessId}/status`, { status });
+}
+
+/** Membres d'une entreprise (backoffice) */
+export type AdminBusinessMember = {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  roleCode: string;
+  roleName: string;
+  active: boolean;
+};
+
+export type AdminBusinessRoleOption = {
+  id: string;
+  code: string;
+  name: string;
+  system: boolean;
+};
+
+export async function listAdminBusinessMembers(businessId: string): Promise<AdminBusinessMember[]> {
+  return api.get<AdminBusinessMember[]>(`/admin/businesses/${businessId}/members`);
+}
+
+export async function listAdminBusinessRoleOptions(
+  businessId: string
+): Promise<AdminBusinessRoleOption[]> {
+  return api.get<AdminBusinessRoleOption[]>(`/admin/businesses/${businessId}/roles`);
+}
+
+export async function updateAdminBusinessMemberRole(
+  businessId: string,
+  businessUserId: string,
+  roleCode: string
+): Promise<AdminBusinessMember> {
+  return api.patch<AdminBusinessMember>(
+    `/admin/businesses/${businessId}/members/${businessUserId}/role`,
+    { roleCode }
+  );
 }
 
 export async function listAdminUsers(params?: {

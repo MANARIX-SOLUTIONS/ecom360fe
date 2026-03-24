@@ -115,7 +115,8 @@ export function usePlanFeatures() {
       if (permission === "suppliers") return features.suppliers;
       if (permission === "livreurs") return features.livreurs;
       if (permission === "globalView") return features.globalView;
-      if (permission === "settings:users") return features.settingsUsers;
+      if (permission === "settings:users" || permission === "settings:roles")
+        return features.settingsUsers;
       return true;
     },
   };

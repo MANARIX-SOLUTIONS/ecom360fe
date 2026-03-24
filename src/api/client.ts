@@ -64,6 +64,12 @@ function mapRoleFromBackend(role: string): string {
   if (!role) return "proprietaire";
   const r = role.toLowerCase();
   if (r === "platform_admin") return "super_admin";
+  if (r === "proprietaire" || r === "propriétaire") return "proprietaire";
+  if (r === "gestionnaire") return "gestionnaire";
+  if (r === "caissier") return "caissier";
+  if (r === "admin") return "proprietaire";
+  if (r === "manager") return "gestionnaire";
+  if (r === "seller") return "caissier";
   return r;
 }
 

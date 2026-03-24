@@ -18,6 +18,7 @@ export type BusinessUser = {
   fullName: string;
   email: string;
   role: string;
+  roleName?: string;
   isActive: boolean;
 };
 

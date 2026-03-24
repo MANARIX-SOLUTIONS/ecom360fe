@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Card, Typography, Button, Modal, Form, Input, message } from "antd";
 import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useStore } from "@/hooks/useStore";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { getSubscriptionUsage } from "@/api";
 import { t } from "@/i18n";
 import styles from "./SettingsStores.module.css";
@@ -13,7 +13,7 @@ export default function SettingsStores() {
   const navigate = useNavigate();
   const { stores, activeStore, setActiveStoreId, addStore, updateStore, removeStore, hasStores } =
     useStore();
-  const { can } = usePermissions();
+  const { matrixCan } = useMatrixCan();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -90,7 +90,7 @@ export default function SettingsStores() {
           <Typography.Text type="secondary">
             Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
           </Typography.Text>
-        ) : can("STORES_CREATE") ? (
+        ) : matrixCan("STORES_CREATE", "settings:stores") ? (
           <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
             {t.stores.addStore}
           </Button>
@@ -110,7 +110,7 @@ export default function SettingsStores() {
               Créez votre premier point de vente pour commencer à utiliser 360 PME. Gérez vos
               stocks, enregistrez des ventes et suivez votre activité.
             </Typography.Text>
-            {!storesAtLimit && can("STORES_CREATE") && (
+            {!storesAtLimit && matrixCan("STORES_CREATE", "settings:stores") && (
               <Button
                 type="primary"
                 size="large"
@@ -153,7 +153,7 @@ export default function SettingsStores() {
                   >
                     {t.stores.setActive}
                   </Button>
-                  {can("STORES_UPDATE") && (
+                  {matrixCan("STORES_UPDATE", "settings:stores") && (
                     <Button
                       type="text"
                       size="small"
@@ -162,7 +162,7 @@ export default function SettingsStores() {
                       aria-label={t.common.edit}
                     />
                   )}
-                  {can("STORES_DELETE") && (
+                  {matrixCan("STORES_DELETE", "settings:stores") && (
                     <Button
                       type="text"
                       danger

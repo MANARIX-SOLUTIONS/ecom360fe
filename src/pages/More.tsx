@@ -5,6 +5,7 @@ import { Users, Truck, Bike, Receipt, Settings, Shield, ChevronRight } from "luc
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { canAccessNav } from "@/utils/navAccess";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { t } from "@/i18n";
 import styles from "./More.module.css";
@@ -72,7 +73,7 @@ const linkConfig: MenuLink[] = [
 export default function More() {
   const navigate = useNavigate();
   const { can } = useAuthRole();
-  const { canAccess: canAccessBackend } = usePermissions();
+  const { canAccess: canAccessBackend, loading: permissionsLoading } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
   const { displayName, initials } = useUserProfile();
 
@@ -81,9 +82,10 @@ export default function More() {
       linkConfig.filter((l) => {
         const backendCan = canAccessBackend(l.permission as Parameters<typeof canAccessBackend>[0]);
         const roleCan = can(l.permission as Parameters<typeof can>[0]);
-        return (backendCan || roleCan) && canAccessPlan(l.permission, backendCan || roleCan);
+        const navGate = canAccessNav(roleCan, backendCan, permissionsLoading);
+        return navGate && canAccessPlan(l.permission, navGate);
       }),
-    [can, canAccessBackend, canAccessPlan]
+    [can, canAccessBackend, canAccessPlan, permissionsLoading]
   );
   const commerceLinks = links.filter((l) => l.group === "commerce");
   const adminLinks = links.filter((l) => l.group === "admin");

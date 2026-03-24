@@ -15,6 +15,7 @@ import {
   ApiError,
 } from "@/api";
 import type { SupplierResponse } from "@/api";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 
 function getInitials(name: string) {
   return name
@@ -28,6 +29,7 @@ function getInitials(name: string) {
 export default function SupplierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { matrixCan } = useMatrixCan();
   const [supplier, setSupplier] = useState<SupplierResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,22 +211,28 @@ export default function SupplierDetail() {
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button
-              type="primary"
-              icon={<Plus size={18} />}
-              onClick={() => {
-                setPaymentAmount(Math.abs(supplier.balance));
-                setPaymentOpen(true);
-              }}
-            >
-              {t.suppliers.addPayment}
-            </Button>
-            <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
-              {t.common.edit}
-            </Button>
-            <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
-              {t.common.delete}
-            </Button>
+            {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
+              <Button
+                type="primary"
+                icon={<Plus size={18} />}
+                onClick={() => {
+                  setPaymentAmount(Math.abs(supplier.balance));
+                  setPaymentOpen(true);
+                }}
+              >
+                {t.suppliers.addPayment}
+              </Button>
+            )}
+            {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
+              <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
+                {t.common.edit}
+              </Button>
+            )}
+            {matrixCan("SUPPLIERS_DELETE", "suppliers") && (
+              <Button danger icon={<Trash2 size={18} />} onClick={handleDelete}>
+                {t.common.delete}
+              </Button>
+            )}
           </div>
         </div>
       </Card>
