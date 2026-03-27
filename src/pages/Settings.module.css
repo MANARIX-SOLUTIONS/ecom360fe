@@ -490,3 +490,22 @@
 .userCellIcon {
   color: var(--color-text-muted);
 }
+
+/* Profil entreprise — prévisualisation logo */
+.logoPreviewWrap {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 72px;
+}
+
+.logoPreviewImg {
+  max-width: 100%;
+  max-height: 96px;
+  object-fit: contain;
+}

@@ -142,8 +142,10 @@ async function request<T>(path: string, options: RequestInitWithAuth = {}): Prom
   const { skipAuth, ...init } = options;
   const url = `${API_BASE}${API_PREFIX}${path.startsWith("/") ? path : `/${path}`}`;
 
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     "X-Request-Id":
       crypto.randomUUID?.() ?? `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     ...(init.headers as Record<string, string>),
@@ -217,7 +219,11 @@ export const api = {
   get: <T>(path: string, init?: RequestInitWithAuth) =>
     request<T>(path, { ...init, method: "GET" }),
   post: <T>(path: string, body?: unknown, init?: RequestInitWithAuth) =>
-    request<T>(path, { ...init, method: "POST", body: body ? JSON.stringify(body) : undefined }),
+    request<T>(path, {
+      ...init,
+      method: "POST",
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   put: <T>(path: string, body?: unknown, init?: RequestInitWithAuth) =>
     request<T>(path, { ...init, method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown, init?: RequestInitWithAuth) =>

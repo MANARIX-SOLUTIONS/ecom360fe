@@ -16,9 +16,9 @@ import { t } from "@/i18n";
 import { printA4Receipt } from "@/utils/printA4Receipt";
 import { useStore } from "@/hooks/useStore";
 import { getSale, ApiError } from "@/api";
-import { getBusinessProfile } from "@/api/business";
 import type { SaleResponse } from "@/api";
-import type { BusinessProfile } from "@/api/business";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import styles from "./Receipt.module.css";
 
 type LocationState = {
@@ -84,7 +84,7 @@ export default function Receipt() {
   const { activeStore } = useStore();
   const state = location.state as LocationState | null;
   const [fetchedSale, setFetchedSale] = useState<SaleResponse | null>(null);
-  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const { profile: businessProfile } = useBusinessProfile();
   const [loading, setLoading] = useState(!!state?.saleId && !state?.sale);
   const [saleNotFound, setSaleNotFound] = useState(false);
   const [template, setTemplate] = useState<ReceiptTemplate>(getStoredTemplate);
@@ -125,12 +125,6 @@ export default function Receipt() {
     }
   }, [state?.saleId, state?.sale, navigate]);
 
-  useEffect(() => {
-    getBusinessProfile()
-      .then(setBusiness)
-      .catch(() => setBusiness(null));
-  }, []);
-
   const sale = state?.sale ?? fetchedSale ?? null;
   const now = sale?.createdAt ? new Date(sale.createdAt) : new Date();
   const receiptId = state
@@ -152,6 +146,7 @@ export default function Receipt() {
         shopName,
         shopAddress,
         shopPhone,
+        shopLogoUrl,
         receiptId: receiptId ?? "",
         now,
         lines,
@@ -171,6 +166,8 @@ export default function Receipt() {
           paymentMethod: t.receipt.paymentMethod,
           thankYouEnterprise: t.receipt.thankYouEnterprise,
           legalNotice: t.receipt.legalNotice,
+          docTypeBadge: t.receipt.docTypeBadge,
+          detailLinesTitle: t.receipt.detailLinesTitle,
         },
       });
       return;
@@ -243,9 +240,11 @@ export default function Receipt() {
   const subtotal = sale?.subtotal ?? cart.reduce((sum, line) => sum + line.price * line.qty, 0);
   const displayTotal = sale?.total ?? total;
   const displayDiscount = sale?.discountAmount ?? discount;
-  const shopName = sale?.storeName || activeStore?.name || business?.name || "360 PME Commerce";
-  const shopAddress = sale?.storeAddress || activeStore?.address || business?.address;
-  const shopPhone = business?.phone;
+  const shopName =
+    sale?.storeName || activeStore?.name || businessProfile?.name || "360 PME Commerce";
+  const shopAddress = sale?.storeAddress || activeStore?.address || businessProfile?.address;
+  const shopPhone = businessProfile?.phone;
+  const shopLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
 
   const lines =
     sale?.lines ??
@@ -278,6 +277,11 @@ export default function Receipt() {
         data-template={template}
       >
         <header className={styles.header}>
+          {shopLogoUrl && (
+            <div className={styles.receiptBrandLogo}>
+              <img src={shopLogoUrl} alt="" className={styles.receiptBrandLogoImg} />
+            </div>
+          )}
           <h1 className={styles.shopName}>{shopName}</h1>
           {shopAddress && <p className={styles.shopAddress}>{shopAddress}</p>}
         </header>
@@ -379,6 +383,11 @@ export default function Receipt() {
           <div className={styles.a4Content}>
             <header className={styles.a4Header}>
               <div className={styles.a4Brand}>
+                {shopLogoUrl && (
+                  <div className={styles.a4BrandLogo}>
+                    <img src={shopLogoUrl} alt="" className={styles.a4BrandLogoImg} />
+                  </div>
+                )}
                 <h1 className={styles.a4ShopName}>{shopName}</h1>
                 {shopAddress && <p className={styles.a4Address}>{shopAddress}</p>}
                 {shopPhone && <p className={styles.a4Phone}>{shopPhone}</p>}
