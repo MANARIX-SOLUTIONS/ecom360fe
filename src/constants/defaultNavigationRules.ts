@@ -9,7 +9,12 @@ export const DEFAULT_NAVIGATION_RULES: Record<string, string[]> = {
   products: ["PRODUCTS_READ"],
   clients: ["CLIENTS_READ"],
   suppliers: ["SUPPLIERS_READ"],
-  livreurs: ["DELIVERY_COURIERS_READ"],
+  livreurs: [
+    "DELIVERY_COURIERS_READ",
+    "DELIVERY_COURIERS_CREATE",
+    "DELIVERY_COURIERS_UPDATE",
+    "DELIVERY_COURIERS_DELETE",
+  ],
   globalView: ["GLOBAL_VIEW_READ"],
   expenses: ["EXPENSES_READ"],
   reports: ["REPORTS_READ"],
