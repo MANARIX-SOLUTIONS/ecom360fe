@@ -1,12 +1,11 @@
 /**
  * API client for 360 PME Commerce backend.
  * Handles base URL, auth headers, token refresh, and error mapping.
+ * Base URL: see `./apiBase.ts` (`VITE_API_URL`).
  */
 
-// Dev: backend direct. Prod: VITE_API_URL or '' for same-origin proxy.
-// Set VITE_API_URL='' to use Vite proxy (/api → backend).
-const API_BASE =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8080" : "");
+import { API_BASE } from "./apiBase";
+
 const API_PREFIX = "/api/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
 
