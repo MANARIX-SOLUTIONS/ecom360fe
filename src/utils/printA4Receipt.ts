@@ -3,6 +3,8 @@
  * Avoids layout interference from the main app (visibility, min-height, etc.).
  */
 
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+
 const METHOD_LABELS: Record<string, string> = {
   cash: "Espèces",
   wave: "Wave",
@@ -312,11 +314,12 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Les documents chargés depuis une URL `blob:` ne résolvent pas toujours correctement
- * les chemins relatifs (`/api/...`) pour les ressources — le logo ne s'affiche pas à l'impression.
- * Forcer une URL absolue (même origine que l'app) garantit le chargement de l'image.
+ * Impression depuis un document `blob:` : les chemins `/api/...` doivent être absolus.
+ * `sanitizeExternalImageUrl` applique aussi `VITE_API_URL` quand l'API est sur un autre domaine.
  */
 function resolveImageUrlForPrint(url: string): string {
+  const resolved = sanitizeExternalImageUrl(url);
+  if (resolved) return resolved;
   if (typeof window === "undefined") return url;
   try {
     return new URL(url.trim(), window.location.href).href;
