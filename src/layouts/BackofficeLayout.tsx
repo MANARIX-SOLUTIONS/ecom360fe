@@ -11,7 +11,6 @@ import {
   Menu as MenuIcon,
   X,
   Bell,
-  Shield,
   Activity,
   AlertTriangle,
   CheckCircle,
@@ -23,6 +22,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { getAdminStats } from "@/api/backoffice";
 import { SkipLink } from "@/components/SkipLink";
 // i18n removed – labels are now inline French
+import { APP_LOGO_MARK } from "@/constants/branding";
 import styles from "./BackofficeLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
@@ -149,8 +149,8 @@ export default function BackofficeLayout() {
         {/* Logo area */}
         <div className={styles.siderHeader}>
           <div className={styles.logoGroup}>
-            <div className={styles.logoIcon}>
-              <Shield size={18} />
+            <div className={`${styles.logoIcon} ${styles.logoIconImage}`}>
+              <img src={APP_LOGO_MARK} alt="" className={styles.logoBrandImg} />
             </div>
             <div>
               <Typography.Text strong className={styles.logoTitle}>

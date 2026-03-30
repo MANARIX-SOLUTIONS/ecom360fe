@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Card, Form, Input, Button, Typography, message, Alert, Checkbox } from "antd";
-import { Mail, Lock, ShoppingBag, BarChart3, Users, Smartphone, Shield, Zap } from "lucide-react";
+import { Mail, Lock, BarChart3, Users, Smartphone, Shield, Zap } from "lucide-react";
+import { APP_LOGO_MARK } from "@/constants/branding";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/api";
 import { ROLES } from "@/constants/roles";
@@ -57,7 +58,7 @@ export default function Login() {
       <div className={styles.brandPanel}>
         <div className={styles.brandContent}>
           <div className={styles.brandLogo}>
-            <ShoppingBag size={28} strokeWidth={1.5} />
+            <img src={APP_LOGO_MARK} alt="" className={styles.brandLogoImg} />
           </div>
           <Typography.Title level={2} className={styles.brandTitle}>
             Ecom 360 PME
@@ -99,7 +100,7 @@ export default function Login() {
           {/* Mobile-only branding */}
           <div className={styles.mobileBrand}>
             <div className={styles.mobileBrandIcon}>
-              <ShoppingBag size={22} />
+              <img src={APP_LOGO_MARK} alt="" className={styles.mobileBrandImg} />
             </div>
             <span className={styles.mobileBrandName}>360 PME</span>
           </div>
