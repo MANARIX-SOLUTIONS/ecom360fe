@@ -21,6 +21,7 @@ type FeatureFlags = {
   stockAlerts: boolean;
   exportPdf: boolean;
   exportExcel: boolean;
+  customBranding: boolean;
 };
 
 const DEFAULT_FEATURES: FeatureFlags = {
@@ -37,6 +38,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   stockAlerts: true,
   exportPdf: true,
   exportExcel: true,
+  customBranding: false,
 };
 
 function planToFeatures(p: PlanResponse): FeatureFlags {
@@ -54,6 +56,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
     stockAlerts: p.featureStockAlerts ?? true,
     exportPdf: p.featureExportPdf,
     exportExcel: p.featureExportExcel,
+    customBranding: p.featureCustomBranding ?? false,
   };
 }
 
@@ -107,6 +110,7 @@ export function usePlanFeatures() {
     canStockAlerts: features.stockAlerts,
     canExportPdf: features.exportPdf,
     canExportExcel: features.exportExcel,
+    canCustomBranding: features.customBranding,
     /** Combined: can access this permission (role + plan) */
     canAccess: (permission: string, roleCan: boolean) => {
       if (!roleCan) return false;

@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MainLayout from "./layouts/MainLayout";
+import { BusinessProfileProvider } from "./contexts/BusinessProfileContext";
 import BackofficeLayout from "./layouts/BackofficeLayout";
 import NotFound from "./pages/NotFound";
 
@@ -107,7 +108,9 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <MainLayout />
+              <BusinessProfileProvider>
+                <MainLayout />
+              </BusinessProfileProvider>
             </ProtectedRoute>
           }
         >
@@ -154,7 +157,7 @@ export default function App() {
           />
           <Route
             path="products"
-            element={
+            element={ 
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="products">
                   <Products />

@@ -53,6 +53,10 @@ export type DashboardResponse = {
   topProductsTotal?: number;
   /** Total alertes stock. Absent si API ancienne. */
   lowStockItemsTotal?: number;
+  /** Clients avec solde crédit &gt; 0 (débiteurs). Absent si API ancienne. */
+  debtorClientsCount?: number;
+  /** Encours total (somme des soldes &gt; 0). Absent si API ancienne. */
+  totalReceivable?: number;
 };
 
 export type DashboardSliceResponse<T> = {

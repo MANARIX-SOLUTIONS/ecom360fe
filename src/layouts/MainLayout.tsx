@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Layout, Menu, Typography, Space, Badge, Dropdown } from "antd";
 import {
@@ -31,6 +31,8 @@ import { canAccessNav } from "@/utils/navAccess";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { t } from "@/i18n";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import styles from "./MainLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
@@ -40,7 +42,7 @@ const navConfig = [
     key: "/dashboard",
     permission: "dashboard" as const,
     icon: <LayoutDashboard size={20} />,
-    label: "Dashboard",
+    label: "Tableau de bord",
   },
   {
     key: "/vue-globale",
@@ -113,6 +115,13 @@ export default function MainLayout() {
   const { canAccess: canAccessPlan } = usePlanFeatures();
   const { notifications, unreadCount, markRead } = useNotifications();
   const { offline } = useNetworkStatus();
+  const { profile: businessProfile } = useBusinessProfile();
+  const brandLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
+  const [brandLogoBroken, setBrandLogoBroken] = useState(false);
+  useEffect(() => {
+    setBrandLogoBroken(false);
+  }, [brandLogoUrl]);
+  const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom 360 PME";
 
   const notificationItems = useMemo(() => {
     const items: { key: string; label: React.ReactNode }[] = [];
@@ -251,12 +260,23 @@ export default function MainLayout() {
             }
           }}
         >
-          <div className={styles.logoIcon}>
-            <ShoppingCart size={20} />
+          <div
+            className={`${styles.logoIcon} ${brandLogoUrl && !brandLogoBroken ? styles.logoIconImage : ""}`}
+          >
+            {brandLogoUrl && !brandLogoBroken ? (
+              <img
+                src={brandLogoUrl}
+                alt=""
+                className={styles.logoBrandImg}
+                onError={() => setBrandLogoBroken(true)}
+              />
+            ) : (
+              <ShoppingCart size={20} />
+            )}
           </div>
           <div className={styles.logoText}>
             <Typography.Text strong className={styles.logoTitle}>
-              Ecom 360 PME
+              {sidebarBrandTitle}
             </Typography.Text>
             <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
           </div>

@@ -96,7 +96,12 @@ export default function Dashboard() {
   const { displayName } = useUserProfile();
   const { can, role } = useAuthRole();
   const { matrixCan, matrixNavAccess } = useMatrixCan();
-  const { canExpenses, canStockAlerts, canAccess: canAccessPlan } = usePlanFeatures();
+  const {
+    canExpenses,
+    canStockAlerts,
+    canClientCredits,
+    canAccess: canAccessPlan,
+  } = usePlanFeatures();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -467,6 +472,30 @@ export default function Dashboard() {
           className={styles.apiError + " mb-4"}
         />
       )}
+
+      {canClientCredits &&
+        matrixCan("CLIENTS_READ", "clients") &&
+        (data?.debtorClientsCount ?? 0) > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            icon={<CreditCard size={18} aria-hidden />}
+            message="Crédits clients à suivre"
+            description={
+              <>
+                <strong>{data?.debtorClientsCount}</strong> client
+                {(data?.debtorClientsCount ?? 0) > 1 ? "s" : ""} avec une dette ouverte, pour un
+                encours total de <strong>{formatFCFA(data?.totalReceivable ?? 0)}</strong>.
+              </>
+            }
+            action={
+              <Button size="small" type="primary" onClick={() => navigate("/clients")}>
+                Voir les clients
+              </Button>
+            }
+            className={styles.apiError + " mb-4"}
+          />
+        )}
 
       {/* Store setup banner for users with no store */}
       <NoStoreBanner />
