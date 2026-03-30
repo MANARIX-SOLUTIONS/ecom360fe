@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Table, Button, Typography, Modal, Form, Input, Checkbox, message, Spin } from "antd";
+import { Card, Table, Button, Typography, Modal, Form, Input, message, Spin } from "antd";
 import { ArrowLeft, Shield } from "lucide-react";
 import { t } from "@/i18n";
 import {
@@ -9,7 +9,9 @@ import {
   createRole,
   assignRolePermissions,
   type BusinessRoleDto,
+  type PermissionCatalogItem,
 } from "@/api";
+import { PermissionCatalogPicker } from "@/components/PermissionCatalogPicker";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import styles from "./Settings.module.css";
 
@@ -17,7 +19,7 @@ export default function SettingsRoles() {
   const navigate = useNavigate();
   const { matrixCan } = useMatrixCan();
   const [roles, setRoles] = useState<BusinessRoleDto[]>([]);
-  const [catalog, setCatalog] = useState<string[]>([]);
+  const [catalog, setCatalog] = useState<PermissionCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<BusinessRoleDto | null>(null);
@@ -154,27 +156,7 @@ export default function SettingsRoles() {
         destroyOnClose
       >
         {catalog.length > 0 ? (
-          <Checkbox.Group
-            style={{ width: "100%" }}
-            value={selected}
-            onChange={(v) => setSelected(v as string[])}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: 8,
-                maxHeight: 420,
-                overflow: "auto",
-              }}
-            >
-              {catalog.map((code) => (
-                <Checkbox key={code} value={code}>
-                  {code}
-                </Checkbox>
-              ))}
-            </div>
-          </Checkbox.Group>
+          <PermissionCatalogPicker catalog={catalog} selected={selected} onChange={setSelected} />
         ) : (
           <Typography.Text type="secondary">Aucune permission disponible.</Typography.Text>
         )}

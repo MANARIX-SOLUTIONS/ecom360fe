@@ -28,7 +28,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   expenses: true,
   reports: true,
   suppliers: true,
-  livreurs: false,
+  livreurs: true,
   globalView: false,
   multiPayment: true,
   clientCredits: true,
@@ -117,7 +117,8 @@ export function usePlanFeatures() {
       if (permission === "expenses") return features.expenses;
       if (permission === "reports") return features.reports;
       if (permission === "suppliers") return features.suppliers;
-      if (permission === "livreurs") return features.livreurs;
+      /** Menu : la présence d’une permission livreurs suffit ; le plan est encore vérifié par l’API. */
+      if (permission === "livreurs") return true;
       if (permission === "globalView") return features.globalView;
       if (permission === "settings:users" || permission === "settings:roles")
         return features.settingsUsers;

@@ -15,6 +15,7 @@ import {
   Select,
   Space,
 } from "antd";
+import { getApiBaseUrl } from "@/api/apiBase";
 import {
   Server,
   Database,
@@ -162,9 +163,7 @@ function formatAuditAction(action: string): string {
   return labels[action] ?? action;
 }
 
-// Same base URL logic as API client (dev: localhost:8080, prod: VITE_API_URL or '')
-const BACKEND_BASE =
-  import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8080" : "");
+const BACKEND_BASE = getApiBaseUrl();
 
 async function fetchHealth(): Promise<{ status: string; ok: boolean }> {
   try {

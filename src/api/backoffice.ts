@@ -174,6 +174,8 @@ export type AdminBusinessMember = {
   roleCode: string;
   roleName: string;
   active: boolean;
+  /** Permissions effectives du rôle assigné */
+  permissions: string[];
 };
 
 export type AdminBusinessRoleOption = {
@@ -181,6 +183,7 @@ export type AdminBusinessRoleOption = {
   code: string;
   name: string;
   system: boolean;
+  permissions: string[];
 };
 
 export async function listAdminBusinessMembers(businessId: string): Promise<AdminBusinessMember[]> {
@@ -201,6 +204,18 @@ export async function updateAdminBusinessMemberRole(
   return api.patch<AdminBusinessMember>(
     `/admin/businesses/${businessId}/members/${businessUserId}/role`,
     { roleCode }
+  );
+}
+
+/** Remplace les permissions d'un rôle pour cette entreprise (équivalent Paramètres → Rôles). */
+export async function updateAdminBusinessRolePermissions(
+  businessId: string,
+  roleId: string,
+  permissionCodes: string[]
+): Promise<AdminBusinessRoleOption> {
+  return api.patch<AdminBusinessRoleOption>(
+    `/admin/businesses/${businessId}/roles/${roleId}/permissions`,
+    { permissionCodes }
   );
 }
 

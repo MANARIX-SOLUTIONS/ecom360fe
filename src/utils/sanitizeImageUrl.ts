@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@/api/client";
+import { getApiBaseUrl } from "@/api/apiBase";
 
 /**
  * Restricts user-supplied URLs for &lt;img src&gt; / print: https?, or API paths for uploaded logos.

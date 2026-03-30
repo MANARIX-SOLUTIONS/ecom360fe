@@ -1,15 +1,11 @@
 import { useCallback } from "react";
-import { useAuthRole } from "./useAuthRole";
 import { usePermissions } from "./usePermissions";
-import { canAccessNav } from "@/utils/navAccess";
 import type { Permission as NavPermission } from "@/constants/roles";
-import type { BackendPermission } from "./usePermissions";
 
 /**
- * Matrice écran (roles.ts) + permission API : les deux doivent être vrais pour une action.
+ * Action granulaire (code API) + accès à l'écran de navigation associé.
  */
 export function useMatrixCan() {
-  const { can: roleCanNav } = useAuthRole();
   const {
     can: apiCan,
     canAccess: canAccessBackend,
@@ -17,18 +13,15 @@ export function useMatrixCan() {
   } = usePermissions();
 
   const matrixCan = useCallback(
-    (backendPerm: BackendPermission, navKey: NavPermission) => {
-      return canAccessNav(roleCanNav(navKey), apiCan(backendPerm), permissionsLoading);
+    (backendPerm: string, navKey: NavPermission) => {
+      return apiCan(backendPerm) && canAccessBackend(navKey);
     },
-    [roleCanNav, apiCan, permissionsLoading]
+    [apiCan, canAccessBackend]
   );
 
-  /** Accès à un écran de navigation (sans action granulaire). */
   const matrixNavAccess = useCallback(
-    (navKey: NavPermission) => {
-      return canAccessNav(roleCanNav(navKey), canAccessBackend(navKey), permissionsLoading);
-    },
-    [roleCanNav, canAccessBackend, permissionsLoading]
+    (navKey: NavPermission) => canAccessBackend(navKey),
+    [canAccessBackend]
   );
 
   return { matrixCan, matrixNavAccess, permissionsLoading };

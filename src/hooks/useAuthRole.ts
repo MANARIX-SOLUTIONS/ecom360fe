@@ -1,11 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import {
-  ROLES,
-  getPermissions,
-  can as canPermission,
-  type Role,
-  type Permission,
-} from "@/constants/roles";
+import { ROLES, type Role } from "@/constants/roles";
 
 const STORAGE_KEY = "ecom360_role";
 
@@ -45,14 +39,9 @@ export function useAuthRole() {
     saveRole(newRole);
   }, []);
 
-  const permissions = getPermissions(role);
-  const can = useCallback((permission: Permission) => canPermission(role, permission), [role]);
-
   return {
     role,
     setRole,
-    permissions,
-    can,
     isSuperAdmin: role === ROLES.SUPER_ADMIN,
   };
 }
