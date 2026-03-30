@@ -157,7 +157,7 @@ export default function App() {
           />
           <Route
             path="products"
-            element={
+            element={ 
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="products">
                   <Products />
