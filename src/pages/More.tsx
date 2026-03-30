@@ -2,10 +2,8 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography } from "antd";
 import { Users, Truck, Bike, Receipt, Settings, Shield, ChevronRight } from "lucide-react";
-import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
-import { canAccessNav } from "@/utils/navAccess";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { t } from "@/i18n";
 import styles from "./More.module.css";
@@ -72,8 +70,7 @@ const linkConfig: MenuLink[] = [
 
 export default function More() {
   const navigate = useNavigate();
-  const { can } = useAuthRole();
-  const { canAccess: canAccessBackend, loading: permissionsLoading } = usePermissions();
+  const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
   const { displayName, initials } = useUserProfile();
 
@@ -81,11 +78,9 @@ export default function More() {
     () =>
       linkConfig.filter((l) => {
         const backendCan = canAccessBackend(l.permission as Parameters<typeof canAccessBackend>[0]);
-        const roleCan = can(l.permission as Parameters<typeof can>[0]);
-        const navGate = canAccessNav(roleCan, backendCan, permissionsLoading);
-        return navGate && canAccessPlan(l.permission, navGate);
+        return backendCan && canAccessPlan(l.permission, backendCan);
       }),
-    [can, canAccessBackend, canAccessPlan, permissionsLoading]
+    [canAccessBackend, canAccessPlan]
   );
   const commerceLinks = links.filter((l) => l.group === "commerce");
   const adminLinks = links.filter((l) => l.group === "admin");

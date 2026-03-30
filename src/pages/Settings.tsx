@@ -13,11 +13,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
-import type { Permission } from "@/constants/roles";
-import { canAccessNav } from "@/utils/navAccess";
 import { t } from "@/i18n";
 import styles from "./Settings.module.css";
 
@@ -87,8 +84,7 @@ const accountConfig: SettingItem[] = [
 export default function Settings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { can } = useAuthRole();
-  const { canAccess: canAccessBackend, loading: permissionsLoading } = usePermissions();
+  const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
 
   const organisationItems = useMemo(
@@ -97,11 +93,9 @@ export default function Settings() {
         const backendCan = canAccessBackend(
           item.permission as Parameters<typeof canAccessBackend>[0]
         );
-        const roleCan = can(item.permission as Permission);
-        const navGate = canAccessNav(roleCan, backendCan, permissionsLoading);
-        return navGate && canAccessPlan(item.permission, navGate);
+        return backendCan && canAccessPlan(item.permission, backendCan);
       }),
-    [can, canAccessBackend, canAccessPlan, permissionsLoading]
+    [canAccessBackend, canAccessPlan]
   );
   const accountItems = useMemo(
     () =>
@@ -109,11 +103,9 @@ export default function Settings() {
         const backendCan = canAccessBackend(
           item.permission as Parameters<typeof canAccessBackend>[0]
         );
-        const roleCan = can(item.permission as Permission);
-        const navGate = canAccessNav(roleCan, backendCan, permissionsLoading);
-        return navGate && canAccessPlan(item.permission, navGate);
+        return backendCan && canAccessPlan(item.permission, backendCan);
       }),
-    [can, canAccessBackend, canAccessPlan, permissionsLoading]
+    [canAccessBackend, canAccessPlan]
   );
 
   const renderItem = (item: SettingItem) => {

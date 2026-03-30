@@ -4,6 +4,7 @@ import { Card, Form, Input, Button, Typography, message, Alert } from "antd";
 import { Mail, Lock, User, Building2 } from "lucide-react";
 import { APP_LOGO_MARK } from "@/constants/branding";
 import { ApiError, register } from "@/api";
+import { prefetchPermissionsBundle } from "@/utils/permissionsCache";
 import { t } from "@/i18n";
 import styles from "./Login.module.css";
 
@@ -29,6 +30,7 @@ export default function Register() {
         businessName: values.businessName,
         phone: values.phone || undefined,
       });
+      await prefetchPermissionsBundle();
       message.success("Compte créé ! Bienvenue sur 360 PME Commerce.");
       navigate("/dashboard");
     } catch (err) {

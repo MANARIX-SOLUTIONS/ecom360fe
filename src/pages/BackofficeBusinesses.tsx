@@ -15,6 +15,7 @@ import {
   Space,
   Dropdown,
   Switch,
+  Tooltip,
 } from "antd";
 import {
   Search,
@@ -29,6 +30,7 @@ import {
   Pencil,
   CreditCard,
   Users,
+  Shield,
 } from "lucide-react";
 import styles from "./Backoffice.module.css";
 import {
@@ -42,6 +44,7 @@ import {
   listAdminBusinessMembers,
   listAdminBusinessRoleOptions,
   updateAdminBusinessMemberRole,
+  updateAdminBusinessRolePermissions,
   listAdminBusinessStores,
   getAdminBusinessSubscriptionUsage,
   createAdminBusinessStore,
@@ -52,8 +55,12 @@ import {
   type AdminBusinessMember,
   type AdminBusinessRoleOption,
 } from "@/api/backoffice";
+import { listPermissionCatalog, type PermissionCatalogItem } from "@/api/roles";
+import { PermissionCatalogPicker } from "@/components/PermissionCatalogPicker";
+import { labelForPermissionCode } from "@/utils/permissionCatalog";
 import type { StoreResponse } from "@/api/stores";
 import type { SubscriptionUsageResponse } from "@/api/subscription";
+import { t } from "@/i18n";
 
 type Business = AdminBusiness & { stores: number };
 
@@ -98,6 +105,11 @@ export default function BackofficeBusinesses() {
   const [roleOptions, setRoleOptions] = useState<AdminBusinessRoleOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
+  const [rolePermModalOpen, setRolePermModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<AdminBusinessRoleOption | null>(null);
+  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
+  const [rolePermSaving, setRolePermSaving] = useState(false);
+  const [permissionCatalogItems, setPermissionCatalogItems] = useState<PermissionCatalogItem[]>([]);
   const [adminStores, setAdminStores] = useState<StoreResponse[]>([]);
   const [storeUsage, setStoreUsage] = useState<SubscriptionUsageResponse | null>(null);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -291,6 +303,52 @@ export default function BackofficeBusinesses() {
     },
     [detail?.id]
   );
+
+  useEffect(() => {
+    if (!detail?.id) {
+      setPermissionCatalogItems([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const c = await listPermissionCatalog();
+        if (!cancelled) setPermissionCatalogItems(c);
+      } catch {
+        if (!cancelled) message.error(t.backoffice.businessDrawer.catalogLoadError);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.id]);
+
+  const openRolePermissionsEditor = useCallback((r: AdminBusinessRoleOption) => {
+    setEditingRole(r);
+    setSelectedPerms([...r.permissions]);
+    setRolePermModalOpen(true);
+  }, []);
+
+  const saveRolePermissions = useCallback(async () => {
+    if (!detail?.id || !editingRole) return;
+    setRolePermSaving(true);
+    try {
+      const updated = await updateAdminBusinessRolePermissions(
+        detail.id,
+        editingRole.id,
+        selectedPerms
+      );
+      setRoleOptions((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+      await loadMembersForBusiness(detail.id);
+      message.success(t.backoffice.businessDrawer.rolePermissionsSaved);
+      setRolePermModalOpen(false);
+      setEditingRole(null);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setRolePermSaving(false);
+    }
+  }, [detail?.id, editingRole, selectedPerms, loadMembersForBusiness]);
 
   const openCreateModal = useCallback(() => {
     loadPlans();
@@ -673,7 +731,7 @@ export default function BackofficeBusinesses() {
         title={detail?.name ?? ""}
         open={!!detail}
         onClose={() => setDetail(null)}
-        width={560}
+        width={620}
       >
         {detail && (
           <>
@@ -822,11 +880,86 @@ export default function BackofficeBusinesses() {
             </div>
             <div className={styles.drawerSection}>
               <span className={styles.drawerSectionTitle}>
+                <Shield size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                {t.backoffice.businessDrawer.rolesPermissionsTitle}
+              </span>
+              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 10 }}>
+                {t.backoffice.businessDrawer.rolesPermissionsHelp}
+              </Typography.Text>
+              {membersLoading ? (
+                <Skeleton active paragraph={{ rows: 1 }} />
+              ) : roleOptions.length === 0 ? (
+                <Typography.Text type="secondary">Aucun rôle.</Typography.Text>
+              ) : (
+                <div className="tableResponsive">
+                  <Table
+                    size="small"
+                    pagination={false}
+                    rowKey="id"
+                    dataSource={roleOptions}
+                    columns={[
+                      {
+                        title: t.backoffice.businessDrawer.roleColumn,
+                        key: "name",
+                        render: (_, r) => (
+                          <div>
+                            <div>{r.name}</div>
+                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                              {r.code}
+                              {r.system ? (
+                                <Tag style={{ marginLeft: 6 }} color="blue">
+                                  {t.backoffice.businessDrawer.systemRoleTag}
+                                </Tag>
+                              ) : null}
+                            </Typography.Text>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: t.backoffice.businessDrawer.rightsColumn,
+                        key: "n",
+                        width: 72,
+                        align: "center",
+                        render: (_, r) => (
+                          <Tooltip
+                            title={
+                              r.permissions.length
+                                ? r.permissions
+                                    .map((c) => labelForPermissionCode(c, permissionCatalogItems))
+                                    .join(", ")
+                                : "—"
+                            }
+                          >
+                            <span style={{ cursor: "help" }}>{r.permissions.length}</span>
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "",
+                        key: "edit",
+                        width: 100,
+                        render: (_, r) => (
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => openRolePermissionsEditor(r)}
+                          >
+                            {t.common.edit}
+                          </Button>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+            <div className={styles.drawerSection}>
+              <span className={styles.drawerSectionTitle}>
                 <Users size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-                Équipe & rôles
+                {t.backoffice.businessDrawer.teamTitle}
               </span>
               <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                Rôles applicatifs (PROPRIETAIRE, GESTIONNAIRE, CAISSIER ou rôles personnalisés).
+                {t.backoffice.businessDrawer.teamHelp}
               </Typography.Text>
               {membersLoading ? (
                 <Skeleton active paragraph={{ rows: 2 }} />
@@ -841,7 +974,7 @@ export default function BackofficeBusinesses() {
                     dataSource={members}
                     columns={[
                       {
-                        title: "Membre",
+                        title: t.backoffice.businessDrawer.memberColumn,
                         key: "name",
                         render: (_, m) => (
                           <div>
@@ -853,7 +986,7 @@ export default function BackofficeBusinesses() {
                         ),
                       },
                       {
-                        title: "Rôle",
+                        title: t.backoffice.businessDrawer.roleColumn,
                         key: "role",
                         width: 200,
                         render: (_, m) => (
@@ -868,6 +1001,25 @@ export default function BackofficeBusinesses() {
                             }))}
                             onChange={(code) => handleMemberRoleChange(m.id, code)}
                           />
+                        ),
+                      },
+                      {
+                        title: t.backoffice.businessDrawer.rightsColumn,
+                        key: "perms",
+                        width: 72,
+                        align: "center",
+                        render: (_, m) => (
+                          <Tooltip
+                            title={
+                              m.permissions?.length
+                                ? m.permissions
+                                    .map((c) => labelForPermissionCode(c, permissionCatalogItems))
+                                    .join(", ")
+                                : "—"
+                            }
+                          >
+                            <span style={{ cursor: "help" }}>{m.permissions?.length ?? 0}</span>
+                          </Tooltip>
                         ),
                       },
                     ]}
@@ -1076,6 +1228,32 @@ export default function BackofficeBusinesses() {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={editingRole ? `${editingRole.name} (${editingRole.code})` : ""}
+        open={rolePermModalOpen}
+        onOk={() => void saveRolePermissions()}
+        onCancel={() => {
+          setRolePermModalOpen(false);
+          setEditingRole(null);
+        }}
+        okText={t.common.save}
+        confirmLoading={rolePermSaving}
+        width={720}
+        destroyOnClose
+      >
+        {permissionCatalogItems.length > 0 ? (
+          <PermissionCatalogPicker
+            catalog={permissionCatalogItems}
+            selected={selectedPerms}
+            onChange={setSelectedPerms}
+          />
+        ) : (
+          <Typography.Text type="secondary">
+            {t.backoffice.businessDrawer.catalogLoading}
+          </Typography.Text>
+        )}
       </Modal>
     </div>
   );

@@ -27,7 +27,6 @@ import { HeaderProfile } from "@/components/HeaderProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
-import { canAccessNav } from "@/utils/navAccess";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { t } from "@/i18n";
@@ -111,8 +110,8 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const { can, isSuperAdmin } = useAuthRole();
-  const { canAccess: canAccessBackend, loading: permissionsLoading } = usePermissions();
+  const { isSuperAdmin } = useAuthRole();
+  const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
   const { notifications, unreadCount, markRead } = useNotifications();
   const { offline } = useNetworkStatus();
@@ -224,11 +223,9 @@ export default function MainLayout() {
   const navItems = useMemo(() => {
     const items = navConfig
       .filter((item) => {
-        const roleCan = can(item.permission);
         const backendCan = canAccessBackend(item.permission);
-        const navGate = canAccessNav(roleCan, backendCan, permissionsLoading);
-        const planAllows = canAccessPlan(item.permission, navGate);
-        return navGate && planAllows;
+        const planAllows = canAccessPlan(item.permission, backendCan);
+        return backendCan && planAllows;
       })
       .map(({ key, icon, label }) => ({ key, icon, label }));
     if (isSuperAdmin) {
@@ -239,7 +236,7 @@ export default function MainLayout() {
       });
     }
     return items;
-  }, [can, canAccessBackend, canAccessPlan, isSuperAdmin, permissionsLoading]);
+  }, [canAccessBackend, canAccessPlan, isSuperAdmin]);
 
   return (
     <Layout className={styles.root}>

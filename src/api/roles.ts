@@ -13,12 +13,20 @@ export type BusinessRoleDto = {
   permissions: string[];
 };
 
+/** Entrée catalogue — source unique pour libellés & regroupement (GET /permissions). */
+export type PermissionCatalogItem = {
+  code: string;
+  label: string;
+  category: string;
+  sortOrder: number;
+};
+
 export async function listRoles(): Promise<BusinessRoleDto[]> {
   return api.get<BusinessRoleDto[]>("/roles");
 }
 
-export async function listPermissionCatalog(): Promise<string[]> {
-  return api.get<string[]>("/permissions");
+export async function listPermissionCatalog(): Promise<PermissionCatalogItem[]> {
+  return api.get<PermissionCatalogItem[]>("/permissions");
 }
 
 export async function createRole(name: string): Promise<BusinessRoleDto> {

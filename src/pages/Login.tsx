@@ -6,6 +6,7 @@ import { APP_LOGO_MARK } from "@/constants/branding";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/api";
 import { ROLES } from "@/constants/roles";
+import { prefetchPermissionsBundle } from "@/utils/permissionsCache";
 import { t } from "@/i18n";
 import styles from "./Login.module.css";
 
@@ -30,6 +31,7 @@ export default function Login() {
     try {
       try {
         await loginWithApi({ email: values.email, password: values.password });
+        await prefetchPermissionsBundle();
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message || t.auth.invalidCredentials);

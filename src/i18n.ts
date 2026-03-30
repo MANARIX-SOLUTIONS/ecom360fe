@@ -252,6 +252,21 @@ export const t = {
     businesses: "Entreprises",
     users: "Utilisateurs plateforme",
     system: "Système",
+    businessDrawer: {
+      rolesPermissionsTitle: "Rôles et permissions",
+      rolesPermissionsHelp:
+        "Définir les droits par rôle (identique à Paramètres → Rôles pour le client). Les membres héritent des droits de leur rôle.",
+      teamTitle: "Équipe",
+      teamHelp:
+        "Attribuer un rôle à chaque utilisateur (PROPRIETAIRE, GESTIONNAIRE, CAISSIER ou rôle personnalisé).",
+      rightsColumn: "Droits",
+      roleColumn: "Rôle",
+      memberColumn: "Membre",
+      systemRoleTag: "système",
+      catalogLoading: "Chargement du catalogue…",
+      rolePermissionsSaved: "Permissions du rôle enregistrées",
+      catalogLoadError: "Impossible de charger le catalogue des permissions",
+    },
   },
   sales: {
     title: "Ventes",

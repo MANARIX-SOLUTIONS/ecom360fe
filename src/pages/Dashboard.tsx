@@ -31,14 +31,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/hooks/useStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useAuthRole } from "@/hooks/useAuthRole";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
-import { ROLES } from "@/constants/roles";
 import styles from "./Dashboard.module.css";
 
 const DASH_LIST_BATCH = 10;
@@ -94,7 +93,7 @@ function isSetupChecklistAutoHidden(businessCreatedAt: string | null | undefined
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
-  const { can, role } = useAuthRole();
+  const { canAccess, can } = usePermissions();
   const { matrixCan, matrixNavAccess } = useMatrixCan();
   const {
     canExpenses,
@@ -243,7 +242,7 @@ export default function Dashboard() {
           variant: "sales" as const,
           icon: Wallet,
         },
-        ...(canExpenses && can("expenses")
+        ...(canExpenses && canAccess("expenses")
           ? [
               {
                 key: "expenses",
@@ -257,7 +256,7 @@ export default function Dashboard() {
               },
             ]
           : []),
-        ...(role === ROLES.PROPRIETAIRE
+        ...(can("SALES_READ") && can("EXPENSES_READ")
           ? [
               {
                 key: "profit",
@@ -275,7 +274,9 @@ export default function Dashboard() {
     : [];
 
   const statCardSkeletonCount =
-    1 + (canExpenses && can("expenses") ? 1 : 0) + (role === ROLES.PROPRIETAIRE ? 1 : 0);
+    1 +
+    (canExpenses && canAccess("expenses") ? 1 : 0) +
+    (can("SALES_READ") && can("EXPENSES_READ") ? 1 : 0);
 
   const topProducts = useMemo(() => {
     const base =
@@ -509,25 +510,29 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Quick actions */}
+      {/* Quick actions — alignées sur les mêmes règles que le menu (canAccess par route). */}
       <section className={styles.quickActions} aria-label="Actions rapides">
-        <button
-          type="button"
-          className={`${styles.quickCard} ${styles.quickCardPrimary}`}
-          onClick={() => navigate("/pos")}
-        >
-          <span className={styles.quickCardIcon}>
-            <ShoppingCart size={22} />
-          </span>
-          <span className={styles.quickCardLabel}>Nouvelle vente</span>
-        </button>
-        <button type="button" className={styles.quickCard} onClick={() => navigate("/products")}>
-          <span className={styles.quickCardIcon}>
-            <Plus size={22} />
-          </span>
-          <span className={styles.quickCardLabel}>Ajouter produit</span>
-        </button>
-        {canExpenses && can("expenses") && (
+        {canAccess("pos") && (
+          <button
+            type="button"
+            className={`${styles.quickCard} ${styles.quickCardPrimary}`}
+            onClick={() => navigate("/pos")}
+          >
+            <span className={styles.quickCardIcon}>
+              <ShoppingCart size={22} />
+            </span>
+            <span className={styles.quickCardLabel}>Nouvelle vente</span>
+          </button>
+        )}
+        {canAccess("products") && (
+          <button type="button" className={styles.quickCard} onClick={() => navigate("/products")}>
+            <span className={styles.quickCardIcon}>
+              <Plus size={22} />
+            </span>
+            <span className={styles.quickCardLabel}>Ajouter produit</span>
+          </button>
+        )}
+        {canExpenses && canAccess("expenses") && (
           <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
             <span className={styles.quickCardIcon}>
               <FileText size={22} />
@@ -535,12 +540,14 @@ export default function Dashboard() {
             <span className={styles.quickCardLabel}>Dépense</span>
           </button>
         )}
-        <button type="button" className={styles.quickCard} onClick={() => navigate("/clients")}>
-          <span className={styles.quickCardIcon}>
-            <Users size={22} />
-          </span>
-          <span className={styles.quickCardLabel}>Clients</span>
-        </button>
+        {canAccess("clients") && (
+          <button type="button" className={styles.quickCard} onClick={() => navigate("/clients")}>
+            <span className={styles.quickCardIcon}>
+              <Users size={22} />
+            </span>
+            <span className={styles.quickCardLabel}>Clients</span>
+          </button>
+        )}
         {(data?.totalStores ?? 0) > 1 &&
           matrixCan("GLOBAL_VIEW_READ", "globalView") &&
           canAccessPlan("globalView", matrixNavAccess("globalView")) && (
