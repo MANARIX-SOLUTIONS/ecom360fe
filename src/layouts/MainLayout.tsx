@@ -32,6 +32,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { t } from "@/i18n";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { APP_LOGO_MARK } from "@/constants/branding";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import styles from "./MainLayout.module.css";
 
@@ -118,8 +119,12 @@ export default function MainLayout() {
   const { profile: businessProfile } = useBusinessProfile();
   const brandLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
   const [brandLogoBroken, setBrandLogoBroken] = useState(false);
+  const [defaultLogoBroken, setDefaultLogoBroken] = useState(false);
+  const useBusinessLogo = Boolean(brandLogoUrl && !brandLogoBroken);
+  const effectiveLogoSrc = useBusinessLogo ? brandLogoUrl : APP_LOGO_MARK;
   useEffect(() => {
     setBrandLogoBroken(false);
+    setDefaultLogoBroken(false);
   }, [brandLogoUrl]);
   const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom 360 PME";
 
@@ -260,15 +265,16 @@ export default function MainLayout() {
             }
           }}
         >
-          <div
-            className={`${styles.logoIcon} ${brandLogoUrl && !brandLogoBroken ? styles.logoIconImage : ""}`}
-          >
-            {brandLogoUrl && !brandLogoBroken ? (
+          <div className={`${styles.logoIcon} ${!defaultLogoBroken ? styles.logoIconImage : ""}`}>
+            {!defaultLogoBroken ? (
               <img
-                src={brandLogoUrl}
+                src={effectiveLogoSrc}
                 alt=""
                 className={styles.logoBrandImg}
-                onError={() => setBrandLogoBroken(true)}
+                onError={() => {
+                  if (brandLogoUrl && !brandLogoBroken) setBrandLogoBroken(true);
+                  else setDefaultLogoBroken(true);
+                }}
               />
             ) : (
               <ShoppingCart size={20} />

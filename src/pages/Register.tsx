@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Form, Input, Button, Typography, message, Alert } from "antd";
-import { Mail, Lock, User, Building2, ShoppingBag } from "lucide-react";
+import { Mail, Lock, User, Building2 } from "lucide-react";
+import { APP_LOGO_MARK } from "@/constants/branding";
 import { ApiError, register } from "@/api";
 import { t } from "@/i18n";
 import styles from "./Login.module.css";
@@ -47,7 +48,7 @@ export default function Register() {
         <Card className={styles.card} variant="borderless">
           <div className={styles.mobileBrand}>
             <div className={styles.mobileBrandIcon}>
-              <ShoppingBag size={22} />
+              <img src={APP_LOGO_MARK} alt="" className={styles.mobileBrandImg} />
             </div>
             <span className={styles.mobileBrandName}>360 PME</span>
           </div>

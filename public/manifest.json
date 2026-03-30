@@ -1,6 +1,6 @@
 {
   "name": "360 PME Commerce",
-  "short_name": "360 PME",
+  "short_name": "Ecom360PME",
   "description": "Point de vente et gestion pour PME — Sénégal et Afrique",
   "start_url": "/",
   "display": "standalone",
@@ -9,9 +9,9 @@
   "lang": "fr",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/logo/ecom360favicon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
