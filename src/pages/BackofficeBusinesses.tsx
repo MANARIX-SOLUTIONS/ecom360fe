@@ -1088,7 +1088,7 @@ export default function BackofficeBusinesses() {
             <Select
               placeholder="Choisir un plan"
               options={[
-                { value: "trial", label: "Essai gratuit (30 jours)" },
+                { value: "trial", label: "Essai gratuit (14 jours)" },
                 ...plans.map((p) => ({
                   value: p.slug,
                   label: `${p.name} (${p.priceMonthly} F/mois)`,

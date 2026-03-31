@@ -60,7 +60,7 @@ export default function Register() {
               Créer un compte
             </Typography.Title>
             <Typography.Text type="secondary">
-              Essai gratuit 30 jours — Aucune carte requise
+              Essai gratuit 14 jours — Aucune carte requise
             </Typography.Text>
           </div>
 

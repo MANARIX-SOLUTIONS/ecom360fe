@@ -198,7 +198,7 @@ export default function Login() {
             <div className={styles.trialNote}>
               Pas encore de compte ?{" "}
               <Link to="/register" className={styles.trialLink}>
-                Essai gratuit 30 jours
+                Essai gratuit 14 jours
               </Link>
             </div>
           </div>
