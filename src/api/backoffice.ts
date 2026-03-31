@@ -8,6 +8,19 @@ import type { PageResponse } from "./products";
 import type { StoreRequest, StoreResponse } from "./stores";
 import type { SubscriptionUsageResponse } from "./subscription";
 
+/** Détails du dernier abonnement (tous statuts), renvoyés par l'API admin entreprises. */
+export type AdminBusinessSubscriptionInfo = {
+  planSlug: string;
+  planName: string;
+  billingCycle: string;
+  status: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  daysRemaining: number;
+  cancelAtPeriodEnd: boolean;
+  trialing: boolean;
+};
+
 export type AdminBusiness = {
   id: string;
   name: string;
@@ -21,6 +34,7 @@ export type AdminBusiness = {
   revenue: string;
   createdAt: string;
   trialEndsAt?: string;
+  subscription?: AdminBusinessSubscriptionInfo | null;
 };
 
 export type AdminUser = {
@@ -144,6 +158,19 @@ export async function assignAdminBusinessPlan(
   payload: AdminAssignPlanPayload
 ): Promise<void> {
   await api.patch(`/admin/businesses/${businessId}/plan`, payload);
+}
+
+export type AdminRenewSubscriptionPayload = {
+  planSlug?: string;
+  billingCycle?: string;
+};
+
+/** Ajoute une période (mensuelle ou annuelle) — empilée après la fin de période si abonnement payant actif. */
+export async function renewAdminBusinessSubscription(
+  businessId: string,
+  payload?: AdminRenewSubscriptionPayload
+): Promise<void> {
+  await api.post(`/admin/businesses/${businessId}/subscription/renew`, payload ?? {});
 }
 
 export type AdminPlanItem = {

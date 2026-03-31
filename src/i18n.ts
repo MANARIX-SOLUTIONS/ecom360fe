@@ -201,7 +201,7 @@ export const t = {
     logoRemoved: "Logo retiré",
     removeLogo: "Retirer le logo",
     logoUploadFile: "Téléverser une image",
-    logoUploadFormats: "PNG, JPEG, WebP ou GIF — max. 2 Mo",
+    logoUploadFormats: "PNG, JPEG, WebP ou GIF — max. 8 Mo",
     logoUploadSuccess: "Logo téléversé",
     logoUrlAlternative: "Ou collez une adresse HTTPS (hébergement externe) :",
     logoInvalidUrl: "URL invalide — utilisez une adresse https:// vers une image",

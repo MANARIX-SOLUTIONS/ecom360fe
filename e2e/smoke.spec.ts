@@ -24,7 +24,7 @@ test.describe("Smoke tests (no backend required)", () => {
 
   test("@smoke login link navigates to register", async ({ page }) => {
     await page.goto("/login");
-    await page.getByRole("link", { name: "Essai gratuit 30 jours" }).click();
+    await page.getByRole("link", { name: "Essai gratuit 14 jours" }).click();
     await expect(page).toHaveURL(/\/register/);
   });
 
