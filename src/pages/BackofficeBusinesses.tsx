@@ -31,6 +31,7 @@ import {
   CreditCard,
   Users,
   Shield,
+  RefreshCw,
 } from "lucide-react";
 import styles from "./Backoffice.module.css";
 import {
@@ -40,6 +41,7 @@ import {
   createAdminBusiness,
   updateAdminBusiness,
   assignAdminBusinessPlan,
+  renewAdminBusinessSubscription,
   listAdminPlans,
   listAdminBusinessMembers,
   listAdminBusinessRoleOptions,
@@ -78,6 +80,28 @@ const statusLabels: Record<string, string> = {
 };
 const planColors: Record<string, string> = { Starter: "default", Pro: "blue", Business: "gold" };
 
+const subscriptionStatusLabels: Record<string, string> = {
+  active: "Actif",
+  trialing: "Essai",
+  expired: "Expiré",
+  cancelled: "Annulé",
+  past_due: "Impayé",
+  paused: "Suspendu",
+  incomplete: "Incomplet",
+};
+
+function formatAdminDate(iso: string | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-FR");
+}
+
+function subscriptionBillingLabel(cycle: string): string {
+  if (cycle === "yearly") return "Annuelle";
+  if (cycle === "monthly") return "Mensuelle";
+  return cycle;
+}
+
 export default function BackofficeBusinesses() {
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -94,13 +118,16 @@ export default function BackofficeBusinesses() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [assignPlanModalOpen, setAssignPlanModalOpen] = useState(false);
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
   const [plans, setPlans] = useState<AdminPlanItem[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [assignPlanLoading, setAssignPlanLoading] = useState(false);
+  const [renewLoading, setRenewLoading] = useState(false);
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [assignPlanForm] = Form.useForm();
+  const [renewForm] = Form.useForm();
   const [members, setMembers] = useState<AdminBusinessMember[]>([]);
   const [roleOptions, setRoleOptions] = useState<AdminBusinessRoleOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -454,6 +481,43 @@ export default function BackofficeBusinesses() {
     }
   }, [detail, assignPlanForm, loadStoresForBusiness, refreshDetail]);
 
+  const openRenewModal = useCallback(async () => {
+    if (!detail) return;
+    try {
+      const list = await listAdminPlans();
+      setPlans(list);
+      const slug = list.find((x) => x.name === detail.plan)?.slug;
+      renewForm.setFieldsValue({
+        planSlug: slug,
+        billingCycle: "monthly",
+      });
+      setRenewModalOpen(true);
+    } catch {
+      message.error("Impossible de charger les plans");
+    }
+  }, [detail, renewForm]);
+
+  const handleRenewSubscription = useCallback(async () => {
+    if (!detail) return;
+    try {
+      const values = await renewForm.validateFields();
+      setRenewLoading(true);
+      await renewAdminBusinessSubscription(detail.id, {
+        planSlug: values.planSlug as string | undefined,
+        billingCycle: (values.billingCycle as string) || "monthly",
+      });
+      message.success("Abonnement renouvelé");
+      setRenewModalOpen(false);
+      await refreshDetail(detail.id);
+      await loadStoresForBusiness(detail.id);
+    } catch (e) {
+      if (e && typeof e === "object" && "errorFields" in e) return;
+      message.error(e instanceof Error ? e.message : "Erreur lors du renouvellement");
+    } finally {
+      setRenewLoading(false);
+    }
+  }, [detail, renewForm, loadStoresForBusiness, refreshDetail]);
+
   const atStoreLimit =
     storeUsage != null &&
     storeUsage.storesLimit > 0 &&
@@ -635,8 +699,26 @@ export default function BackofficeBusinesses() {
               {
                 title: "Plan",
                 dataIndex: "plan",
-                width: 100,
-                render: (plan: string) => <Tag color={planColors[plan]}>{plan}</Tag>,
+                width: 148,
+                render: (plan: string, r: Business) => (
+                  <div>
+                    <Tag color={planColors[plan]}>{plan}</Tag>
+                    {r.subscription ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-text-muted)",
+                          marginTop: 4,
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        Fin {formatAdminDate(r.subscription.currentPeriodEnd)}
+                        {r.subscription.trialing ? " · essai" : ""}
+                        {r.subscription.cancelAtPeriodEnd ? " · fin résiliation" : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                ),
               },
               {
                 title: "Boutiques",
@@ -760,8 +842,58 @@ export default function BackofficeBusinesses() {
                 <span className={styles.drawerLabel}>Plan</span>
                 <Tag color={planColors[detail.plan]}>{detail.plan}</Tag>
               </div>
+              {detail.subscription ? (
+                <>
+                  <div className={styles.drawerRow}>
+                    <span className={styles.drawerLabel}>Identifiant plan</span>
+                    <span
+                      className={styles.drawerValue}
+                      style={{ fontFamily: "var(--font-mono, monospace)" }}
+                    >
+                      {detail.subscription.planSlug}
+                    </span>
+                  </div>
+                  <div className={styles.drawerRow}>
+                    <span className={styles.drawerLabel}>Facturation</span>
+                    <span className={styles.drawerValue}>
+                      {subscriptionBillingLabel(detail.subscription.billingCycle)}
+                    </span>
+                  </div>
+                  <div className={styles.drawerRow}>
+                    <span className={styles.drawerLabel}>Statut abonnement</span>
+                    <Tag>
+                      {subscriptionStatusLabels[detail.subscription.status] ??
+                        detail.subscription.status}
+                    </Tag>
+                  </div>
+                  <div className={styles.drawerRow}>
+                    <span className={styles.drawerLabel}>Période</span>
+                    <span className={styles.drawerValue}>
+                      {formatAdminDate(detail.subscription.currentPeriodStart)} →{" "}
+                      {formatAdminDate(detail.subscription.currentPeriodEnd)}
+                    </span>
+                  </div>
+                  <div className={styles.drawerRow}>
+                    <span className={styles.drawerLabel}>Jours restants (période)</span>
+                    <span className={styles.drawerValue}>{detail.subscription.daysRemaining}</span>
+                  </div>
+                  {detail.subscription.cancelAtPeriodEnd ? (
+                    <div className={styles.drawerRow}>
+                      <span className={styles.drawerLabel}>Résiliation</span>
+                      <Tag color="warning">En fin de période</Tag>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className={styles.drawerRow}>
+                  <span className={styles.drawerLabel}>Détail plan</span>
+                  <span className={styles.drawerValue} style={{ color: "var(--color-text-muted)" }}>
+                    Aucun abonnement enregistré.
+                  </span>
+                </div>
+              )}
               <div className={styles.drawerRow}>
-                <span className={styles.drawerLabel}>Statut</span>
+                <span className={styles.drawerLabel}>Statut entreprise</span>
                 <Tag color={statusColors[detail.status]}>{statusLabels[detail.status]}</Tag>
               </div>
               <div className={styles.drawerRow}>
@@ -1034,6 +1166,24 @@ export default function BackofficeBusinesses() {
               <Button block icon={<CreditCard size={16} />} onClick={openAssignPlanModal}>
                 Changer le plan
               </Button>
+              <Tooltip
+                title={
+                  detail.plan === "-"
+                    ? "Aucun abonnement connu — utilisez d'abord « Changer le plan »."
+                    : undefined
+                }
+              >
+                <span style={{ display: "block" }}>
+                  <Button
+                    block
+                    icon={<RefreshCw size={16} />}
+                    onClick={openRenewModal}
+                    disabled={detail.plan === "-"}
+                  >
+                    Renouveler l'abonnement
+                  </Button>
+                </span>
+              </Tooltip>
               <Button block icon={<Mail size={16} />} onClick={() => handleContact(detail)}>
                 Contacter le propriétaire
               </Button>
@@ -1140,6 +1290,52 @@ export default function BackofficeBusinesses() {
               <Button onClick={() => setEditModalOpen(false)}>Annuler</Button>
               <Button type="primary" htmlType="submit" loading={editLoading}>
                 Enregistrer
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Renew subscription modal */}
+      <Modal
+        title="Renouveler l'abonnement"
+        open={renewModalOpen}
+        onCancel={() => setRenewModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          Ajoutez une période de facturation (mensuelle ou annuelle). Si l'entreprise a un
+          abonnement payant encore actif, la nouvelle période commence à la fin de la période
+          courante. Sinon, elle commence aujourd'hui (essai converti en payant immédiatement).
+        </Typography.Paragraph>
+        <Form form={renewForm} layout="vertical" onFinish={handleRenewSubscription}>
+          <Form.Item
+            name="planSlug"
+            label="Plan"
+            rules={[{ required: true, message: "Choisir un plan" }]}
+          >
+            <Select
+              placeholder="Choisir un plan"
+              options={plans.map((pl) => ({
+                value: pl.slug,
+                label: `${pl.name} — ${pl.priceMonthly} F/mois, ${pl.priceYearly} F/an`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="billingCycle" label="Facturation" initialValue="monthly">
+            <Select
+              options={[
+                { value: "monthly", label: "Mensuelle" },
+                { value: "yearly", label: "Annuelle" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
+            <Space>
+              <Button onClick={() => setRenewModalOpen(false)}>Annuler</Button>
+              <Button type="primary" htmlType="submit" loading={renewLoading}>
+                Renouveler
               </Button>
             </Space>
           </Form.Item>
