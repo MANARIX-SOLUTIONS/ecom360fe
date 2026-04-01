@@ -136,6 +136,16 @@ export default function App() {
             }
           />
           <Route
+            path="pos/edit/:saleId"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="pos">
+                  <POS />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
             path="pos"
             element={
               <Suspense fallback={<PageLoader />}>

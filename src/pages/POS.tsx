@@ -1,20 +1,36 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Card, Input, Button, Typography, message, Badge, Select, Modal, Form } from "antd";
+import { useNavigate, Link, useParams } from "react-router-dom";
+import {
+  Card,
+  Input,
+  Button,
+  Typography,
+  message,
+  Badge,
+  Select,
+  Modal,
+  Form,
+  Spin,
+  Result,
+} from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./POS.module.css";
 import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   getStockByStore,
   listClients,
   createSale,
+  getSale,
+  updateSale,
   getSubscriptionUsage,
   listCategories,
   createClient,
 } from "@/api";
+import type { SaleResponse } from "@/api";
 
 type CartLine = {
   id: string;
@@ -95,8 +111,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function POS() {
   const navigate = useNavigate();
-  const { activeStore } = useStore();
+  const { saleId: editSaleId } = useParams<{ saleId: string }>();
+  const { activeStore, setActiveStoreId } = useStore();
   const { canMultiPayment, canClientCredits } = usePlanFeatures();
+  useDocumentTitle(editSaleId ? t.pos.editSaleTitle : undefined);
 
   const paymentMethods = useMemo(
     () =>
@@ -124,12 +142,84 @@ export default function POS() {
   const [creatingClient, setCreatingClient] = useState(false);
   const [quickClientForm] = Form.useForm<{ name: string; phone?: string }>();
   const searchRef = useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
+  const [saleToEdit, setSaleToEdit] = useState<SaleResponse | null>(null);
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
+  const [editHydrated, setEditHydrated] = useState(false);
+  const prevHadEditRoute = useRef(false);
 
   useEffect(() => {
+    if (editSaleId) return;
     getSubscriptionUsage()
       .then((u) => setSalesAtLimit(u.salesLimit > 0 && u.salesThisMonth >= u.salesLimit))
       .catch(() => setSalesAtLimit(false));
-  }, []);
+  }, [editSaleId]);
+
+  useEffect(() => {
+    if (editSaleId) {
+      prevHadEditRoute.current = true;
+      setCart([]);
+      setDiscount(0);
+      setPaymentMethod("cash");
+      setSelectedClientId(null);
+    } else if (prevHadEditRoute.current) {
+      prevHadEditRoute.current = false;
+      setCart([]);
+      setDiscount(0);
+      setPaymentMethod("cash");
+      setSelectedClientId(null);
+    }
+  }, [editSaleId]);
+
+  useEffect(() => {
+    if (!editSaleId) {
+      setSaleToEdit(null);
+      setEditLoadError(null);
+      setEditHydrated(false);
+      return;
+    }
+    if (!localStorage.getItem("ecom360_access_token")) return;
+    let cancelled = false;
+    setEditLoadError(null);
+    setEditHydrated(false);
+    setSaleToEdit(null);
+    getSale(editSaleId)
+      .then((sale) => {
+        if (cancelled) return;
+        if (sale.status !== "completed") {
+          setEditLoadError("Seules les ventes validées peuvent être modifiées.");
+          return;
+        }
+        setSaleToEdit(sale);
+        if (sale.storeId !== activeStore?.id) {
+          setActiveStoreId(sale.storeId);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setEditLoadError(e instanceof Error ? e.message : t.pos.editSaleLoadError);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editSaleId, setActiveStoreId]);
+
+  useEffect(() => {
+    if (!editSaleId || !saleToEdit || editHydrated) return;
+    if (activeStore?.id !== saleToEdit.storeId) return;
+    const lines = saleToEdit.lines.map((line) => {
+      const p = products.find((pr) => pr.id === line.productId);
+      return {
+        id: line.productId,
+        name: p?.name ?? line.productName,
+        price: p?.price ?? line.unitPrice,
+        qty: line.quantity,
+      };
+    });
+    setCart(lines);
+    setDiscount(saleToEdit.discountAmount);
+    setPaymentMethod((saleToEdit.paymentMethod as PaymentMethod) || "cash");
+    setSelectedClientId(saleToEdit.clientId);
+    setEditHydrated(true);
+  }, [editSaleId, saleToEdit, activeStore?.id, products, editHydrated]);
 
   useEffect(() => {
     const available = paymentMethods.some((m) => m.key === paymentMethod);
@@ -206,27 +296,44 @@ export default function POS() {
   const total = Math.max(0, subtotal - discount);
   const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
 
+  const originalQtyByProduct = useMemo(() => {
+    if (!saleToEdit) return new Map<string, number>();
+    const m = new Map<string, number>();
+    for (const l of saleToEdit.lines) {
+      m.set(l.productId, (m.get(l.productId) ?? 0) + l.quantity);
+    }
+    return m;
+  }, [saleToEdit]);
+
+  const maxQtyForProduct = useCallback(
+    (productId: string) => {
+      const prod = products.find((p) => p.id === productId);
+      const orig = editSaleId && saleToEdit ? (originalQtyByProduct.get(productId) ?? 0) : 0;
+      return (prod ? prod.stock : 0) + orig;
+    },
+    [products, editSaleId, saleToEdit, originalQtyByProduct]
+  );
+
   const addToCart = (p: (typeof products)[0]) => {
-    if (p.stock <= 0) return;
+    const maxStock = maxQtyForProduct(p.id);
+    if (maxStock <= 0) return;
     setCart((prev) => {
       const existing = prev.find((l) => l.id === p.id);
-      const maxQty = p.stock;
       if (existing) {
-        if (existing.qty >= maxQty) return prev;
+        if (existing.qty >= maxStock) return prev;
         return prev.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l));
       }
       return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
     });
   };
 
-  const getProduct = (id: string) => products.find((p) => p.id === id);
   const updateQty = (id: string, delta: number) => {
-    const prod = getProduct(id);
     setCart((prev) => {
       const line = prev.find((l) => l.id === id);
       if (!line) return prev;
+      const maxStock = maxQtyForProduct(id);
       let newQty = line.qty + delta;
-      if (prod && newQty > prod.stock) newQty = prod.stock;
+      if (newQty > maxStock) newQty = maxStock;
       if (newQty <= 0) return prev.filter((l) => l.id !== id);
       return prev.map((l) => (l.id === id ? { ...l, qty: newQty } : l));
     });
@@ -273,9 +380,13 @@ export default function POS() {
       message.warning("Sélectionnez un client pour une vente à crédit");
       return;
     }
+    if (editSaleId && saleToEdit && activeStore.id !== saleToEdit.storeId) {
+      message.warning(t.pos.editSaleWrongStore);
+      return;
+    }
     setLoading(true);
     try {
-      const sale = await createSale({
+      const body = {
         storeId: activeStore.id,
         clientId: paymentMethod === "credit" ? selectedClientId : null,
         paymentMethod,
@@ -285,8 +396,9 @@ export default function POS() {
             ? total
             : undefined,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
-      });
-      message.success(t.pos.paymentSuccess);
+      };
+      const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
+      message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
       setCart([]);
       setSelectedClientId(null);
       navigate("/receipt", {
@@ -304,6 +416,51 @@ export default function POS() {
       setLoading(false);
     }
   };
+
+  const editSaleLoading = Boolean(editSaleId && !editLoadError && (!saleToEdit || !editHydrated));
+
+  if (editLoadError) {
+    return (
+      <div
+        style={{
+          padding: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 320,
+        }}
+      >
+        <Result
+          status="error"
+          title="Modification impossible"
+          subTitle={editLoadError}
+          extra={
+            <Button type="primary" onClick={() => navigate("/sales")}>
+              Retour aux ventes
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (editSaleLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          minHeight: 360,
+        }}
+      >
+        <Spin size="large" />
+        <Typography.Text type="secondary">{t.pos.editSaleTitle}…</Typography.Text>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -337,7 +494,8 @@ export default function POS() {
           <div className={styles.productGrid}>
             {filteredProducts.map((p) => {
               const cartItem = cart.find((l) => l.id === p.id);
-              const availableStock = p.stock - (cartItem?.qty ?? 0);
+              const maxStock = maxQtyForProduct(p.id);
+              const availableStock = maxStock - (cartItem?.qty ?? 0);
               const level = stockLevel(availableStock, p.minStock);
               const outOfStock = availableStock <= 0;
               const catColor = CATEGORY_COLORS[p.category] || "#999";
@@ -568,7 +726,7 @@ export default function POS() {
               </Typography.Title>
             </div>
 
-            {salesAtLimit && (
+            {!editSaleId && salesAtLimit && (
               <div
                 style={{
                   padding: 12,
@@ -593,9 +751,13 @@ export default function POS() {
               className={styles.validateBtn}
               onClick={validateSale}
               loading={loading}
-              disabled={cart.length === 0 || salesAtLimit}
+              disabled={
+                cart.length === 0 ||
+                (!!editSaleId && !editHydrated) ||
+                (!editSaleId && salesAtLimit)
+              }
             >
-              {t.pos.validateSale}
+              {editSaleId ? t.pos.updateSale : t.pos.validateSale}
             </Button>
           </Card>
         </div>

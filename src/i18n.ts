@@ -41,6 +41,11 @@ export const t = {
     selectClientNotFound: "Aucun résultat — utilisez « Nouveau client » ci-dessus",
     outOfStock: "Rupture de stock",
     addAtLeastOne: "Ajoutez au moins un produit",
+    editSaleTitle: "Modifier la vente",
+    updateSale: "Mettre à jour la facture",
+    editSaleSuccess: "Facture mise à jour",
+    editSaleLoadError: "Impossible de charger cette vente pour modification",
+    editSaleWrongStore: "Basculer sur la boutique de cette vente pour la modifier",
   },
   products: {
     title: "Produits",
@@ -285,6 +290,7 @@ export const t = {
     allStatuses: "Toutes",
     emptyTitle: "Aucune vente",
     emptyDesc: "Les ventes enregistrées au POS apparaîtront ici.",
+    editSale: "Modifier",
   },
   receipt: {
     saleSummary: "Résumé de la vente",
@@ -301,6 +307,7 @@ export const t = {
     printA4: "Reçu A4 client",
     printThermal: "Ticket thermique",
     newSale: "Nouvelle vente",
+    editInvoice: "Modifier la facture",
     thankYou: "Merci pour votre achat",
     thankYouEnterprise: "Merci pour votre confiance",
     subtotal: "Sous-total",

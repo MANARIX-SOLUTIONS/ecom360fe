@@ -54,6 +54,11 @@ export async function createSale(req: SaleRequest): Promise<SaleResponse> {
   return api.post<SaleResponse>("/sales", req);
 }
 
+/** Met à jour une vente validée (même numéro de ticket / facture). */
+export async function updateSale(id: string, req: SaleRequest): Promise<SaleResponse> {
+  return api.put<SaleResponse>(`/sales/${id}`, req);
+}
+
 export async function getSale(id: string): Promise<SaleResponse> {
   return api.get<SaleResponse>(`/sales/${id}`);
 }

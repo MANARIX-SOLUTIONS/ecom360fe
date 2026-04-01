@@ -13,7 +13,7 @@ import {
   message,
   Skeleton,
 } from "antd";
-import { FileDown, Ban } from "lucide-react";
+import { FileDown, Ban, Pencil } from "lucide-react";
 import type { SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
 import { useStore } from "@/hooks/useStore";
@@ -64,6 +64,8 @@ export default function Sales() {
   const navigate = useNavigate();
   const { stores, activeStore } = useStore();
   const { matrixCan } = useMatrixCan();
+  const canUpdateSales = matrixCan("SALES_UPDATE", "pos");
+  const canDeleteSales = matrixCan("SALES_DELETE", "pos");
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -323,24 +325,41 @@ export default function Sales() {
                     </Tag>
                   ),
                 },
-                ...(matrixCan("SALES_DELETE", "pos")
+                ...(canUpdateSales || canDeleteSales
                   ? [
                       {
                         title: "",
                         key: "actions",
-                        width: 120,
+                        width: canUpdateSales && canDeleteSales ? 200 : 120,
                         render: (_: unknown, r: SaleResponse) =>
                           r.status === "completed" ? (
-                            <Button
-                              type="text"
-                              size="small"
-                              danger
-                              icon={<Ban size={14} />}
-                              loading={voidingId === r.id}
-                              onClick={(e) => handleVoid(r, e)}
-                            >
-                              Annuler
-                            </Button>
+                            <Space size={4}>
+                              {canUpdateSales && (
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<Pencil size={14} />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/pos/edit/${r.id}`);
+                                  }}
+                                >
+                                  {t.sales.editSale}
+                                </Button>
+                              )}
+                              {canDeleteSales && (
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  danger
+                                  icon={<Ban size={14} />}
+                                  loading={voidingId === r.id}
+                                  onClick={(e) => handleVoid(r, e)}
+                                >
+                                  Annuler
+                                </Button>
+                              )}
+                            </Space>
                           ) : null,
                       },
                     ]
