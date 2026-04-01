@@ -19,6 +19,13 @@ import {
 import { getGlobalView } from "@/api/dashboard";
 import type { GlobalViewResponse } from "@/api/dashboard";
 import { t } from "@/i18n";
+import {
+  formatRangeSummaryFr,
+  rangeFullCalendarMonth,
+  rangeRollingWeekWithinCurrentMonth,
+  rangeTodayLocal,
+  toLocalYmd,
+} from "@/utils/dateLocal";
 import styles from "./VueGlobale.module.css";
 
 type PeriodKey = "today" | "last7" | "thisMonth" | "month";
@@ -29,28 +36,19 @@ function getPeriodRange(
 ): { start: string; end: string } {
   if (key === "month") {
     const m = selectedMonth ?? dayjs();
-    return {
-      start: m.startOf("month").format("YYYY-MM-DD"),
-      end: m.endOf("month").format("YYYY-MM-DD"),
-    };
+    return rangeFullCalendarMonth(m.year(), m.month());
   }
   const now = new Date();
-  const to = new Date(now);
-  to.setHours(23, 59, 59, 999);
-  let from: Date;
   if (key === "today") {
-    from = new Date(now);
-    from.setHours(0, 0, 0, 0);
-  } else if (key === "last7") {
-    from = new Date(now);
-    from.setDate(from.getDate() - 6);
-    from.setHours(0, 0, 0, 0);
-  } else {
-    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    return rangeTodayLocal();
   }
+  if (key === "last7") {
+    return rangeRollingWeekWithinCurrentMonth();
+  }
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
   return {
-    start: from.toISOString().slice(0, 10),
-    end: to.toISOString().slice(0, 10),
+    start: toLocalYmd(from),
+    end: toLocalYmd(now),
   };
 }
 
@@ -113,28 +111,6 @@ function formatPeriodLabel(key: PeriodKey): string {
   if (key === "last7") return "7 derniers jours";
   if (key === "month") return "Un mois";
   return "Ce mois";
-}
-
-function formatPeriodSummary(start: string, end: string, period: PeriodKey): string {
-  if (period === "today") {
-    return new Date(start).toLocaleDateString("fr-FR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }
-  const from = new Date(start).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const to = new Date(end).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return `${from} → ${to}`;
 }
 
 export default function VueGlobale() {
@@ -250,7 +226,7 @@ export default function VueGlobale() {
         )}
         {data && (
           <p className={styles.periodSummary}>
-            {formatPeriodSummary(data.periodStart, data.periodEnd, period)}
+            {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
           </p>
         )}
       </header>

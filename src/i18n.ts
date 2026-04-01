@@ -143,6 +143,7 @@ export const t = {
     today: "Aujourd'hui",
     thisWeek: "Cette semaine",
     thisMonth: "Ce mois",
+    pickMonth: "Un mois",
     salesVsExpenses: "Ventes vs Dépenses",
     paymentDistribution: "Répartition des paiements",
     exportPdf: "PDF",

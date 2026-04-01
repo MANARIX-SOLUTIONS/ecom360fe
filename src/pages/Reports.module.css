@@ -16,7 +16,32 @@
 }
 
 .tabsWrap {
+  margin-bottom: 12px;
+}
+
+.monthPickerWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.monthPickerLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.monthPicker {
+  min-width: 200px;
+}
+
+.periodSummary {
+  display: block;
   margin-bottom: var(--section-gap);
+  font-size: 13px;
+  text-transform: capitalize;
 }
 
 /* ========== KPI Row ========== */
