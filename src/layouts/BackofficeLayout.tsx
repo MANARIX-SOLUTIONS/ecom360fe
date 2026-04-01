@@ -29,6 +29,11 @@ const { Header, Sider, Content } = Layout;
 
 const navItems = [
   { key: "/backoffice", icon: <LayoutDashboard size={18} />, label: "Vue d'ensemble" },
+  {
+    key: "/backoffice/demo-requests",
+    icon: <UserPlus size={18} />,
+    label: "Demandes démo",
+  },
   { key: "/backoffice/businesses", icon: <Building2 size={18} />, label: "Entreprises" },
   { key: "/backoffice/users", icon: <Users size={18} />, label: "Utilisateurs" },
   { key: "/backoffice/audit", icon: <FileText size={18} />, label: "Journal d'audit" },

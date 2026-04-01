@@ -4,12 +4,24 @@ import { RefreshCw, Download } from "lucide-react";
 import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
 import styles from "./Backoffice.module.css";
 
-const ENTITY_TYPES = ["Auth", "Product", "Sale", "Client", "Supplier", "Store", "Expense"];
+const ENTITY_TYPES = [
+  "Auth",
+  "DemoRequest",
+  "Product",
+  "Sale",
+  "Client",
+  "Supplier",
+  "Store",
+  "Expense",
+];
 
 function formatAuditAction(action: string): string {
   const labels: Record<string, string> = {
     LOGIN: "Connexion",
     REGISTER: "Inscription",
+    DEMO_REQUEST: "Demande de démo",
+    DEMO_REQUEST_APPROVED: "Démo validée",
+    DEMO_REQUEST_REJECTED: "Démo refusée",
     PASSWORD_CHANGE: "Changement mot de passe",
     CREATE: "Création",
     UPDATE: "Modification",

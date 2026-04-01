@@ -1,0 +1,72 @@
+/* Demo request: centered form column, optional fields collapsed */
+
+.demoFormPanel {
+  align-items: center;
+  justify-content: center;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.demoCard {
+  max-width: 520px;
+  padding: 16px 20px !important;
+}
+
+@media (max-width: 480px) {
+  .demoCard {
+    padding: 12px 10px !important;
+  }
+}
+
+.compactAlert {
+  margin-bottom: 16px !important;
+}
+
+.compactAlert :global(.ant-alert-message) {
+  font-size: 13px;
+}
+
+.compactAlert :global(.ant-alert-description) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.optionalCollapse {
+  margin-bottom: 4px;
+}
+
+.optionalCollapse :global(.ant-collapse-item) {
+  border: none !important;
+}
+
+.optionalCollapse :global(.ant-collapse-header) {
+  padding: 8px 0 12px !important;
+  align-items: center !important;
+}
+
+.optionalCollapse :global(.ant-collapse-header-text) {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.optionalCollapse :global(.ant-collapse-content-box) {
+  padding: 0 0 8px !important;
+}
+
+.optionalGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+@media (min-width: 560px) {
+  .optionalGrid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+  }
+
+  .optionalGridFull {
+    grid-column: 1 / -1;
+  }
+}

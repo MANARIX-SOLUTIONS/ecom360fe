@@ -289,6 +289,44 @@ export type AuditLogEntry = {
   createdAt: string;
 };
 
+export type AdminDemoRequest = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  businessName: string;
+  message: string | null;
+  jobTitle: string | null;
+  city: string | null;
+  sector: string | null;
+  status: string;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  rejectionReason: string | null;
+};
+
+export async function listAdminDemoRequests(params?: {
+  page?: number;
+  size?: number;
+  status?: string;
+}): Promise<PageResponse<AdminDemoRequest>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.size != null) searchParams.set("size", String(params.size));
+  if (params?.status) searchParams.set("status", params.status);
+  const q = searchParams.toString();
+  return api.get<PageResponse<AdminDemoRequest>>(`/admin/demo-requests${q ? `?${q}` : ""}`);
+}
+
+export async function approveAdminDemoRequest(id: string): Promise<void> {
+  await api.post(`/admin/demo-requests/${id}/approve`);
+}
+
+export async function rejectAdminDemoRequest(id: string, reason?: string): Promise<void> {
+  await api.post(`/admin/demo-requests/${id}/reject`, { reason: reason ?? null });
+}
+
 export async function listAdminAuditLogs(params?: {
   page?: number;
   size?: number;

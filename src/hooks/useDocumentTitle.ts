@@ -5,7 +5,7 @@ const BASE = "360 PME Commerce";
 
 const TITLE_MAP: Record<string, string> = {
   "/login": "Connexion",
-  "/register": "Inscription",
+  "/demo-request": "Demande de démo",
   "/forgot-password": "Mot de passe oublié",
   "/reset-password": "Réinitialiser le mot de passe",
   "/dashboard": "Tableau de bord",

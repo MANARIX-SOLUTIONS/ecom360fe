@@ -9,9 +9,9 @@ test.describe("Smoke tests (no backend required)", () => {
     await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
   });
 
-  test("@smoke register page renders", async ({ page }) => {
-    await page.goto("/register");
-    await expect(page.getByRole("heading", { name: "Créer un compte" })).toBeVisible();
+  test("@smoke demo request page renders", async ({ page }) => {
+    await page.goto("/demo-request");
+    await expect(page.getByRole("heading", { name: "Demander une démo" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Se connecter" })).toBeVisible();
   });
 
@@ -22,14 +22,14 @@ test.describe("Smoke tests (no backend required)", () => {
     await expect(page.getByRole("button", { name: "Retour au tableau de bord" })).toBeVisible();
   });
 
-  test("@smoke login link navigates to register", async ({ page }) => {
+  test("@smoke login link navigates to demo request", async ({ page }) => {
     await page.goto("/login");
-    await page.getByRole("link", { name: "Essai gratuit 14 jours" }).click();
-    await expect(page).toHaveURL(/\/register/);
+    await page.getByRole("link", { name: "Demander une démo" }).click();
+    await expect(page).toHaveURL(/\/demo-request/);
   });
 
-  test("@smoke register link navigates to login", async ({ page }) => {
-    await page.goto("/register");
+  test("@smoke demo request link navigates to login", async ({ page }) => {
+    await page.goto("/demo-request");
     await page.getByRole("link", { name: "Se connecter" }).click();
     await expect(page).toHaveURL(/\/login/);
   });
