@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   Home,
+  Pencil,
 } from "lucide-react";
 import { t } from "@/i18n";
 import { printA4Receipt } from "@/utils/printA4Receipt";
@@ -18,6 +19,7 @@ import { useStore } from "@/hooks/useStore";
 import { getSale, ApiError } from "@/api";
 import type { SaleResponse } from "@/api";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import styles from "./Receipt.module.css";
 
@@ -85,6 +87,7 @@ export default function Receipt() {
   const state = location.state as LocationState | null;
   const [fetchedSale, setFetchedSale] = useState<SaleResponse | null>(null);
   const { profile: businessProfile } = useBusinessProfile();
+  const { matrixCan } = useMatrixCan();
   const [loading, setLoading] = useState(!!state?.saleId && !state?.sale);
   const [saleNotFound, setSaleNotFound] = useState(false);
   const [template, setTemplate] = useState<ReceiptTemplate>(getStoredTemplate);
@@ -497,6 +500,18 @@ export default function Receipt() {
       </div>
 
       <div className={styles.actions}>
+        {sale?.id && sale.status === "completed" && matrixCan("SALES_UPDATE", "pos") && (
+          <Button
+            size="large"
+            icon={<Pencil size={20} />}
+            onClick={() => navigate(`/pos/edit/${sale.id}`)}
+            aria-label={t.receipt.editInvoice}
+            className={styles.actionBtnMain}
+            type="primary"
+          >
+            {t.receipt.editInvoice}
+          </Button>
+        )}
         <Button
           type="primary"
           size="large"
