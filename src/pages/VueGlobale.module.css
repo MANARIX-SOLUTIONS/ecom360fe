@@ -68,6 +68,24 @@
   border-color: #fff;
 }
 
+.monthPickerWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.monthPickerLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.monthPicker {
+  min-width: 200px;
+}
+
 .periodSummary {
   margin: 12px 0 0;
   font-size: 13px;
