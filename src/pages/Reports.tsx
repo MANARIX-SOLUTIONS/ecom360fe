@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -13,7 +13,10 @@ import {
   Table,
   Tag,
   Modal,
+  DatePicker,
 } from "antd";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import {
   BarChart,
   Bar,
@@ -31,10 +34,18 @@ import { FileDown, Wallet, Receipt, PiggyBank, ShoppingCart, Ban } from "lucide-
 import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
+import {
+  formatRangeSummaryFr,
+  isYmdInInclusiveRange,
+  rangeFullCalendarMonth,
+  rangeRollingWeekWithinCurrentMonth,
+  rangeTodayLocal,
+  toLocalYmd,
+} from "@/utils/dateLocal";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 
-type TabKey = "today" | "week" | "month";
+type TabKey = "today" | "week" | "month" | "customMonth";
 
 type ChartPoint = { name: string; ventes: number; dépenses: number };
 
@@ -60,9 +71,27 @@ function escapeCsvCell(v: string | number): string {
   return s;
 }
 
-function exportToCsv(data: Awaited<ReturnType<typeof getDashboard>>, tab: TabKey) {
+function formatMonthYearFr(d: Dayjs): string {
+  return new Date(d.year(), d.month(), 1).toLocaleDateString("fr-FR", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function exportToCsv(
+  data: Awaited<ReturnType<typeof getDashboard>>,
+  tab: TabKey,
+  selectedMonth: Dayjs,
+  periodRange: { start: string; end: string }
+) {
   const periodLabel =
-    tab === "today" ? "Aujourd'hui" : tab === "week" ? "Cette semaine" : "Ce mois";
+    tab === "today"
+      ? "Aujourd'hui"
+      : tab === "week"
+        ? "Cette semaine"
+        : tab === "month"
+          ? "Ce mois"
+          : formatMonthYearFr(selectedMonth);
   const rows: string[] = [
     "Rapport 360 PME Commerce",
     `Période;${periodLabel}`,
@@ -73,7 +102,10 @@ function exportToCsv(data: Awaited<ReturnType<typeof getDashboard>>, tab: TabKey
     "Ventes récentes",
     "N° ticket;Date;Heure;Montant (F);Paiement",
   ];
-  for (const s of data.recentSales) {
+  const salesFiltered = data.recentSales.filter((s) =>
+    isYmdInInclusiveRange(s.createdAt.slice(0, 10), periodRange.start, periodRange.end)
+  );
+  for (const s of salesFiltered) {
     const date = s.createdAt.slice(0, 10);
     const time = formatTime(s.createdAt);
     const method = LABELS[s.paymentMethod] || s.paymentMethod;
@@ -95,17 +127,17 @@ function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
 }
 
-function getPeriodRange(tab: TabKey): { start: string; end: string } {
+function getPeriodRange(tab: TabKey, selectedMonth: Dayjs): { start: string; end: string } {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  if (tab === "today") return { start: today, end: today };
-  if (tab === "week") {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 6);
-    return { start: d.toISOString().slice(0, 10), end: today };
+  if (tab === "today") return rangeTodayLocal();
+  if (tab === "week") return rangeRollingWeekWithinCurrentMonth();
+  if (tab === "customMonth") {
+    return rangeFullCalendarMonth(selectedMonth.year(), selectedMonth.month());
   }
-  const d = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { start: d.toISOString().slice(0, 10), end: today };
+  return {
+    start: toLocalYmd(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: toLocalYmd(now),
+  };
 }
 
 function formatTime(iso: string) {
@@ -124,25 +156,40 @@ export default function Reports() {
   const { matrixCan } = useMatrixCan();
   const { canExportPdf, canExportExcel } = usePlanFeatures();
   const [activeTab, setActiveTab] = useState<TabKey>("week");
+  const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [voidingId, setVoidingId] = useState<string | null>(null);
+  const dashboardFetchIdRef = useRef(0);
+
+  const periodRange = useMemo(
+    () => getPeriodRange(activeTab, selectedMonth),
+    [activeTab, selectedMonth]
+  );
 
   const loadData = useCallback(() => {
     if (!localStorage.getItem("ecom360_access_token")) {
       setLoading(false);
       return;
     }
-    const { start, end } = getPeriodRange(activeTab);
+    const { start, end } = getPeriodRange(activeTab, selectedMonth);
+    const fetchId = ++dashboardFetchIdRef.current;
     setLoading(true);
     getDashboard({ periodStart: start, periodEnd: end })
-      .then(setData)
+      .then((res) => {
+        if (fetchId !== dashboardFetchIdRef.current) return;
+        setData(res);
+      })
       .catch((e) => {
+        if (fetchId !== dashboardFetchIdRef.current) return;
         message.error(e instanceof Error ? e.message : "Erreur chargement des données");
         setData(null);
       })
-      .finally(() => setLoading(false));
-  }, [activeTab]);
+      .finally(() => {
+        if (fetchId !== dashboardFetchIdRef.current) return;
+        setLoading(false);
+      });
+  }, [activeTab, selectedMonth]);
 
   useEffect(() => {
     loadData();
@@ -176,10 +223,18 @@ export default function Reports() {
     [matrixCan, loadData]
   );
 
+  const salesInPeriod = useMemo(() => {
+    if (!data?.recentSales?.length) return [];
+    const { start, end } = periodRange;
+    return data.recentSales.filter((s) =>
+      isYmdInInclusiveRange(s.createdAt.slice(0, 10), start, end)
+    );
+  }, [data, periodRange.start, periodRange.end]);
+
   const chartData = useMemo((): ChartPoint[] => {
-    if (!data?.recentSales.length) return [];
+    if (!salesInPeriod.length) return [];
     const byPeriod: Record<string, { ventes: number; dépenses: number }> = {};
-    for (const s of data.recentSales) {
+    for (const s of salesInPeriod) {
       const key = s.createdAt.slice(0, 10);
       if (!byPeriod[key]) byPeriod[key] = { ventes: 0, dépenses: 0 };
       byPeriod[key].ventes += s.total;
@@ -187,13 +242,13 @@ export default function Reports() {
     return Object.entries(byPeriod)
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([name, v]) => ({ name: name.slice(5) || name, ...v }));
-  }, [data]);
+  }, [salesInPeriod]);
 
   const paymentData = useMemo(() => {
-    if (!data?.recentSales.length) return [];
+    if (!salesInPeriod.length) return [];
     const byMethod: Record<string, number> = {};
     let total = 0;
-    for (const s of data.recentSales) {
+    for (const s of salesInPeriod) {
       const m = s.paymentMethod || "cash";
       byMethod[m] = (byMethod[m] || 0) + s.total;
       total += s.total;
@@ -204,7 +259,7 @@ export default function Reports() {
       value: Math.round((amount / total) * 100),
       color: PAYMENT_COLORS[method] || "var(--color-primary)",
     }));
-  }, [data]);
+  }, [salesInPeriod]);
 
   const kpis = useMemo(() => {
     if (!data) return { sales: "0 F", expenses: "0 F", profit: "0 F", txn: "0" };
@@ -277,7 +332,7 @@ export default function Reports() {
                 icon={<FileDown size={16} />}
                 onClick={() => {
                   if (data) {
-                    exportToCsv(data, activeTab);
+                    exportToCsv(data, activeTab, selectedMonth, periodRange);
                     message.success("Export téléchargé (CSV)");
                   } else {
                     message.warning("Chargement des données en cours…");
@@ -298,9 +353,34 @@ export default function Reports() {
           { key: "today", label: t.reports.today },
           { key: "week", label: t.reports.thisWeek },
           { key: "month", label: t.reports.thisMonth },
+          { key: "customMonth", label: t.reports.pickMonth },
         ]}
         className={styles.tabsWrap}
       />
+
+      {activeTab === "customMonth" && (
+        <div className={styles.monthPickerWrap}>
+          <label htmlFor="reports-month" className={styles.monthPickerLabel}>
+            Mois affiché
+          </label>
+          <DatePicker
+            id="reports-month"
+            picker="month"
+            value={selectedMonth}
+            onChange={(d) => {
+              if (d) setSelectedMonth(d);
+            }}
+            format="MMMM YYYY"
+            allowClear={false}
+            disabledDate={(current) => (current ? current.isAfter(dayjs().endOf("month")) : false)}
+            className={styles.monthPicker}
+          />
+        </div>
+      )}
+
+      <Typography.Text type="secondary" className={styles.periodSummary}>
+        {formatRangeSummaryFr(periodRange.start, periodRange.end)}
+      </Typography.Text>
 
       {/* KPI summary row */}
       <Row gutter={[12, 12]} className={styles.kpiRow}>
@@ -414,7 +494,7 @@ export default function Reports() {
             )}
           </Card>
         )}
-        {data?.recentSales && data.recentSales.length > 0 && (
+        {salesInPeriod.length > 0 && (
           <Card
             title="Ventes récentes"
             variant="borderless"
@@ -423,7 +503,7 @@ export default function Reports() {
           >
             <div className="tableResponsive">
               <Table
-                dataSource={data.recentSales.map((s) => ({
+                dataSource={salesInPeriod.map((s) => ({
                   key: s.saleId,
                   saleId: s.saleId,
                   receiptNumber: s.receiptNumber,
