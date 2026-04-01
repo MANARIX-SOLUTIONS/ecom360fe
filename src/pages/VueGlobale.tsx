@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Skeleton, Alert, Button, Table } from "antd";
+import { Card, Skeleton, Alert, Button, Table, DatePicker } from "antd";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import type { LucideIcon } from "lucide-react";
 import {
   Store,
@@ -19,9 +21,19 @@ import type { GlobalViewResponse } from "@/api/dashboard";
 import { t } from "@/i18n";
 import styles from "./VueGlobale.module.css";
 
-type PeriodKey = "today" | "last7" | "thisMonth";
+type PeriodKey = "today" | "last7" | "thisMonth" | "month";
 
-function getPeriodRange(key: PeriodKey): { start: string; end: string } {
+function getPeriodRange(
+  key: PeriodKey,
+  selectedMonth?: Dayjs | null
+): { start: string; end: string } {
+  if (key === "month") {
+    const m = selectedMonth ?? dayjs();
+    return {
+      start: m.startOf("month").format("YYYY-MM-DD"),
+      end: m.endOf("month").format("YYYY-MM-DD"),
+    };
+  }
   const now = new Date();
   const to = new Date(now);
   to.setHours(23, 59, 59, 999);
@@ -99,6 +111,7 @@ function KpiCard({
 function formatPeriodLabel(key: PeriodKey): string {
   if (key === "today") return "Aujourd'hui";
   if (key === "last7") return "7 derniers jours";
+  if (key === "month") return "Un mois";
   return "Ce mois";
 }
 
@@ -127,6 +140,7 @@ function formatPeriodSummary(start: string, end: string, period: PeriodKey): str
 export default function VueGlobale() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodKey>("thisMonth");
+  const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GlobalViewResponse | null>(null);
@@ -139,7 +153,7 @@ export default function VueGlobale() {
     setLoading(true);
     setError(null);
     try {
-      const { start, end } = getPeriodRange(period);
+      const { start, end } = getPeriodRange(period, selectedMonth);
       const res = await getGlobalView({ periodStart: start, periodEnd: end });
       setData(res);
     } catch (e) {
@@ -148,7 +162,7 @@ export default function VueGlobale() {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, selectedMonth]);
 
   useEffect(() => {
     load();
@@ -165,7 +179,7 @@ export default function VueGlobale() {
           <Skeleton.Input active style={{ width: 200, height: 32 }} />
           <Skeleton.Input active style={{ width: 280, height: 20, marginTop: 12 }} />
           <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <Skeleton.Button key={i} active style={{ width: 120 }} />
             ))}
           </div>
@@ -199,7 +213,7 @@ export default function VueGlobale() {
           Toutes vos boutiques en un coup d&apos;œil — CA, répartition et performance
         </p>
         <div className={styles.periodTabs} role="tablist" aria-label="Choisir la période">
-          {(["today", "last7", "thisMonth"] as const).map((key) => (
+          {(["today", "last7", "thisMonth", "month"] as const).map((key) => (
             <button
               key={key}
               type="button"
@@ -213,6 +227,27 @@ export default function VueGlobale() {
             </button>
           ))}
         </div>
+        {period === "month" && (
+          <div className={styles.monthPickerWrap}>
+            <label htmlFor="vue-globale-month" className={styles.monthPickerLabel}>
+              Mois affiché
+            </label>
+            <DatePicker
+              id="vue-globale-month"
+              picker="month"
+              value={selectedMonth}
+              onChange={(d) => {
+                if (d) setSelectedMonth(d);
+              }}
+              format="MMMM YYYY"
+              allowClear={false}
+              disabledDate={(current) =>
+                current ? current.isAfter(dayjs().endOf("month")) : false
+              }
+              className={styles.monthPicker}
+            />
+          </div>
+        )}
         {data && (
           <p className={styles.periodSummary}>
             {formatPeriodSummary(data.periodStart, data.periodEnd, period)}
