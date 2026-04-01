@@ -1,14 +1,14 @@
 export { api, ApiError, clearAuth, setAuth } from "./client";
 export {
   login,
-  register,
+  submitDemoRequest,
   refreshToken,
   logout,
   forgotPassword,
   resetPassword,
   changePassword,
 } from "./auth";
-export type { AuthResponse, LoginRequest, RegisterRequest } from "./auth";
+export type { AuthResponse, LoginRequest, DemoRequestPayload, DemoRequestAck } from "./auth";
 export * from "./stores";
 export * from "./dashboard";
 export * from "./products";

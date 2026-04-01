@@ -1,5 +1,5 @@
 /**
- * Auth API - login, register, refresh
+ * Auth API - login, demo request, refresh
  */
 
 import { api, setAuth, clearAuth } from "./client";
@@ -19,12 +19,19 @@ export type AuthResponse = {
 
 export type LoginRequest = { email: string; password: string };
 
-export type RegisterRequest = {
+export type DemoRequestPayload = {
   email: string;
-  password: string;
   fullName: string;
   businessName: string;
-  phone?: string;
+  phone: string;
+  message?: string;
+  jobTitle?: string;
+  city?: string;
+  sector?: string;
+};
+
+export type DemoRequestAck = {
+  message: string;
 };
 
 export async function login(credentials: LoginRequest): Promise<AuthResponse> {
@@ -42,19 +49,9 @@ export async function login(credentials: LoginRequest): Promise<AuthResponse> {
   return data;
 }
 
-export async function register(req: RegisterRequest): Promise<AuthResponse> {
-  const data = await api.post<AuthResponse>("/auth/register", req, { skipAuth: true });
-  setAuth(
-    { accessToken: data.accessToken, refreshToken: data.refreshToken },
-    {
-      fullName: data.fullName,
-      email: data.email,
-      businessId: data.businessId ? String(data.businessId) : "",
-      role: data.role,
-      planSlug: data.planSlug,
-    }
-  );
-  return data;
+/** Demande de démo — pas de JWT ; validation admin requise avant connexion. */
+export async function submitDemoRequest(req: DemoRequestPayload): Promise<DemoRequestAck> {
+  return api.post<DemoRequestAck>("/auth/demo-request", req, { skipAuth: true });
 }
 
 export async function refreshToken(): Promise<AuthResponse | null> {

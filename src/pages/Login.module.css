@@ -166,6 +166,14 @@
   padding: var(--card-padding);
 }
 
+/* Centered form column (same intent as demo page) */
+.loginFormPanel {
+  align-items: center;
+  justify-content: center;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
 .card {
   width: 100%;
   max-width: 420px;
@@ -173,6 +181,17 @@
   box-shadow: var(--shadow-elevated);
   overflow: hidden;
   padding: 8px 4px;
+}
+
+.loginCard {
+  max-width: 520px;
+  padding: 16px 20px !important;
+}
+
+@media (max-width: 480px) {
+  .loginCard {
+    padding: 12px 10px !important;
+  }
 }
 
 /* Mobile-only branding */
@@ -239,6 +258,15 @@
   border-radius: var(--radius);
 }
 
+.compactErrorAlert {
+  margin-bottom: 16px !important;
+}
+
+.compactErrorAlert :global(.ant-alert-message) {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .formBlock {
   margin-top: 8px;
 }
@@ -247,9 +275,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px 12px;
+}
+
+.forgotLink {
+  padding: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: 1.4 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
 }
 
 .submitBlock {
@@ -265,11 +302,13 @@
 }
 
 .footer {
-  margin-top: 20px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .securityNote {
@@ -307,12 +346,14 @@
 @media (max-width: 480px) {
   .formPanel {
     padding: 16px;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 
   .card {
-    margin-top: 8px;
+    margin-top: 0;
     box-shadow: none;
     border: 1px solid var(--color-border);
   }

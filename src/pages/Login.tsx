@@ -10,11 +10,11 @@ import { prefetchPermissionsBundle } from "@/utils/permissionsCache";
 import { t } from "@/i18n";
 import styles from "./Login.module.css";
 
-const FEATURES = [
-  { icon: Zap, text: "Point de vente rapide et intuitif" },
-  { icon: BarChart3, text: "Rapports et analyses en temps réel" },
-  { icon: Users, text: "Gestion clients et fournisseurs" },
-  { icon: Smartphone, text: "Fonctionne sur mobile et desktop" },
+const LOGIN_FEATURES = [
+  { icon: Zap, text: t.loginBrand.feature1 },
+  { icon: BarChart3, text: t.loginBrand.feature2 },
+  { icon: Users, text: t.loginBrand.feature3 },
+  { icon: Smartphone, text: t.loginBrand.feature4 },
 ];
 
 export default function Login() {
@@ -63,15 +63,14 @@ export default function Login() {
             <img src={APP_LOGO_MARK} alt="" className={styles.brandLogoImg} />
           </div>
           <Typography.Title level={2} className={styles.brandTitle}>
-            Ecom 360 PME
+            {t.loginBrand.title}
           </Typography.Title>
           <Typography.Text className={styles.brandSubtitle}>
-            La solution tout-en-un pour gérer votre commerce. Ventes, stocks, clients et rapports —
-            simplement.
+            {t.loginBrand.subtitle}
           </Typography.Text>
 
           <div className={styles.featureList}>
-            {FEATURES.map(({ icon: Icon, text }) => (
+            {LOGIN_FEATURES.map(({ icon: Icon, text }) => (
               <div key={text} className={styles.featureItem}>
                 <span className={styles.featureIcon}>
                   <Icon size={18} />
@@ -90,15 +89,15 @@ export default function Login() {
               ))}
             </div>
             <Typography.Text className={styles.socialText}>
-              +200 commerçants nous font confiance
+              {t.loginBrand.socialProof}
             </Typography.Text>
           </div>
         </div>
       </div>
 
       {/* Right form panel */}
-      <div className={styles.formPanel}>
-        <Card className={styles.card} variant="borderless">
+      <div className={`${styles.formPanel} ${styles.loginFormPanel}`}>
+        <Card className={`${styles.card} ${styles.loginCard}`} variant="borderless">
           {/* Mobile-only branding */}
           <div className={styles.mobileBrand}>
             <div className={styles.mobileBrandIcon}>
@@ -108,10 +107,12 @@ export default function Login() {
           </div>
 
           <div className={styles.logoBlock}>
-            <Typography.Title level={3} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
-              Connexion
+            <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 6 }}>
+              {t.auth.loginTitle}
             </Typography.Title>
-            <Typography.Text type="secondary">Accédez à votre espace de gestion</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 14 }}>
+              {t.auth.loginSubtitle}
+            </Typography.Text>
           </div>
 
           {error && (
@@ -121,14 +122,14 @@ export default function Login() {
               showIcon
               closable
               onClose={() => setError(null)}
-              className={styles.errorAlert}
+              className={`${styles.errorAlert} ${styles.compactErrorAlert}`}
             />
           )}
 
           <Form
             name="login"
             layout="vertical"
-            size="large"
+            size="middle"
             onFinish={onFinish}
             autoComplete="off"
             className={styles.formBlock}
@@ -168,10 +169,10 @@ export default function Login() {
                 initialValue={true}
                 style={{ marginBottom: 0 }}
               >
-                <Checkbox>Se souvenir de moi</Checkbox>
+                <Checkbox>{t.auth.rememberMe}</Checkbox>
               </Form.Item>
               <Link to="/forgot-password">
-                <Button type="link" style={{ padding: 0, height: "auto" }}>
+                <Button type="link" className={styles.forgotLink}>
                   {t.auth.forgotPassword}
                 </Button>
               </Link>
@@ -192,13 +193,13 @@ export default function Login() {
 
           <div className={styles.footer}>
             <div className={styles.securityNote}>
-              <Shield size={14} />
-              <span>Connexion sécurisée et chiffrée</span>
+              <Shield size={14} aria-hidden />
+              <span>{t.auth.secureConnection}</span>
             </div>
             <div className={styles.trialNote}>
-              Pas encore de compte ?{" "}
-              <Link to="/register" className={styles.trialLink}>
-                Essai gratuit 14 jours
+              {t.auth.trialPrompt}{" "}
+              <Link to="/demo-request" className={styles.trialLink}>
+                {t.demo.pageTitle}
               </Link>
             </div>
           </div>

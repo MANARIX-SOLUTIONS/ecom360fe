@@ -7,7 +7,6 @@ import { Spin, message } from "antd";
 import { useAuth } from "./hooks/useAuth";
 import { RequirePermission } from "./components/RequirePermission";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MainLayout from "./layouts/MainLayout";
@@ -44,6 +43,8 @@ const SettingsNotifications = lazy(() => import("./pages/SettingsNotifications")
 const SettingsStores = lazy(() => import("./pages/SettingsStores"));
 const Profile = lazy(() => import("./pages/Profile"));
 const More = lazy(() => import("./pages/More"));
+const DemoRequest = lazy(() => import("./pages/DemoRequest"));
+const BackofficeDemoRequests = lazy(() => import("./pages/BackofficeDemoRequests"));
 
 function PageLoader() {
   return (
@@ -101,7 +102,15 @@ export default function App() {
       <SubscriptionRequiredHandler />
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/demo-request"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <DemoRequest />
+            </Suspense>
+          }
+        />
+        <Route path="/register" element={<Navigate to="/demo-request" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route
@@ -391,6 +400,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <BackofficeUsers />
+              </Suspense>
+            }
+          />
+          <Route
+            path="demo-requests"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeDemoRequests />
               </Suspense>
             }
           />
