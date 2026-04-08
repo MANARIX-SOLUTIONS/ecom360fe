@@ -11,6 +11,8 @@ export type BusinessProfile = {
   phone?: string;
   address?: string;
   logoUrl?: string | null;
+  /** ISO-8601 — présent lorsque l’API expose la date de création (nouvelles entreprises / guide). */
+  createdAt?: string;
 };
 
 export async function getBusinessProfile(): Promise<BusinessProfile> {

@@ -26,7 +26,12 @@ export function StoreSwitcher() {
 
   if (!hasStores) {
     return (
-      <button type="button" className={styles.trigger} onClick={() => navigate("/settings/stores")}>
+      <button
+        type="button"
+        className={styles.trigger}
+        data-onboarding="store-switcher"
+        onClick={() => navigate("/settings/stores")}
+      >
         <Store size={18} />
         <span>{t.stores.addFirst}</span>
         <ChevronDown size={16} />
@@ -36,7 +41,7 @@ export function StoreSwitcher() {
 
   return (
     <Dropdown menu={{ items: menuItems }} trigger={["click"]} placement="bottomLeft">
-      <button type="button" className={styles.trigger}>
+      <button type="button" className={styles.trigger} data-onboarding="store-switcher">
         <Store size={18} />
         <span className={styles.triggerName}>{activeStore?.name ?? t.stores.selectStore}</span>
         <ChevronDown size={16} />
