@@ -33,6 +33,7 @@ import { t } from "@/i18n";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { APP_LOGO_MARK } from "@/constants/branding";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import styles from "./MainLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
@@ -250,48 +251,50 @@ export default function MainLayout() {
         className={styles.sider}
         theme="light"
       >
-        <div
-          className={styles.logo}
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate("/dashboard")}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              navigate("/dashboard");
-            }
-          }}
-        >
-          <div className={`${styles.logoIcon} ${!defaultLogoBroken ? styles.logoIconImage : ""}`}>
-            {!defaultLogoBroken ? (
-              <img
-                src={effectiveLogoSrc}
-                alt=""
-                className={styles.logoBrandImg}
-                onError={() => {
-                  if (brandLogoUrl && !brandLogoBroken) setBrandLogoBroken(true);
-                  else setDefaultLogoBroken(true);
-                }}
-              />
-            ) : (
-              <ShoppingCart size={20} />
-            )}
+        <div data-onboarding="sidebar" className={styles.sidebarTourRegion}>
+          <div
+            className={styles.logo}
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate("/dashboard")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate("/dashboard");
+              }
+            }}
+          >
+            <div className={`${styles.logoIcon} ${!defaultLogoBroken ? styles.logoIconImage : ""}`}>
+              {!defaultLogoBroken ? (
+                <img
+                  src={effectiveLogoSrc}
+                  alt=""
+                  className={styles.logoBrandImg}
+                  onError={() => {
+                    if (brandLogoUrl && !brandLogoBroken) setBrandLogoBroken(true);
+                    else setDefaultLogoBroken(true);
+                  }}
+                />
+              ) : (
+                <ShoppingCart size={20} />
+              )}
+            </div>
+            <div className={styles.logoText}>
+              <Typography.Text strong className={styles.logoTitle}>
+                {sidebarBrandTitle}
+              </Typography.Text>
+              <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
+            </div>
           </div>
-          <div className={styles.logoText}>
-            <Typography.Text strong className={styles.logoTitle}>
-              {sidebarBrandTitle}
-            </Typography.Text>
-            <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
-          </div>
+          <Menu
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            items={navItems}
+            onClick={({ key }) => navigate(key)}
+            style={{ borderRight: 0 }}
+            className={styles.menu}
+          />
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={navItems}
-          onClick={({ key }) => navigate(key)}
-          style={{ borderRight: 0 }}
-          className={styles.menu}
-        />
       </Sider>
 
       <Layout>
@@ -304,7 +307,12 @@ export default function MainLayout() {
               trigger={["click"]}
               placement="bottomRight"
             >
-              <button type="button" className={styles.notifBtn} aria-label="Notifications">
+              <button
+                type="button"
+                className={styles.notifBtn}
+                aria-label="Notifications"
+                data-onboarding="notifications"
+              >
                 <Badge count={unreadCount} size="small" offset={[-2, 2]}>
                   <Bell size={20} />
                 </Badge>
@@ -320,7 +328,7 @@ export default function MainLayout() {
       </Layout>
 
       {/* Mobile: bottom navigation */}
-      <nav className={styles.bottomNav}>
+      <nav className={styles.bottomNav} data-onboarding="bottom-nav" aria-label="Navigation mobile">
         <button
           type="button"
           className={location.pathname === "/dashboard" ? styles.navActive : ""}
@@ -382,6 +390,8 @@ export default function MainLayout() {
             )) && <span className={styles.navDot} />}
         </button>
       </nav>
+
+      <OnboardingTour />
     </Layout>
   );
 }

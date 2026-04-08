@@ -387,6 +387,26 @@ export const t = {
     footerLogin: "Se connecter",
     submitError: "Impossible d'envoyer la demande",
   },
+  onboarding: {
+    stepWelcomeTitle: "Bienvenue sur Ecom 360",
+    stepWelcomeDesc:
+      "Voici un court guide pour vous repérer. Votre période d'essai et votre abonnement se gèrent depuis Paramètres → Abonnement.",
+    stepStoreTitle: "Boutique active",
+    stepStoreDesc:
+      "Choisissez le point de vente sur lequel vous travaillez. Les stocks et ventes sont liés à la boutique sélectionnée.",
+    stepNavDesktopTitle: "Navigation",
+    stepNavDesktopDesc:
+      "Le menu principal donne accès au tableau de bord, au POS, aux produits, aux clients et aux réglages.",
+    stepNavMobileTitle: "Navigation mobile",
+    stepNavMobileDesc:
+      "En bas de l'écran, accédez rapidement au tableau de bord, aux produits, au POS et au menu « Plus ».",
+    stepNotificationsTitle: "Notifications",
+    stepNotificationsDesc:
+      "Retrouvez vos alertes (stock, rappels) et accédez à votre profil depuis le coin supérieur droit.",
+    stepFinishTitle: "C'est parti",
+    stepFinishDesc:
+      "Ajoutez une boutique si ce n'est pas fait, puis vos produits et testez une vente au POS. Bonne utilisation !",
+  },
   validation: {
     required: "Champ obligatoire",
     requiredField: "Veuillez renseigner ce champ",
