@@ -62,6 +62,16 @@ export const antdTheme = {
     },
     Table: {
       borderRadiusLG: 12,
+      headerBg: "#F8FAFC",
+      headerColor: "#475569",
+      rowHoverBg: "rgba(27, 77, 122, 0.03)",
+      borderColor: "#E2E8F0",
+      cellPaddingBlock: 11,
+      cellPaddingInline: 12,
+      cellPaddingBlockMD: 10,
+      cellPaddingInlineMD: 10,
+      cellPaddingBlockSM: 8,
+      cellPaddingInlineSM: 8,
     },
     Tabs: {
       itemActiveColor: tokens.color.primary,

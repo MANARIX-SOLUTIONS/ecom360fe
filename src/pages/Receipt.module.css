@@ -415,6 +415,104 @@
   display: block;
 }
 
+/* ========== Client (facturation) ========== */
+.clientStripSkeleton {
+  height: 72px;
+  margin: 0 0 4px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #f1f5f9 0%, #e8eef5 45%, #f1f5f9 90%);
+  background-size: 200% 100%;
+  animation: receiptShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes receiptShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clientStripSkeleton {
+    animation: none;
+    background: #f1f5f9;
+  }
+}
+
+.walkInStripe {
+  margin: 0 0 4px;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--receipt-muted);
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+}
+
+.invoiceClientCard {
+  margin: 0 -4px 4px;
+  padding: 16px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(165deg, rgba(27, 77, 122, 0.06) 0%, #fff 55%);
+  border: 1px solid rgba(27, 77, 122, 0.15);
+  border-left: 4px solid var(--receipt-accent);
+}
+
+.invoiceClientHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--receipt-muted);
+}
+
+.invoiceClientHeading svg {
+  color: var(--receipt-accent);
+  flex-shrink: 0;
+}
+
+.invoiceClientDisplayName {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--receipt-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.invoiceClientMeta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--receipt-text);
+  line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.invoiceClientMetaLabel {
+  color: var(--receipt-muted);
+  font-weight: 600;
+  min-width: 4.5em;
+}
+
+.invoiceClientPrivacy {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(100, 116, 139, 0.35);
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--receipt-muted);
+}
+
 /* ========== Line items table ========== */
 .lines {
   width: 100%;
@@ -1054,6 +1152,85 @@
 .a4Datetime {
   font-size: 13px;
   color: #555;
+}
+
+.a4ClientSkeleton {
+  height: 88px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e8eef5 45%, #f1f5f9 90%);
+  background-size: 200% 100%;
+  animation: receiptShimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .a4ClientSkeleton {
+    animation: none;
+    background: #f1f5f9;
+  }
+}
+
+.a4WalkInNote {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+}
+
+.a4BillToCard {
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  border-left: 4px solid #1b4d7a;
+}
+
+.a4BillToKicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.a4BillToName {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.a4BillToPrivacy {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #94a3b8;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.a4BillToLine {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.45;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.a4BillToLine span:first-child {
+  flex: 0 0 auto;
+  min-width: 5em;
+  font-weight: 600;
+  color: #94a3b8;
 }
 
 /* A4 table */
