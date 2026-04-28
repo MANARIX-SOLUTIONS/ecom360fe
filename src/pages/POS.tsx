@@ -31,6 +31,7 @@ import {
   createClient,
 } from "@/api";
 import type { SaleResponse } from "@/api";
+import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
 
 type CartLine = {
   id: string;
@@ -48,6 +49,13 @@ type ProductForPOS = {
   category: string;
   stock: number;
   minStock: number;
+};
+
+type ClientForPOS = {
+  id: string;
+  name: string;
+  creditBalance: number;
+  isWalkIn: boolean;
 };
 
 const PAYMENT_METHODS: {
@@ -134,7 +142,7 @@ export default function POS() {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductForPOS[]>([]);
   const [categories, setCategories] = useState<string[]>(["Tous"]);
-  const [clients, setClients] = useState<{ id: string; name: string; creditBalance: number }[]>([]);
+  const [clients, setClients] = useState<ClientForPOS[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
@@ -243,13 +251,39 @@ export default function POS() {
 
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
-        setClients(
-          clientsRes.content.map((c) => ({
-            id: c.id,
-            name: c.name,
-            creditBalance: c.creditBalance ?? 0,
-          }))
-        );
+        let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({
+          id: c.id,
+          name: c.name,
+          creditBalance: c.creditBalance ?? 0,
+          isWalkIn: false,
+        }));
+        let walkIn = nextClients.find((c) => isWalkInClientName(c.name));
+        if (!walkIn) {
+          try {
+            const created = await createClient({ name: WALK_IN_CLIENT_NAME });
+            walkIn = {
+              id: created.id,
+              name: created.name,
+              creditBalance: created.creditBalance ?? 0,
+              isWalkIn: true,
+            };
+            nextClients = [...nextClients, walkIn];
+          } catch {
+            // Ignore if concurrent cashier already created it.
+          }
+        }
+        nextClients = nextClients.map((c) => ({
+          ...c,
+          isWalkIn: isWalkInClientName(c.name),
+        }));
+        setClients(nextClients);
+        if (!editSaleId) {
+          setSelectedClientId((prev) => {
+            if (prev && nextClients.some((c) => c.id === prev)) return prev;
+            const defaultClient = nextClients.find((c) => c.isWalkIn) ?? nextClients[0] ?? null;
+            return defaultClient?.id ?? null;
+          });
+        }
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
         setProducts(
           stockList.map((s) => ({
@@ -268,7 +302,7 @@ export default function POS() {
       }
     };
     load();
-  }, [activeStore?.id]);
+  }, [activeStore?.id, editSaleId]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement)?.tagName;
@@ -295,6 +329,10 @@ export default function POS() {
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount);
   const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === selectedClientId) ?? null,
+    [clients, selectedClientId]
+  );
 
   const originalQtyByProduct = useMemo(() => {
     if (!saleToEdit) return new Map<string, number>();
@@ -353,7 +391,12 @@ export default function POS() {
         });
         setClients((prev) => [
           ...prev,
-          { id: c.id, name: c.name, creditBalance: c.creditBalance ?? 0 },
+          {
+            id: c.id,
+            name: c.name,
+            creditBalance: c.creditBalance ?? 0,
+            isWalkIn: isWalkInClientName(c.name),
+          },
         ]);
         setSelectedClientId(c.id);
         message.success(t.pos.clientCreatedSelected);
@@ -376,37 +419,70 @@ export default function POS() {
       message.warning("Sélectionnez une boutique");
       return;
     }
-    if (paymentMethod === "credit" && !selectedClientId) {
-      message.warning("Sélectionnez un client pour une vente à crédit");
+    if (!selectedClientId) {
+      message.warning("Sélectionnez un client avant de valider");
+      return;
+    }
+    if (paymentMethod === "credit" && selectedClient?.isWalkIn) {
+      message.warning("Pour le crédit, sélectionnez un client nominatif");
       return;
     }
     if (editSaleId && saleToEdit && activeStore.id !== saleToEdit.storeId) {
       message.warning(t.pos.editSaleWrongStore);
       return;
     }
+    for (const line of cart) {
+      const p = products.find((pr) => pr.id === line.id);
+      const unitPrice = p !== undefined ? p.price : line.price;
+      if (!editSaleId && !p) {
+        message.warning(t.pos.cartProductUnavailable);
+        return;
+      }
+      if (unitPrice <= 0) {
+        message.warning(t.pos.cartUnitPriceInvalid);
+        return;
+      }
+    }
+    const discountRounded = Math.round(discount);
+    const subtotalRounded = cart.reduce((s, l) => {
+      const p = products.find((pr) => pr.id === l.id);
+      const unit = p !== undefined ? p.price : l.price;
+      return s + unit * l.qty;
+    }, 0);
+    if (discountRounded > subtotalRounded) {
+      message.warning(t.pos.discountExceedsSubtotal);
+      return;
+    }
+    const totalAfterDiscount = Math.max(0, subtotalRounded - discountRounded);
+
     setLoading(true);
     try {
       const body = {
         storeId: activeStore.id,
-        clientId: paymentMethod === "credit" ? selectedClientId : null,
+        clientId: selectedClientId,
         paymentMethod,
-        discountAmount: Math.round(discount),
+        discountAmount: discountRounded,
         amountReceived:
           paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
-            ? total
+            ? totalAfterDiscount
             : undefined,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
       setCart([]);
-      setSelectedClientId(null);
+      if (editSaleId) {
+        setSelectedClientId(null);
+      } else {
+        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
+        setSelectedClientId(defaultClient?.id ?? null);
+      }
       navigate("/receipt", {
         state: {
           sale,
           cart,
-          total,
-          discount,
+          total: sale.total,
+          discount: sale.discountAmount,
           method: paymentMethod,
         },
       });
@@ -625,7 +701,6 @@ export default function POS() {
                     className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
                     onClick={() => {
                       setPaymentMethod(key);
-                      if (key !== "credit") setSelectedClientId(null);
                     }}
                     style={
                       paymentMethod === key
@@ -656,54 +731,53 @@ export default function POS() {
               </div>
             </div>
 
-            {paymentMethod === "credit" && (
-              <div className={styles.clientRow}>
-                <div className={styles.clientRowHeader}>
-                  <Typography.Text type="secondary">Client (crédit)</Typography.Text>
-                  <Button
-                    type="link"
-                    size="small"
-                    className={styles.quickAddClientBtn}
-                    icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
-                    onClick={() => setQuickClientOpen(true)}
-                  >
-                    {t.pos.quickAddClient}
-                  </Button>
-                </div>
-                <Typography.Text type="secondary" className={styles.clientCreditHint}>
-                  {t.pos.quickAddClientHint}
+            <div className={styles.clientRow}>
+              <div className={styles.clientRowHeader}>
+                <Typography.Text type="secondary">
+                  {paymentMethod === "credit" ? "Client (crédit)" : "Client"}
                 </Typography.Text>
-                <Select
-                  placeholder="Sélectionner un client"
-                  allowClear
-                  value={selectedClientId}
-                  onChange={setSelectedClientId}
-                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                  style={{ width: "100%" }}
-                  size="large"
-                  showSearch
-                  optionFilterProp="label"
-                  notFoundContent={
-                    <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
-                  }
-                />
-                {selectedClientId &&
-                  (() => {
-                    const before =
-                      clients.find((c) => c.id === selectedClientId)?.creditBalance ?? 0;
-                    const after = before + total;
-                    return (
-                      <Typography.Text
-                        type="secondary"
-                        style={{ display: "block", marginTop: 8, fontSize: 13 }}
-                      >
-                        Dette actuelle : {before.toLocaleString("fr-FR")} F · Après cette vente :{" "}
-                        <strong>{after.toLocaleString("fr-FR")} F</strong>
-                      </Typography.Text>
-                    );
-                  })()}
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles.quickAddClientBtn}
+                  icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
+                  onClick={() => setQuickClientOpen(true)}
+                >
+                  {t.pos.quickAddClient}
+                </Button>
               </div>
-            )}
+              <Typography.Text type="secondary" className={styles.clientCreditHint}>
+                {t.pos.quickAddClientHint}
+              </Typography.Text>
+              <Select
+                placeholder="Sélectionner un client"
+                value={selectedClientId}
+                onChange={setSelectedClientId}
+                options={clients.map((c) => ({
+                  value: c.id,
+                  label: c.isWalkIn ? `${c.name} (par défaut)` : c.name,
+                }))}
+                style={{ width: "100%" }}
+                size="large"
+                showSearch
+                optionFilterProp="label"
+                notFoundContent={
+                  <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
+                }
+              />
+              {paymentMethod === "credit" && selectedClientId && (
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                >
+                  Dette actuelle : {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F
+                  {" · "}Après cette vente :{" "}
+                  <strong>
+                    {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
+                  </strong>
+                </Typography.Text>
+              )}
+            </div>
 
             <div className={styles.totalDivider} />
 
