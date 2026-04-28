@@ -16,6 +16,19 @@ function formatPrice(n: number): string {
   return n.toLocaleString("fr-FR") + " F";
 }
 
+/** Bloc client sur le PDF A4 (optionnel). */
+export type PrintedReceiptClient =
+  | {
+      variant: "named";
+      billToTitle: string;
+      name: string;
+      /** Réservé aux champs non sensibles futurs — pas de téléphone / email / adresse */
+      metaLines: { label: string; value: string }[];
+      /** Mention confidentialité sous le bloc client */
+      privacyNote?: string;
+    }
+  | { variant: "walkIn"; text: string };
+
 export type A4ReceiptData = {
   shopName: string;
   shopAddress?: string;
@@ -29,6 +42,8 @@ export type A4ReceiptData = {
   total: number;
   discount: number;
   method: string;
+  /** Client facturé (hors comptoir) ou mention comptoir / legacy */
+  printedClient?: PrintedReceiptClient;
   i18n: {
     invoiceRef: string;
     dateTime: string;
@@ -132,6 +147,50 @@ const A4_PRINT_STYLES = `
     border-radius: 8px;
     border: 1px solid #f1f5f9;
   }
+  .a4-client-wrap { margin-bottom: 20px; }
+  .a4-client-card {
+    padding: 16px 18px;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    border-left: 4px solid #1b4d7a;
+  }
+  .a4-client-kicker {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+  .a4-client-name-print {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .a4-client-meta-grid { display: grid; gap: 6px; font-size: 12px; color: #475569; }
+  .a4-client-meta-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  .a4-client-meta-label { color: #94a3b8; flex-shrink: 0; font-weight: 600; min-width: 5em; }
+  .a4-client-privacy {
+    font-size: 9.5px;
+    color: #94a3b8;
+    line-height: 1.45;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+  }
+  .a4-walk-in {
+    font-size: 12px;
+    color: #64748b;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+    margin-bottom: 18px;
+  }
   .a4-section-title {
     font-size: 11px;
     font-weight: 700;
@@ -198,6 +257,23 @@ const A4_PRINT_STYLES = `
   @page { size: A4 portrait; margin: 18mm; }
 `;
 
+function buildPrintedClientHtml(pc: PrintedReceiptClient): string {
+  if (pc.variant === "walkIn") {
+    return `<div class="a4-walk-in">${escapeHtml(pc.text)}</div>`;
+  }
+  const meta = pc.metaLines
+    .map(
+      (m) =>
+        `<div class="a4-client-meta-row"><span class="a4-client-meta-label">${escapeHtml(m.label)}</span><span>${escapeHtml(m.value)}</span></div>`
+    )
+    .join("");
+  const privacy =
+    pc.privacyNote?.trim().length > 0
+      ? `<p class="a4-client-privacy">${escapeHtml(pc.privacyNote)}</p>`
+      : "";
+  return `<div class="a4-client-wrap"><div class="a4-client-card"><span class="a4-client-kicker">${escapeHtml(pc.billToTitle)}</span><div class="a4-client-name-print">${escapeHtml(pc.name)}</div>${meta ? `<div class="a4-client-meta-grid">${meta}</div>` : ""}${privacy}</div></div>`;
+}
+
 function buildA4ReceiptHTML(data: A4ReceiptData): string {
   const dt = data.now.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -259,6 +335,7 @@ function buildA4ReceiptHTML(data: A4ReceiptData): string {
       <div class="a4-meta">
         ${data.i18n.dateTime}: ${dt} à ${tm}
       </div>
+      ${data.printedClient ? buildPrintedClientHtml(data.printedClient) : ""}
       <p class="a4-section-title">${escapeHtml(data.i18n.detailLinesTitle)}</p>
       <table class="a4-table">
         <thead><tr><th>${data.i18n.name}</th><th>${data.i18n.qtyShort}</th><th>${data.i18n.unitPrice}</th><th>${data.i18n.total}</th></tr></thead>

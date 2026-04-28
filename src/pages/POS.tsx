@@ -31,6 +31,7 @@ import {
   createClient,
 } from "@/api";
 import type { SaleResponse } from "@/api";
+import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
 
 type CartLine = {
   id: string;
@@ -48,6 +49,13 @@ type ProductForPOS = {
   category: string;
   stock: number;
   minStock: number;
+};
+
+type ClientForPOS = {
+  id: string;
+  name: string;
+  creditBalance: number;
+  isWalkIn: boolean;
 };
 
 const PAYMENT_METHODS: {
@@ -109,6 +117,44 @@ const CATEGORY_COLORS: Record<string, string> = {
   Divers: "#95a5a6",
 };
 
+/** Colonnes visibles environ × lignes sans scroll excessif avant « Voir plus » */
+const PRODUCTS_PAGE_SIZE = {
+  mobile: 12,
+  tablet: 24,
+  desktop: 40,
+} as const;
+
+function getPosBreakpoint(): keyof typeof PRODUCTS_PAGE_SIZE {
+  if (typeof window === "undefined") return "desktop";
+  const w = window.innerWidth;
+  if (w < 640) return "mobile";
+  if (w < 1024) return "tablet";
+  return "desktop";
+}
+
+function usePosBreakpoint(): keyof typeof PRODUCTS_PAGE_SIZE {
+  const [bp, setBp] = useState<keyof typeof PRODUCTS_PAGE_SIZE>(() => getPosBreakpoint());
+
+  useEffect(() => {
+    const mMobile = window.matchMedia("(max-width: 639px)");
+    const mTablet = window.matchMedia("(min-width: 640px) and (max-width: 1023px)");
+    function sync() {
+      if (mMobile.matches) setBp("mobile");
+      else if (mTablet.matches) setBp("tablet");
+      else setBp("desktop");
+    }
+    mMobile.addEventListener("change", sync);
+    mTablet.addEventListener("change", sync);
+    sync();
+    return () => {
+      mMobile.removeEventListener("change", sync);
+      mTablet.removeEventListener("change", sync);
+    };
+  }, []);
+
+  return bp;
+}
+
 export default function POS() {
   const navigate = useNavigate();
   const { saleId: editSaleId } = useParams<{ saleId: string }>();
@@ -130,11 +176,22 @@ export default function POS() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tous");
+
+  const posBreakpoint = usePosBreakpoint();
+  const productPageSize = PRODUCTS_PAGE_SIZE[posBreakpoint];
+  const [productVisibleLimit, setProductVisibleLimit] = useState<number>(
+    () => PRODUCTS_PAGE_SIZE[getPosBreakpoint()]
+  );
+
+  useEffect(() => {
+    setProductVisibleLimit(productPageSize);
+  }, [category, search, productPageSize]);
+
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductForPOS[]>([]);
   const [categories, setCategories] = useState<string[]>(["Tous"]);
-  const [clients, setClients] = useState<{ id: string; name: string; creditBalance: number }[]>([]);
+  const [clients, setClients] = useState<ClientForPOS[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [salesAtLimit, setSalesAtLimit] = useState(false);
@@ -243,13 +300,39 @@ export default function POS() {
 
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
-        setClients(
-          clientsRes.content.map((c) => ({
-            id: c.id,
-            name: c.name,
-            creditBalance: c.creditBalance ?? 0,
-          }))
-        );
+        let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({
+          id: c.id,
+          name: c.name,
+          creditBalance: c.creditBalance ?? 0,
+          isWalkIn: false,
+        }));
+        let walkIn = nextClients.find((c) => isWalkInClientName(c.name));
+        if (!walkIn) {
+          try {
+            const created = await createClient({ name: WALK_IN_CLIENT_NAME });
+            walkIn = {
+              id: created.id,
+              name: created.name,
+              creditBalance: created.creditBalance ?? 0,
+              isWalkIn: true,
+            };
+            nextClients = [...nextClients, walkIn];
+          } catch {
+            // Ignore if concurrent cashier already created it.
+          }
+        }
+        nextClients = nextClients.map((c) => ({
+          ...c,
+          isWalkIn: isWalkInClientName(c.name),
+        }));
+        setClients(nextClients);
+        if (!editSaleId) {
+          setSelectedClientId((prev) => {
+            if (prev && nextClients.some((c) => c.id === prev)) return prev;
+            const defaultClient = nextClients.find((c) => c.isWalkIn) ?? nextClients[0] ?? null;
+            return defaultClient?.id ?? null;
+          });
+        }
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
         setProducts(
           stockList.map((s) => ({
@@ -268,7 +351,7 @@ export default function POS() {
       }
     };
     load();
-  }, [activeStore?.id]);
+  }, [activeStore?.id, editSaleId]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement)?.tagName;
@@ -292,9 +375,20 @@ export default function POS() {
     });
   }, [category, search, products]);
 
+  const displayedProducts = useMemo(
+    () => filteredProducts.slice(0, productVisibleLimit),
+    [filteredProducts, productVisibleLimit]
+  );
+
+  const remainingProductCount = filteredProducts.length - displayedProducts.length;
+
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount);
   const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === selectedClientId) ?? null,
+    [clients, selectedClientId]
+  );
 
   const originalQtyByProduct = useMemo(() => {
     if (!saleToEdit) return new Map<string, number>();
@@ -353,7 +447,12 @@ export default function POS() {
         });
         setClients((prev) => [
           ...prev,
-          { id: c.id, name: c.name, creditBalance: c.creditBalance ?? 0 },
+          {
+            id: c.id,
+            name: c.name,
+            creditBalance: c.creditBalance ?? 0,
+            isWalkIn: isWalkInClientName(c.name),
+          },
         ]);
         setSelectedClientId(c.id);
         message.success(t.pos.clientCreatedSelected);
@@ -376,37 +475,70 @@ export default function POS() {
       message.warning("Sélectionnez une boutique");
       return;
     }
-    if (paymentMethod === "credit" && !selectedClientId) {
-      message.warning("Sélectionnez un client pour une vente à crédit");
+    if (!selectedClientId) {
+      message.warning("Sélectionnez un client avant de valider");
+      return;
+    }
+    if (paymentMethod === "credit" && selectedClient?.isWalkIn) {
+      message.warning("Pour le crédit, sélectionnez un client nominatif");
       return;
     }
     if (editSaleId && saleToEdit && activeStore.id !== saleToEdit.storeId) {
       message.warning(t.pos.editSaleWrongStore);
       return;
     }
+    for (const line of cart) {
+      const p = products.find((pr) => pr.id === line.id);
+      const unitPrice = p !== undefined ? p.price : line.price;
+      if (!editSaleId && !p) {
+        message.warning(t.pos.cartProductUnavailable);
+        return;
+      }
+      if (unitPrice <= 0) {
+        message.warning(t.pos.cartUnitPriceInvalid);
+        return;
+      }
+    }
+    const discountRounded = Math.round(discount);
+    const subtotalRounded = cart.reduce((s, l) => {
+      const p = products.find((pr) => pr.id === l.id);
+      const unit = p !== undefined ? p.price : l.price;
+      return s + unit * l.qty;
+    }, 0);
+    if (discountRounded > subtotalRounded) {
+      message.warning(t.pos.discountExceedsSubtotal);
+      return;
+    }
+    const totalAfterDiscount = Math.max(0, subtotalRounded - discountRounded);
+
     setLoading(true);
     try {
       const body = {
         storeId: activeStore.id,
-        clientId: paymentMethod === "credit" ? selectedClientId : null,
+        clientId: selectedClientId,
         paymentMethod,
-        discountAmount: Math.round(discount),
+        discountAmount: discountRounded,
         amountReceived:
           paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
-            ? total
+            ? totalAfterDiscount
             : undefined,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
       setCart([]);
-      setSelectedClientId(null);
+      if (editSaleId) {
+        setSelectedClientId(null);
+      } else {
+        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
+        setSelectedClientId(defaultClient?.id ?? null);
+      }
       navigate("/receipt", {
         state: {
           sale,
           cart,
-          total,
-          discount,
+          total: sale.total,
+          discount: sale.discountAmount,
           method: paymentMethod,
         },
       });
@@ -491,46 +623,58 @@ export default function POS() {
               </Button>
             ))}
           </div>
-          <div className={styles.productGrid}>
-            {filteredProducts.map((p) => {
-              const cartItem = cart.find((l) => l.id === p.id);
-              const maxStock = maxQtyForProduct(p.id);
-              const availableStock = maxStock - (cartItem?.qty ?? 0);
-              const level = stockLevel(availableStock, p.minStock);
-              const outOfStock = availableStock <= 0;
-              const catColor = CATEGORY_COLORS[p.category] || "#999";
-              return (
-                <button
-                  type="button"
-                  key={p.id}
-                  className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
-                  onClick={() => addToCart(p)}
-                  disabled={outOfStock}
-                  aria-disabled={outOfStock}
-                >
-                  <div className={styles.productTop}>
-                    <span
-                      className={styles.productAvatar}
-                      style={{ background: catColor + "20", color: catColor }}
-                    >
-                      {categoryInitial(p.category)}
+          <div className={styles.productGridWrap}>
+            <div className={styles.productGrid}>
+              {displayedProducts.map((p) => {
+                const cartItem = cart.find((l) => l.id === p.id);
+                const maxStock = maxQtyForProduct(p.id);
+                const availableStock = maxStock - (cartItem?.qty ?? 0);
+                const level = stockLevel(availableStock, p.minStock);
+                const outOfStock = availableStock <= 0;
+                const catColor = CATEGORY_COLORS[p.category] || "#999";
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
+                    onClick={() => addToCart(p)}
+                    disabled={outOfStock}
+                    aria-disabled={outOfStock}
+                  >
+                    <div className={styles.productTop}>
+                      <span
+                        className={styles.productAvatar}
+                        style={{ background: catColor + "20", color: catColor }}
+                      >
+                        {categoryInitial(p.category)}
+                      </span>
+                      {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
+                    </div>
+                    <span className={styles.productName}>{p.name}</span>
+                    <span className={`amount ${styles.productPrice}`}>
+                      {p.price.toLocaleString("fr-FR")} F
                     </span>
-                    {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
-                  </div>
-                  <span className={styles.productName}>{p.name}</span>
-                  <span className={`amount ${styles.productPrice}`}>
-                    {p.price.toLocaleString("fr-FR")} F
-                  </span>
-                  <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-                    {outOfStock
-                      ? t.pos.outOfStock
-                      : level === "low"
-                        ? `Stock: ${availableStock} ⚠`
-                        : `Stock: ${availableStock}`}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+                      {outOfStock
+                        ? t.pos.outOfStock
+                        : level === "low"
+                          ? `Stock: ${availableStock} ⚠`
+                          : `Stock: ${availableStock}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {remainingProductCount > 0 && (
+              <Button
+                type="default"
+                block
+                size="large"
+                onClick={() => setProductVisibleLimit((v) => v + productPageSize)}
+              >
+                {t.pos.loadMoreProducts} ({remainingProductCount})
+              </Button>
+            )}
           </div>
         </div>
 
@@ -625,7 +769,6 @@ export default function POS() {
                     className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
                     onClick={() => {
                       setPaymentMethod(key);
-                      if (key !== "credit") setSelectedClientId(null);
                     }}
                     style={
                       paymentMethod === key
@@ -656,54 +799,53 @@ export default function POS() {
               </div>
             </div>
 
-            {paymentMethod === "credit" && (
-              <div className={styles.clientRow}>
-                <div className={styles.clientRowHeader}>
-                  <Typography.Text type="secondary">Client (crédit)</Typography.Text>
-                  <Button
-                    type="link"
-                    size="small"
-                    className={styles.quickAddClientBtn}
-                    icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
-                    onClick={() => setQuickClientOpen(true)}
-                  >
-                    {t.pos.quickAddClient}
-                  </Button>
-                </div>
-                <Typography.Text type="secondary" className={styles.clientCreditHint}>
-                  {t.pos.quickAddClientHint}
+            <div className={styles.clientRow}>
+              <div className={styles.clientRowHeader}>
+                <Typography.Text type="secondary">
+                  {paymentMethod === "credit" ? "Client (crédit)" : "Client"}
                 </Typography.Text>
-                <Select
-                  placeholder="Sélectionner un client"
-                  allowClear
-                  value={selectedClientId}
-                  onChange={setSelectedClientId}
-                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                  style={{ width: "100%" }}
-                  size="large"
-                  showSearch
-                  optionFilterProp="label"
-                  notFoundContent={
-                    <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
-                  }
-                />
-                {selectedClientId &&
-                  (() => {
-                    const before =
-                      clients.find((c) => c.id === selectedClientId)?.creditBalance ?? 0;
-                    const after = before + total;
-                    return (
-                      <Typography.Text
-                        type="secondary"
-                        style={{ display: "block", marginTop: 8, fontSize: 13 }}
-                      >
-                        Dette actuelle : {before.toLocaleString("fr-FR")} F · Après cette vente :{" "}
-                        <strong>{after.toLocaleString("fr-FR")} F</strong>
-                      </Typography.Text>
-                    );
-                  })()}
+                <Button
+                  type="link"
+                  size="small"
+                  className={styles.quickAddClientBtn}
+                  icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
+                  onClick={() => setQuickClientOpen(true)}
+                >
+                  {t.pos.quickAddClient}
+                </Button>
               </div>
-            )}
+              <Typography.Text type="secondary" className={styles.clientCreditHint}>
+                {t.pos.quickAddClientHint}
+              </Typography.Text>
+              <Select
+                placeholder="Sélectionner un client"
+                value={selectedClientId}
+                onChange={setSelectedClientId}
+                options={clients.map((c) => ({
+                  value: c.id,
+                  label: c.isWalkIn ? `${c.name} (par défaut)` : c.name,
+                }))}
+                style={{ width: "100%" }}
+                size="large"
+                showSearch
+                optionFilterProp="label"
+                notFoundContent={
+                  <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
+                }
+              />
+              {paymentMethod === "credit" && selectedClientId && (
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                >
+                  Dette actuelle : {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F
+                  {" · "}Après cette vente :{" "}
+                  <strong>
+                    {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
+                  </strong>
+                </Typography.Text>
+              )}
+            </div>
 
             <div className={styles.totalDivider} />
 

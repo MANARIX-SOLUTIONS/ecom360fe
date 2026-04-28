@@ -61,6 +61,11 @@ export const t = {
     editSaleSuccess: "Facture mise à jour",
     editSaleLoadError: "Impossible de charger cette vente pour modification",
     editSaleWrongStore: "Basculer sur la boutique de cette vente pour la modifier",
+    cartProductUnavailable:
+      "Un produit du panier ne figure plus dans le catalogue pour cette boutique. Retirez cette ligne.",
+    cartUnitPriceInvalid: "Prix de vente invalide ou manquant pour au moins un produit du panier.",
+    discountExceedsSubtotal: "La remise ne peut pas dépasser le sous-total du panier.",
+    loadMoreProducts: "Voir plus",
   },
   products: {
     title: "Produits",
@@ -333,6 +338,14 @@ export const t = {
     legalNotice: "Ce document atteste de la vente des marchandises indiquées.",
     docTypeBadge: "Document de vente",
     detailLinesTitle: "Détail des articles",
+    billTo: "Facturé à",
+    walkInSale: "Vente au comptoir",
+    legacyNoClient: "Client non renseigné",
+    clientLoadFailed: "Infos client indisponibles",
+    clientBillPrivacyHint:
+      "Seule votre désignation figure ici pour limiter la diffusion de données personnelles. Coordonnées complètes : accès réservé en boutique.",
+    shareNeutralLinkedClient:
+      "Vente liée à une fiche client (sans nom ni coordonnées dans ce résumé).",
   },
   common: {
     total: "Total",

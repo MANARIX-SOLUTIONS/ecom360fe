@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Button, Result, Spin, message } from "antd";
 import {
@@ -12,12 +12,14 @@ import {
   ChevronUp,
   Home,
   Pencil,
+  User,
 } from "lucide-react";
 import { t } from "@/i18n";
-import { printA4Receipt } from "@/utils/printA4Receipt";
+import { printA4Receipt, type PrintedReceiptClient } from "@/utils/printA4Receipt";
 import { useStore } from "@/hooks/useStore";
-import { getSale, ApiError } from "@/api";
-import type { SaleResponse } from "@/api";
+import { getSale, getClient, ApiError } from "@/api";
+import type { SaleResponse, ClientResponse } from "@/api";
+import { isWalkInClientName } from "@/utils/clientWalkIn";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
@@ -43,8 +45,17 @@ function formatPrice(n: number): string {
   return n.toLocaleString("fr-FR") + " F";
 }
 
-function handleShare(total: number, method: string, receiptId?: string) {
-  const text = `Vente ${receiptId ? receiptId + " - " : ""}${formatPrice(total)} (${METHOD_LABELS[method] || method}) - 360 PME Commerce`;
+function handleShare(
+  total: number,
+  method: string,
+  receiptId?: string,
+  opts?: { registeredClientSale?: boolean }
+) {
+  const base = `Vente ${receiptId ? receiptId + " - " : ""}${formatPrice(total)} (${METHOD_LABELS[method] || method}) - 360 PME Commerce`;
+  let text = base;
+  if (opts?.registeredClientSale) {
+    text = `${base}\n\n${t.receipt.shareNeutralLinkedClient}`;
+  }
   if (navigator.share) {
     navigator
       .share({ title: "Ticket de vente", text })
@@ -95,6 +106,8 @@ export default function Receipt() {
   const [successBannerState, setSuccessBannerState] = useState<"visible" | "exiting" | "hidden">(
     "visible"
   );
+  const [invoiceClient, setInvoiceClient] = useState<ClientResponse | null>(null);
+  const [invoiceClientResolved, setInvoiceClientResolved] = useState(false);
   const printStateRef = useRef<{ originalTitle: string } | null>(null);
 
   useEffect(() => {
@@ -143,6 +156,56 @@ export default function Receipt() {
     }
   }, [receiptId]);
 
+  useEffect(() => {
+    const cid = sale?.clientId ?? null;
+    if (!cid) {
+      setInvoiceClient(null);
+      setInvoiceClientResolved(true);
+      return;
+    }
+    let cancelled = false;
+    setInvoiceClientResolved(false);
+    getClient(cid)
+      .then((c) => {
+        if (!cancelled) setInvoiceClient(c);
+      })
+      .catch(() => {
+        if (!cancelled) setInvoiceClient(null);
+      })
+      .finally(() => {
+        if (!cancelled) setInvoiceClientResolved(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sale?.clientId]);
+
+  const printedClientForA4 = useMemo((): PrintedReceiptClient | undefined => {
+    if (!invoiceClientResolved) return undefined;
+    if (!sale?.clientId) {
+      return { variant: "walkIn", text: t.receipt.legacyNoClient };
+    }
+    if (!invoiceClient) return undefined;
+    if (isWalkInClientName(invoiceClient.name)) {
+      return { variant: "walkIn", text: t.receipt.walkInSale };
+    }
+    return {
+      variant: "named",
+      billToTitle: t.receipt.billTo,
+      name: invoiceClient.name,
+      metaLines: [],
+      privacyNote: t.receipt.clientBillPrivacyHint,
+    };
+  }, [invoiceClientResolved, invoiceClient, sale?.clientId]);
+
+  const invoiceUISection = useMemo(() => {
+    if (!invoiceClientResolved) return { kind: "loading" as const };
+    if (!sale?.clientId) return { kind: "legacy" as const };
+    if (!invoiceClient) return { kind: "error" as const };
+    if (isWalkInClientName(invoiceClient.name)) return { kind: "walkIn" as const };
+    return { kind: "named" as const, client: invoiceClient };
+  }, [invoiceClientResolved, sale?.clientId, invoiceClient]);
+
   const handlePrint = (format: PrintFormat) => {
     if (format === "a4") {
       printA4Receipt({
@@ -157,6 +220,7 @@ export default function Receipt() {
         total: displayTotal,
         discount: displayDiscount,
         method,
+        printedClient: printedClientForA4,
         i18n: {
           invoiceRef: t.receipt.invoiceRef,
           dateTime: t.receipt.dateTime,
@@ -311,6 +375,37 @@ export default function Receipt() {
 
         <hr className={styles.divider} aria-hidden />
 
+        {invoiceUISection.kind === "loading" && (
+          <div className={styles.clientStripSkeleton} aria-hidden />
+        )}
+        {invoiceUISection.kind === "legacy" && (
+          <p className={styles.walkInStripe} role="note">
+            {t.receipt.legacyNoClient}
+          </p>
+        )}
+        {invoiceUISection.kind === "error" && (
+          <p className={styles.walkInStripe} role="note">
+            {t.receipt.clientLoadFailed}
+          </p>
+        )}
+        {invoiceUISection.kind === "walkIn" && (
+          <p className={styles.walkInStripe} role="note">
+            {t.receipt.walkInSale}
+          </p>
+        )}
+        {invoiceUISection.kind === "named" && (
+          <section className={styles.invoiceClientCard} aria-label={t.receipt.billTo}>
+            <div className={styles.invoiceClientHeading}>
+              <User size={18} aria-hidden />
+              <span>{t.receipt.billTo}</span>
+            </div>
+            <p className={styles.invoiceClientDisplayName}>{invoiceUISection.client.name}</p>
+            <p className={styles.invoiceClientPrivacy}>{t.receipt.clientBillPrivacyHint}</p>
+          </section>
+        )}
+
+        <hr className={styles.divider} aria-hidden />
+
         <table className={styles.lines} role="table" aria-label="Lignes de la vente">
           <thead>
             <tr>
@@ -413,6 +508,27 @@ export default function Receipt() {
                 à {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </time>
             </div>
+
+            {invoiceUISection.kind === "loading" && (
+              <div className={styles.a4ClientSkeleton} aria-hidden />
+            )}
+            {(invoiceUISection.kind === "legacy" || invoiceUISection.kind === "walkIn") && (
+              <p className={styles.a4WalkInNote}>
+                {invoiceUISection.kind === "legacy"
+                  ? t.receipt.legacyNoClient
+                  : t.receipt.walkInSale}
+              </p>
+            )}
+            {invoiceUISection.kind === "error" && (
+              <p className={styles.a4WalkInNote}>{t.receipt.clientLoadFailed}</p>
+            )}
+            {invoiceUISection.kind === "named" && (
+              <div className={styles.a4BillToCard}>
+                <span className={styles.a4BillToKicker}>{t.receipt.billTo}</span>
+                <p className={styles.a4BillToName}>{invoiceUISection.client.name}</p>
+                <p className={styles.a4BillToPrivacy}>{t.receipt.clientBillPrivacyHint}</p>
+              </div>
+            )}
 
             <table className={styles.a4Table} role="table">
               <thead>
@@ -526,7 +642,11 @@ export default function Receipt() {
           <Button
             size="large"
             icon={<Share2 size={18} />}
-            onClick={() => handleShare(displayTotal, method, receiptId ?? undefined)}
+            onClick={() =>
+              handleShare(displayTotal, method, receiptId ?? undefined, {
+                registeredClientSale: invoiceUISection.kind === "named",
+              })
+            }
             aria-label="Partager le reçu"
             title="Partager ou copier le résumé"
             className={styles.actionBtn}
