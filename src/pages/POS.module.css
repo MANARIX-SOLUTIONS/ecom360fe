@@ -56,12 +56,42 @@
   font-weight: 500;
 }
 
-/* ========== Product Grid ========== */
+/* ========== Product Grid ==========
+   Density tuned per viewport so column count matches téléphone /
+   tablette / bureau (~2 → ~3–4 → ~5+ colonnes dans la colonne gauche).
+*/
+.productGridWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
 .productGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
   overflow: auto;
+}
+
+/* Smartphone : deux colonnes stables pour gros pouces et lisibilité */
+@media (max-width: 639px) {
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablette : cartes un peu plus étroites, plus de colonnes */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .productGrid {
+    grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .productGrid {
+    grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+  }
 }
 
 .productCard {

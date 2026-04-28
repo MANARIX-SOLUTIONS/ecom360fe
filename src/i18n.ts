@@ -65,6 +65,7 @@ export const t = {
       "Un produit du panier ne figure plus dans le catalogue pour cette boutique. Retirez cette ligne.",
     cartUnitPriceInvalid: "Prix de vente invalide ou manquant pour au moins un produit du panier.",
     discountExceedsSubtotal: "La remise ne peut pas dépasser le sous-total du panier.",
+    loadMoreProducts: "Voir plus",
   },
   products: {
     title: "Produits",

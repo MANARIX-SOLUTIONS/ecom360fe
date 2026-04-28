@@ -117,6 +117,44 @@ const CATEGORY_COLORS: Record<string, string> = {
   Divers: "#95a5a6",
 };
 
+/** Colonnes visibles environ × lignes sans scroll excessif avant « Voir plus » */
+const PRODUCTS_PAGE_SIZE = {
+  mobile: 12,
+  tablet: 24,
+  desktop: 40,
+} as const;
+
+function getPosBreakpoint(): keyof typeof PRODUCTS_PAGE_SIZE {
+  if (typeof window === "undefined") return "desktop";
+  const w = window.innerWidth;
+  if (w < 640) return "mobile";
+  if (w < 1024) return "tablet";
+  return "desktop";
+}
+
+function usePosBreakpoint(): keyof typeof PRODUCTS_PAGE_SIZE {
+  const [bp, setBp] = useState<keyof typeof PRODUCTS_PAGE_SIZE>(() => getPosBreakpoint());
+
+  useEffect(() => {
+    const mMobile = window.matchMedia("(max-width: 639px)");
+    const mTablet = window.matchMedia("(min-width: 640px) and (max-width: 1023px)");
+    function sync() {
+      if (mMobile.matches) setBp("mobile");
+      else if (mTablet.matches) setBp("tablet");
+      else setBp("desktop");
+    }
+    mMobile.addEventListener("change", sync);
+    mTablet.addEventListener("change", sync);
+    sync();
+    return () => {
+      mMobile.removeEventListener("change", sync);
+      mTablet.removeEventListener("change", sync);
+    };
+  }, []);
+
+  return bp;
+}
+
 export default function POS() {
   const navigate = useNavigate();
   const { saleId: editSaleId } = useParams<{ saleId: string }>();
@@ -138,6 +176,17 @@ export default function POS() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Tous");
+
+  const posBreakpoint = usePosBreakpoint();
+  const productPageSize = PRODUCTS_PAGE_SIZE[posBreakpoint];
+  const [productVisibleLimit, setProductVisibleLimit] = useState<number>(
+    () => PRODUCTS_PAGE_SIZE[getPosBreakpoint()]
+  );
+
+  useEffect(() => {
+    setProductVisibleLimit(productPageSize);
+  }, [category, search, productPageSize]);
+
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductForPOS[]>([]);
@@ -325,6 +374,13 @@ export default function POS() {
       return matchCat && matchSearch;
     });
   }, [category, search, products]);
+
+  const displayedProducts = useMemo(
+    () => filteredProducts.slice(0, productVisibleLimit),
+    [filteredProducts, productVisibleLimit]
+  );
+
+  const remainingProductCount = filteredProducts.length - displayedProducts.length;
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.price * l.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount);
@@ -567,46 +623,58 @@ export default function POS() {
               </Button>
             ))}
           </div>
-          <div className={styles.productGrid}>
-            {filteredProducts.map((p) => {
-              const cartItem = cart.find((l) => l.id === p.id);
-              const maxStock = maxQtyForProduct(p.id);
-              const availableStock = maxStock - (cartItem?.qty ?? 0);
-              const level = stockLevel(availableStock, p.minStock);
-              const outOfStock = availableStock <= 0;
-              const catColor = CATEGORY_COLORS[p.category] || "#999";
-              return (
-                <button
-                  type="button"
-                  key={p.id}
-                  className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
-                  onClick={() => addToCart(p)}
-                  disabled={outOfStock}
-                  aria-disabled={outOfStock}
-                >
-                  <div className={styles.productTop}>
-                    <span
-                      className={styles.productAvatar}
-                      style={{ background: catColor + "20", color: catColor }}
-                    >
-                      {categoryInitial(p.category)}
+          <div className={styles.productGridWrap}>
+            <div className={styles.productGrid}>
+              {displayedProducts.map((p) => {
+                const cartItem = cart.find((l) => l.id === p.id);
+                const maxStock = maxQtyForProduct(p.id);
+                const availableStock = maxStock - (cartItem?.qty ?? 0);
+                const level = stockLevel(availableStock, p.minStock);
+                const outOfStock = availableStock <= 0;
+                const catColor = CATEGORY_COLORS[p.category] || "#999";
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
+                    onClick={() => addToCart(p)}
+                    disabled={outOfStock}
+                    aria-disabled={outOfStock}
+                  >
+                    <div className={styles.productTop}>
+                      <span
+                        className={styles.productAvatar}
+                        style={{ background: catColor + "20", color: catColor }}
+                      >
+                        {categoryInitial(p.category)}
+                      </span>
+                      {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
+                    </div>
+                    <span className={styles.productName}>{p.name}</span>
+                    <span className={`amount ${styles.productPrice}`}>
+                      {p.price.toLocaleString("fr-FR")} F
                     </span>
-                    {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
-                  </div>
-                  <span className={styles.productName}>{p.name}</span>
-                  <span className={`amount ${styles.productPrice}`}>
-                    {p.price.toLocaleString("fr-FR")} F
-                  </span>
-                  <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-                    {outOfStock
-                      ? t.pos.outOfStock
-                      : level === "low"
-                        ? `Stock: ${availableStock} ⚠`
-                        : `Stock: ${availableStock}`}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+                      {outOfStock
+                        ? t.pos.outOfStock
+                        : level === "low"
+                          ? `Stock: ${availableStock} ⚠`
+                          : `Stock: ${availableStock}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {remainingProductCount > 0 && (
+              <Button
+                type="default"
+                block
+                size="large"
+                onClick={() => setProductVisibleLimit((v) => v + productPageSize)}
+              >
+                {t.pos.loadMoreProducts} ({remainingProductCount})
+              </Button>
+            )}
           </div>
         </div>
 
