@@ -17,8 +17,6 @@ import {
   MoreHorizontal,
   Shield,
   Bell,
-  AlertTriangle,
-  CheckCircle,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { SkipLink } from "@/components/SkipLink";
@@ -33,6 +31,10 @@ import { t } from "@/i18n";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { APP_LOGO_MARK } from "@/constants/branding";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import {
+  getNotificationColor,
+  getNotificationPresentation,
+} from "@/utils/notificationPresentation";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import styles from "./MainLayout.module.css";
 
@@ -114,7 +116,7 @@ export default function MainLayout() {
   const { isSuperAdmin } = useAuthRole();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
-  const { notifications, unreadCount, markRead } = useNotifications();
+  const { notifications, unreadCount, markRead } = useNotifications({ pollingIntervalMs: 30000 });
   const { offline } = useNetworkStatus();
   const { profile: businessProfile } = useBusinessProfile();
   const brandLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
@@ -149,9 +151,8 @@ export default function MainLayout() {
     } else {
       items.push(
         ...notifications.map((n) => {
-          const isWarning = n.type === "low_stock" || n.type === "stock_alert";
-          const Icon = isWarning ? AlertTriangle : CheckCircle;
-          const iconColor = isWarning ? "var(--color-warning)" : "var(--color-success)";
+          const Icon = getNotificationPresentation(n.type).icon;
+          const iconColor = getNotificationColor(n.type);
           return {
             key: n.id,
             label: (
