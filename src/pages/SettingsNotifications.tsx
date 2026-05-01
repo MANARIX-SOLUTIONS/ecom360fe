@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography, Switch, Button, Table, message, Spin, Empty } from "antd";
-import { ArrowLeft, Bell, CheckCheck, Package, Wallet, CreditCard, Info } from "lucide-react";
+import { ArrowLeft, CheckCheck } from "lucide-react";
 import { t } from "@/i18n";
 import {
   getNotificationPreferences,
@@ -12,14 +12,8 @@ import {
 } from "@/api";
 import type { NotificationPreferenceResponse, NotificationResponse } from "@/api";
 import { useNotifications } from "@/hooks/useNotifications";
+import { getNotificationPresentation } from "@/utils/notificationPresentation";
 import styles from "./Settings.module.css";
-
-const NOTIFICATION_TYPE_LABELS: Record<string, { label: string; icon: typeof Bell }> = {
-  low_stock: { label: "Alertes stock faible", icon: Package },
-  payment_received: { label: "Paiements reçus", icon: Wallet },
-  subscription: { label: "Abonnement", icon: CreditCard },
-  system: { label: "Système", icon: Info },
-};
 
 export default function SettingsNotifications() {
   const navigate = useNavigate();
@@ -130,10 +124,7 @@ export default function SettingsNotifications() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {preferences.map((pref) => {
-              const { label, icon: Icon } = NOTIFICATION_TYPE_LABELS[pref.type] ?? {
-                label: pref.type,
-                icon: Bell,
-              };
+              const { label, icon: Icon } = getNotificationPresentation(pref.type);
               return (
                 <div
                   key={pref.type}
@@ -230,7 +221,7 @@ export default function SettingsNotifications() {
                 dataIndex: "type",
                 key: "type",
                 width: 120,
-                render: (type: string) => NOTIFICATION_TYPE_LABELS[type]?.label ?? type,
+                render: (type: string) => getNotificationPresentation(type).label,
               },
               {
                 title: "Titre",

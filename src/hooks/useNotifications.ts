@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { listNotifications, markNotificationRead } from "@/api";
+import { getUnreadNotificationCount, listNotifications, markNotificationRead } from "@/api";
 import type { NotificationResponse } from "@/api";
 
-export function useNotifications() {
+type UseNotificationsOptions = {
+  listSize?: number;
+  pollingIntervalMs?: number;
+};
+
+const DEFAULT_LIST_SIZE = 10;
+
+export function useNotifications(options: UseNotificationsOptions = {}) {
+  const { listSize = DEFAULT_LIST_SIZE, pollingIntervalMs = 0 } = options;
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -15,23 +23,31 @@ export function useNotifications() {
     }
     setLoading(true);
     try {
-      const [all, unread] = await Promise.all([
-        listNotifications({ page: 0, size: 10 }),
-        listNotifications({ unreadOnly: true, page: 0, size: 1 }),
+      const [all, unreadCountValue] = await Promise.all([
+        listNotifications({ page: 0, size: listSize }),
+        getUnreadNotificationCount(),
       ]);
       setNotifications(all.content);
-      setUnreadCount(unread.totalElements);
+      setUnreadCount(unreadCountValue);
     } catch {
       setNotifications([]);
       setUnreadCount(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [listSize]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (!pollingIntervalMs) return undefined;
+    const intervalId = window.setInterval(() => {
+      fetchNotifications();
+    }, pollingIntervalMs);
+    return () => window.clearInterval(intervalId);
+  }, [fetchNotifications, pollingIntervalMs]);
 
   const markRead = useCallback(async (id: string) => {
     try {
