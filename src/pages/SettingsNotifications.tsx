@@ -13,29 +13,8 @@ import {
 } from "@/api";
 import type { NotificationPreferenceResponse, NotificationResponse } from "@/api";
 import { useNotifications } from "@/hooks/useNotifications";
+import { getNotificationPresentation } from "@/utils/notificationPresentation";
 import styles from "./Settings.module.css";
-
-const NOTIFICATION_TYPE_ICONS: Record<string, typeof Bell> = {
-  low_stock: Package,
-  payment_received: Wallet,
-  subscription: CreditCard,
-  system: Info,
-};
-
-function notificationTypeLabel(type: string): string {
-  switch (type) {
-    case "low_stock":
-      return t.settings.notificationTypeLowStock;
-    case "payment_received":
-      return t.settings.notificationTypePaymentReceived;
-    case "subscription":
-      return t.settings.notificationTypeSubscription;
-    case "system":
-      return t.settings.notificationTypeSystem;
-    default:
-      return type;
-  }
-}
 
 export default function SettingsNotifications() {
   const navigate = useNavigate();
@@ -146,8 +125,7 @@ export default function SettingsNotifications() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {preferences.map((pref) => {
-              const Icon = NOTIFICATION_TYPE_ICONS[pref.type] ?? Bell;
-              const label = notificationTypeLabel(pref.type);
+              const { label, icon: Icon } = getNotificationPresentation(pref.type);
               return (
                 <div
                   key={pref.type}
@@ -221,59 +199,55 @@ export default function SettingsNotifications() {
             description={t.settings.notificationsEmptyHistoryDesc}
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              className="dataTable"
-              size="small"
-              dataSource={notifications}
-              rowKey="id"
-              pagination={false}
-              scroll={{ x: "max-content" }}
-              columns={[
-                {
-                  title: t.common.date,
-                  dataIndex: "createdAt",
-                  key: "createdAt",
-                  width: 140,
-                  render: (v: string) =>
-                    v
-                      ? new Date(v).toLocaleString("fr-FR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
-                      : "—",
-                },
-                {
-                  title: t.settings.notificationsColType,
-                  dataIndex: "type",
-                  key: "type",
-                  width: 120,
-                  render: (type: string) => notificationTypeLabel(type),
-                },
-                {
-                  title: t.settings.notificationsColTitle,
-                  dataIndex: "title",
-                  key: "title",
-                  ellipsis: true,
-                },
-                {
-                  title: "",
-                  key: "read",
-                  width: 100,
-                  render: (_: unknown, record: NotificationResponse) =>
-                    !record.isRead ? (
-                      <Button type="link" size="small" onClick={() => handleMarkRead(record.id)}>
-                        {t.settings.notificationsMarkRead}
-                      </Button>
-                    ) : (
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {t.settings.notificationsReadStatus}
-                      </Typography.Text>
-                    ),
-                },
-              ]}
-            />
-          </div>
+          <Table
+            size="small"
+            dataSource={notifications}
+            rowKey="id"
+            pagination={false}
+            columns={[
+              {
+                title: "Date",
+                dataIndex: "createdAt",
+                key: "createdAt",
+                width: 140,
+                render: (v: string) =>
+                  v
+                    ? new Date(v).toLocaleString("fr-FR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    : "—",
+              },
+              {
+                title: "Type",
+                dataIndex: "type",
+                key: "type",
+                width: 120,
+                render: (type: string) => getNotificationPresentation(type).label,
+              },
+              {
+                title: "Titre",
+                dataIndex: "title",
+                key: "title",
+                ellipsis: true,
+              },
+              {
+                title: "",
+                key: "read",
+                width: 80,
+                render: (_: unknown, record: NotificationResponse) =>
+                  !record.isRead ? (
+                    <Button type="link" size="small" onClick={() => handleMarkRead(record.id)}>
+                      Marquer lu
+                    </Button>
+                  ) : (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Lu
+                    </Typography.Text>
+                  ),
+              },
+            ]}
+          />
         )}
       </Card>
     </div>
