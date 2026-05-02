@@ -28,6 +28,8 @@ export type DemoRequestPayload = {
   jobTitle?: string;
   city?: string;
   sector?: string;
+  preferredPlanSlug?: string;
+  preferredBillingCycle?: "monthly" | "yearly";
 };
 
 export type DemoRequestAck = {

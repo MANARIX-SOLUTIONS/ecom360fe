@@ -299,6 +299,8 @@ export type AdminDemoRequest = {
   jobTitle: string | null;
   city: string | null;
   sector: string | null;
+  preferredPlanSlug: string | null;
+  preferredBillingCycle: string | null;
   status: string;
   createdAt: string;
   reviewedAt: string | null;

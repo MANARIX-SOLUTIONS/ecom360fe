@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, Button, Typography, Tag, message, Modal, Spin } from "antd";
 import { ArrowLeft, Star, Check, X as XIcon, Zap } from "lucide-react";
 import { t } from "@/i18n";
 import {
   getSubscription,
   listPlans,
-  changePlan,
+  createSubscriptionCheckout,
+  getSubscriptionPayment,
   cancelSubscription,
   reactivateSubscription,
   getSubscriptionUsage,
@@ -129,6 +130,7 @@ function formatUsage(count: number, limit: number): string {
 
 export default function SettingsSubscription() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { matrixCan } = useMatrixCan();
   const [plans, setPlans] = useState<PlanResponse[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null | undefined>(
@@ -140,6 +142,8 @@ export default function SettingsSubscription() {
   const [changing, setChanging] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const autoCheckoutHandledRef = useRef(false);
 
   const currentPlanSlug = subscription?.planSlug ?? null;
   const isExpired =
@@ -148,49 +152,144 @@ export default function SettingsSubscription() {
   const cancelAtPeriodEnd = subscription?.cancelAtPeriodEnd === true;
   const daysRemaining = subscription?.daysRemaining;
 
-  const refreshSubscription = () => {
-    getSubscription().then(setSubscription);
-    getSubscriptionUsage()
-      .then(setUsage)
-      .catch(() => setUsage(null));
-  };
+  const refreshSubscription = useCallback(async () => {
+    const [sub, usageRes] = await Promise.all([
+      getSubscription(),
+      getSubscriptionUsage().catch(() => null),
+    ]);
+    setSubscription(sub ?? null);
+    setUsage(usageRes);
+    if (sub?.planSlug) {
+      localStorage.setItem("ecom360_plan_slug", sub.planSlug);
+      window.dispatchEvent(new Event("ecom360:plan-updated"));
+    }
+  }, []);
+
+  const startCheckout = useCallback(
+    (
+      planKey: string,
+      billingCycle: "monthly" | "yearly",
+      successMessage = "Facture créée. Redirection vers PayDunya..."
+    ) => {
+      setChanging(planKey);
+      return createSubscriptionCheckout(planKey, billingCycle)
+        .then((checkout) => {
+          message.success(successMessage);
+          window.location.assign(checkout.checkoutUrl);
+        })
+        .catch((e) => {
+          message.error(e instanceof Error ? e.message : "Erreur lors de la création du paiement");
+          return Promise.reject(e);
+        })
+        .finally(() => setChanging(null));
+    },
+    []
+  );
 
   useEffect(() => {
-    Promise.all([listPlans(), getSubscription(), getSubscriptionUsage()])
-      .then(([plansRes, sub, usageRes]) => {
+    let isCancelled = false;
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get("payment");
+    const transactionId = params.get("transactionId");
+
+    async function loadSubscriptionPage() {
+      try {
+        const [plansRes, sub, usageRes] = await Promise.all([
+          listPlans(),
+          getSubscription(),
+          getSubscriptionUsage(),
+        ]);
+        if (isCancelled) return;
         setPlans(plansRes);
         setSubscription(sub ?? null);
         setUsage(usageRes);
-      })
-      .catch(() => message.error("Impossible de charger les plans"))
-      .finally(() => setLoading(false));
-  }, []);
+
+        if (paymentStatus === "cancelled") {
+          message.warning("Paiement annulé. Aucun changement d'abonnement n'a été appliqué.");
+          navigate("/settings/subscription", { replace: true });
+          return;
+        }
+
+        if (paymentStatus === "success" && transactionId) {
+          setVerifyingPayment(true);
+          const payment = await getSubscriptionPayment(transactionId);
+          if (isCancelled) return;
+          if (payment.status === "paid") {
+            message.success("Paiement confirmé. Votre abonnement est activé.");
+            await refreshSubscription();
+            navigate("/settings/subscription", { replace: true });
+            return;
+          }
+          if (["failed", "cancelled", "expired"].includes(payment.status)) {
+            message.error("Paiement non validé. Aucun changement d'abonnement n'a été appliqué.");
+            navigate("/settings/subscription", { replace: true });
+            return;
+          }
+          message.info("Paiement reçu par PayDunya, confirmation en attente.");
+        } else if (paymentStatus === "success") {
+          message.success(
+            "Paiement en cours de confirmation. Votre abonnement sera activé après validation."
+          );
+        }
+      } catch {
+        if (!isCancelled) message.error("Impossible de charger les plans");
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+          setVerifyingPayment(false);
+        }
+      }
+    }
+
+    loadSubscriptionPage();
+    return () => {
+      isCancelled = true;
+    };
+  }, [location.search, navigate, refreshSubscription]);
 
   const handleChoose = (plan: ReturnType<typeof planToDisplay>) => {
     if (plan.key === currentPlanSlug) return;
+    const billingCycle = yearlyBilling ? "yearly" : "monthly";
     Modal.confirm({
       title: `Passer au plan ${plan.name} ?`,
-      content: `Vous serez facturé ${yearlyBilling ? plan.priceYear + "/an" : plan.price + "/mois"}. Le changement est immédiat.`,
-      okText: "Confirmer",
+      content: `Vous serez redirigé vers PayDunya pour payer ${yearlyBilling ? plan.priceYear + "/an" : plan.price + "/mois"}. Le changement sera appliqué après confirmation du paiement.`,
+      okText: "Payer avec PayDunya",
       cancelText: "Annuler",
-      onOk: () => {
-        setChanging(plan.key);
-        return changePlan(plan.key, yearlyBilling ? "yearly" : "monthly")
-          .then((sub) => {
-            message.success(`Plan mis à jour vers ${plan.name} !`);
-            setSubscription(sub);
-            if (sub?.planSlug) localStorage.setItem("ecom360_plan_slug", sub.planSlug);
-            window.dispatchEvent(new Event("ecom360:plan-updated"));
-            refreshSubscription();
-          })
-          .catch((e) => {
-            message.error(e instanceof Error ? e.message : "Erreur lors du changement de plan");
-            return Promise.reject(e);
-          })
-          .finally(() => setChanging(null));
-      },
+      onOk: () => startCheckout(plan.key, billingCycle),
     });
   };
+
+  useEffect(() => {
+    if (loading || autoCheckoutHandledRef.current) return;
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("payment")) return;
+
+    const planSlug = params.get("plan");
+    if (!planSlug) return;
+
+    const billingCycle = params.get("billing") === "yearly" ? "yearly" : "monthly";
+    const plan = plans.map(planToDisplay).find((item) => item.key === planSlug);
+    if (!plan) return;
+
+    autoCheckoutHandledRef.current = true;
+    setYearlyBilling(billingCycle === "yearly");
+
+    if (plan.key === currentPlanSlug) {
+      message.info("Vous êtes déjà sur ce plan.");
+      navigate("/settings/subscription", { replace: true });
+      return;
+    }
+
+    Modal.confirm({
+      title: `Souscrire au plan ${plan.name} ?`,
+      content: `Vous venez de la page tarifs. Vous serez redirigé vers PayDunya pour payer ${billingCycle === "yearly" ? plan.priceYear + "/an" : plan.price + "/mois"}.`,
+      okText: "Payer avec PayDunya",
+      cancelText: "Voir les plans",
+      onCancel: () => navigate("/settings/subscription", { replace: true }),
+      onOk: () => startCheckout(plan.key, billingCycle),
+    });
+  }, [currentPlanSlug, loading, location.search, navigate, plans, startCheckout]);
 
   if (loading) {
     return (
@@ -236,6 +335,13 @@ export default function SettingsSubscription() {
           Choisissez le plan qui correspond à votre activité
         </Typography.Text>
       </header>
+
+      {verifyingPayment && (
+        <Card size="small" style={{ marginBottom: 24 }}>
+          <Spin size="small" style={{ marginRight: 8 }} />
+          <Typography.Text>Vérification du paiement PayDunya...</Typography.Text>
+        </Card>
+      )}
 
       {/* Usage summary */}
       {usage &&

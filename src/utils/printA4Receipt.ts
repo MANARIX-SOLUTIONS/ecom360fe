@@ -267,10 +267,8 @@ function buildPrintedClientHtml(pc: PrintedReceiptClient): string {
         `<div class="a4-client-meta-row"><span class="a4-client-meta-label">${escapeHtml(m.label)}</span><span>${escapeHtml(m.value)}</span></div>`
     )
     .join("");
-  const privacy =
-    pc.privacyNote?.trim().length > 0
-      ? `<p class="a4-client-privacy">${escapeHtml(pc.privacyNote)}</p>`
-      : "";
+  const privacyNote = pc.privacyNote?.trim();
+  const privacy = privacyNote ? `<p class="a4-client-privacy">${escapeHtml(privacyNote)}</p>` : "";
   return `<div class="a4-client-wrap"><div class="a4-client-card"><span class="a4-client-kicker">${escapeHtml(pc.billToTitle)}</span><div class="a4-client-name-print">${escapeHtml(pc.name)}</div>${meta ? `<div class="a4-client-meta-grid">${meta}</div>` : ""}${privacy}</div></div>`;
 }
 

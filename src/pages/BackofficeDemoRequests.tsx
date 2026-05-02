@@ -36,6 +36,17 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: "error",
 };
 
+const PLAN_LABELS: Record<string, string> = {
+  starter: "Starter",
+  pro: "Pro",
+  business: "Business",
+};
+
+const BILLING_LABELS: Record<string, string> = {
+  monthly: "Mensuel",
+  yearly: "Annuel",
+};
+
 export default function BackofficeDemoRequests() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AdminDemoRequest[]>([]);
@@ -184,6 +195,18 @@ export default function BackofficeDemoRequests() {
               },
               { title: "Entreprise", dataIndex: "businessName", ellipsis: true },
               { title: "Contact", dataIndex: "fullName", width: 140, ellipsis: true },
+              {
+                title: "Plan demandé",
+                width: 150,
+                render: (_, r) =>
+                  r.preferredPlanSlug ? (
+                    <Tag color="blue">
+                      {PLAN_LABELS[r.preferredPlanSlug] ?? r.preferredPlanSlug}
+                    </Tag>
+                  ) : (
+                    <Typography.Text type="secondary">—</Typography.Text>
+                  ),
+              },
               { title: "E-mail", dataIndex: "email", ellipsis: true },
               {
                 title: "Statut",
@@ -329,6 +352,21 @@ export default function BackofficeDemoRequests() {
                 {detail.city?.trim() || "—"}
               </Descriptions.Item>
               <Descriptions.Item label="Secteur">{detail.sector?.trim() || "—"}</Descriptions.Item>
+              <Descriptions.Item label="Plan demandé">
+                {detail.preferredPlanSlug ? (
+                  <Space wrap>
+                    <Tag color="blue">
+                      {PLAN_LABELS[detail.preferredPlanSlug] ?? detail.preferredPlanSlug}
+                    </Tag>
+                    <Tag color="green">
+                      {BILLING_LABELS[detail.preferredBillingCycle ?? "monthly"] ??
+                        detail.preferredBillingCycle}
+                    </Tag>
+                  </Space>
+                ) : (
+                  "—"
+                )}
+              </Descriptions.Item>
             </Descriptions>
 
             <Divider orientation="left">Message du demandeur</Divider>

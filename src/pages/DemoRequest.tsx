@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Card, Form, Input, Button, Typography, Alert, Result, Collapse } from "antd";
+import { Link, useLocation } from "react-router-dom";
+import { Card, Form, Input, Button, Typography, Alert, Result, Collapse, Tag } from "antd";
 import {
   Mail,
   User,
@@ -24,6 +24,25 @@ const DEMO_BRAND_FEATURES = [
   { icon: Mail, text: t.demo.brandFeature3 },
   { icon: MessageCircle, text: t.demo.brandFeature4 },
 ];
+
+const PLAN_LABELS: Record<string, string> = {
+  starter: "Starter",
+  pro: "Pro",
+  business: "Business",
+};
+
+const BILLING_LABELS: Record<string, string> = {
+  monthly: "Mensuel",
+  yearly: "Annuel",
+};
+
+function getPreferredSubscription(search: string) {
+  const params = new URLSearchParams(search);
+  const plan = params.get("plan")?.toLowerCase() ?? "";
+  const billing: "monthly" | "yearly" = params.get("billing") === "yearly" ? "yearly" : "monthly";
+  if (!PLAN_LABELS[plan]) return null;
+  return { plan, billing };
+}
 
 function DemoBrandPanel() {
   return (
@@ -64,6 +83,8 @@ function DemoBrandPanel() {
 }
 
 export default function DemoRequest() {
+  const location = useLocation();
+  const preferredSubscription = getPreferredSubscription(location.search);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -90,6 +111,8 @@ export default function DemoRequest() {
         jobTitle: values.jobTitle || undefined,
         city: values.city || undefined,
         sector: values.sector || undefined,
+        preferredPlanSlug: preferredSubscription?.plan,
+        preferredBillingCycle: preferredSubscription?.billing,
       });
       setSubmitted(true);
     } catch (err) {
@@ -155,6 +178,25 @@ export default function DemoRequest() {
             description={t.demo.slaDescription}
             className={demoStyles.compactAlert}
           />
+
+          {preferredSubscription && (
+            <Alert
+              type="success"
+              showIcon
+              message="Plan demandé depuis la page tarifs"
+              description={
+                <span>
+                  Nous avons noté votre choix :{" "}
+                  <Tag color="blue" style={{ marginInlineEnd: 4 }}>
+                    {PLAN_LABELS[preferredSubscription.plan]}
+                  </Tag>
+                  <Tag color="green">{BILLING_LABELS[preferredSubscription.billing]}</Tag>. Après
+                  validation de votre accès, vous pourrez finaliser le paiement via PayDunya.
+                </span>
+              }
+              className={demoStyles.compactAlert}
+            />
+          )}
 
           {error && (
             <Alert

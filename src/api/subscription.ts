@@ -64,6 +64,50 @@ export async function changePlan(
   return api.post<SubscriptionResponse>("/subscription/change", { planSlug, billingCycle });
 }
 
+export type CheckoutSessionResponse = {
+  transactionId: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  provider: string;
+  providerReference: string;
+  checkoutUrl: string;
+  amount: number;
+  currency: string;
+  status: string;
+};
+
+export type PaymentTransactionResponse = {
+  id: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  provider: string;
+  providerReference: string;
+  checkoutUrl: string;
+  amount: number;
+  currency: string;
+  status: string;
+  failureReason?: string;
+  paidAt?: string;
+};
+
+export async function createSubscriptionCheckout(
+  planSlug: string,
+  billingCycle: "monthly" | "yearly" = "monthly",
+  paymentMethod = "paydunya"
+): Promise<CheckoutSessionResponse> {
+  return api.post<CheckoutSessionResponse>("/subscription/checkout", {
+    planSlug,
+    billingCycle,
+    paymentMethod,
+  });
+}
+
+export async function getSubscriptionPayment(
+  transactionId: string
+): Promise<PaymentTransactionResponse> {
+  return api.get<PaymentTransactionResponse>(`/subscription/payments/${transactionId}`);
+}
+
 export async function cancelSubscription(atPeriodEnd = true): Promise<void> {
   return api.post("/subscription/cancel", { atPeriodEnd });
 }

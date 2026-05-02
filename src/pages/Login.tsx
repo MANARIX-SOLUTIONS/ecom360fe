@@ -22,7 +22,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+  const fromLocation = (location.state as { from?: { pathname: string; search?: string } })?.from;
+  const from = fromLocation ? `${fromLocation.pathname}${fromLocation.search ?? ""}` : undefined;
   const { loginWithApi } = useAuth();
 
   const onFinish = async (values: { email: string; password: string; remember?: boolean }) => {
