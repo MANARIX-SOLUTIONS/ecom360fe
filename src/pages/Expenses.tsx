@@ -34,6 +34,7 @@ import {
   deleteExpenseCategory,
   createExpense,
   updateExpense,
+  deleteExpense,
 } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 
@@ -208,6 +209,21 @@ export default function Expenses() {
     } catch (e) {
       message.error(e instanceof Error ? e.message : "Erreur");
     }
+  };
+
+  const onExpenseDelete = (exp: ExpenseResponse) => {
+    Modal.confirm({
+      title: "Supprimer cette dépense ?",
+      content: `${exp.description ?? "Dépense"} — ${formatFCFA(exp.amount)}`,
+      okText: "Supprimer",
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        await deleteExpense(exp.id);
+        message.success("Dépense supprimée");
+        fetchData();
+      },
+    });
   };
 
   const openAddExpense = () => {
@@ -404,17 +420,30 @@ export default function Expenses() {
                 {
                   title: "",
                   key: "actions",
-                  width: 80,
-                  render: (_: unknown, r: ExpenseResponse) =>
-                    matrixCan("EXPENSES_UPDATE", "expenses") ? (
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<Pencil size={14} />}
-                        onClick={() => openEditExpense(r)}
-                        aria-label={t.common.edit}
-                      />
-                    ) : null,
+                  width: 100,
+                  render: (_: unknown, r: ExpenseResponse) => (
+                    <Space size={4}>
+                      {matrixCan("EXPENSES_UPDATE", "expenses") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={14} />}
+                          onClick={() => openEditExpense(r)}
+                          aria-label={t.common.edit}
+                        />
+                      )}
+                      {matrixCan("EXPENSES_DELETE", "expenses") && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={14} />}
+                          onClick={() => onExpenseDelete(r)}
+                          aria-label={t.common.delete}
+                        />
+                      )}
+                    </Space>
+                  ),
                 },
               ]}
             />
