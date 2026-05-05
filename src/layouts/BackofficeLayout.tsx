@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Layout, Menu, Typography, Button, Badge, Dropdown, Tag } from "antd";
 import {
@@ -12,17 +12,20 @@ import {
   X,
   Bell,
   Activity,
-  AlertTriangle,
-  CheckCircle,
   UserPlus,
   FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useNotifications } from "@/hooks/useNotifications";
 import { getAdminStats } from "@/api/backoffice";
 import { SkipLink } from "@/components/SkipLink";
 // i18n removed – labels are now inline French
 import { APP_LOGO_MARK } from "@/constants/branding";
+import {
+  getNotificationColor,
+  getNotificationPresentation,
+} from "@/utils/notificationPresentation";
 import styles from "./BackofficeLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
@@ -40,65 +43,12 @@ const navItems = [
   { key: "/backoffice/system", icon: <Settings size={18} />, label: "Système" },
 ];
 
-const notifItems = [
-  {
-    key: "1",
-    label: (
-      <div className="bo-notif-item">
-        <AlertTriangle
-          size={14}
-          style={{ color: "var(--color-warning)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Abonnement expiré</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Mini Market Rufisque — Plan Starter
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "2",
-    label: (
-      <div className="bo-notif-item">
-        <UserPlus
-          size={14}
-          style={{ color: "var(--color-primary)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Nouvel utilisateur inscrit</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Moussa Keita — Il y a 2h
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "3",
-    label: (
-      <div className="bo-notif-item">
-        <CheckCircle
-          size={14}
-          style={{ color: "var(--color-success)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Backup terminé</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Base de données — 04:00 UTC
-          </div>
-        </div>
-      </div>
-    ),
-  },
-];
-
 export default function BackofficeLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
   const { displayName, initials } = useUserProfile();
+  const { notifications, unreadCount, markRead } = useNotifications({ pollingIntervalMs: 30000 });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [stats, setStats] = useState<{
     businessesCount: number;
@@ -125,6 +75,64 @@ export default function BackofficeLayout() {
     navigate(key);
     setMobileOpen(false);
   };
+
+  const notifItems = useMemo(() => {
+    if (notifications.length === 0) {
+      return [
+        {
+          key: "empty",
+          label: (
+            <div style={{ padding: 16, textAlign: "center", color: "var(--color-text-muted)" }}>
+              Aucune notification
+            </div>
+          ),
+        },
+      ];
+    }
+
+    return notifications.map((notification) => {
+      const Icon = getNotificationPresentation(notification.type).icon;
+      return {
+        key: notification.id,
+        label: (
+          <div
+            className="bo-notif-item"
+            role="button"
+            tabIndex={0}
+            style={{ cursor: "pointer", opacity: notification.isRead ? 0.8 : 1 }}
+            onClick={() => {
+              if (!notification.isRead) markRead(notification.id);
+              if (notification.actionUrl) navigate(notification.actionUrl);
+            }}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (!notification.isRead) markRead(notification.id);
+                if (notification.actionUrl) navigate(notification.actionUrl);
+              }
+            }}
+          >
+            <Icon
+              size={14}
+              style={{
+                color: getNotificationColor(notification.type),
+                flexShrink: 0,
+                marginTop: 2,
+              }}
+            />
+            <div>
+              <div style={{ fontWeight: 500, fontSize: 13 }}>{notification.title}</div>
+              {notification.body && (
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                  {notification.body}
+                </div>
+              )}
+            </div>
+          </div>
+        ),
+      };
+    });
+  }, [markRead, navigate, notifications]);
 
   return (
     <Layout className={styles.root}>
@@ -251,7 +259,7 @@ export default function BackofficeLayout() {
           <div className={styles.headerActions}>
             <Dropdown menu={{ items: notifItems }} trigger={["click"]} placement="bottomRight">
               <button type="button" className={styles.headerBtn} aria-label="Notifications">
-                <Badge count={3} size="small" offset={[-2, 2]}>
+                <Badge count={unreadCount} size="small" offset={[-2, 2]}>
                   <Bell size={18} />
                 </Badge>
               </button>

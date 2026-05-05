@@ -31,6 +31,11 @@ export async function listNotifications(params?: {
   return api.get<PageResponse<NotificationResponse>>(`/notifications${qs ? `?${qs}` : ""}`);
 }
 
+export async function getUnreadNotificationCount(): Promise<number> {
+  const response = await api.get<{ count: number }>("/notifications/unread-count");
+  return response.count;
+}
+
 export async function markNotificationRead(id: string): Promise<NotificationResponse> {
   return api.patch<NotificationResponse>(`/notifications/${id}/read`);
 }
