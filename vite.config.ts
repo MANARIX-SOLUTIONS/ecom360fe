@@ -23,9 +23,8 @@ export default defineConfig({
           if (/\/react(?:-dom|-router-dom)?\//.test(id)) return "vendor-react";
           if (/\/recharts\/|\/d3-/.test(id)) return "vendor-charts";
           if (/\/lucide-react\//.test(id)) return "vendor-icons";
-          if (/\/@ant-design\/icons\//.test(id)) return "vendor-antd-icons";
-          if (/\/rc-[^/]+\//.test(id)) return "vendor-rc";
-          if (/\/antd\//.test(id)) return "vendor-antd";
+          // antd, rc-* and @ant-design/* share circular deps — keep together
+          if (/\/antd\/|\/rc-[^/]+\/|\/@ant-design\//.test(id)) return "vendor-antd";
         },
       },
     },
