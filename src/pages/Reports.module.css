@@ -192,6 +192,18 @@
   }
 }
 
+@media print {
+  .page :global(.ant-tabs),
+  .page .toolbar button,
+  .page .charts,
+  .page .kpiRow,
+  .page .cashSummaryCard,
+  .page .tabsWrap,
+  .page .monthPickerWrap {
+    display: none !important;
+  }
+}
+
 @media (max-width: 480px) {
   .toolbar {
     flex-direction: column;

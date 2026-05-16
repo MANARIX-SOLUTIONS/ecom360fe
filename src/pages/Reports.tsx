@@ -60,7 +60,14 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { usePermissions } from "@/hooks/usePermissions";
 import { EmptyState } from "@/components/EmptyState";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { useStore } from "@/hooks/useStore";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
+import {
+  buildReportExportSnapshot,
+  getReportPeriodLabel,
+  REPORT_PAYMENT_LABELS,
+} from "@/utils/reportExport";
 
 type TabKey = "today" | "week" | "month" | "customMonth";
 
@@ -85,72 +92,7 @@ const PAYMENT_COLORS: Record<string, string> = {
   credit: "var(--color-danger)",
 };
 
-const LABELS: Record<string, string> = {
-  cash: "Espèces",
-  wave: "Wave",
-  orange_money: "Orange Money",
-  credit: "Crédit",
-};
-
-function escapeCsvCell(v: string | number): string {
-  const s = String(v);
-  if (s.includes(";") || s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-function formatMonthYearFr(d: Dayjs): string {
-  return new Date(d.year(), d.month(), 1).toLocaleDateString("fr-FR", {
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function exportToCsv(
-  data: Awaited<ReturnType<typeof getDashboard>>,
-  tab: TabKey,
-  selectedMonth: Dayjs,
-  periodRange: { start: string; end: string }
-) {
-  const periodLabel =
-    tab === "today"
-      ? "Aujourd'hui"
-      : tab === "week"
-        ? "Cette semaine"
-        : tab === "month"
-          ? "Ce mois"
-          : formatMonthYearFr(selectedMonth);
-  const rows: string[] = [
-    "Rapport 360 PME Commerce",
-    `Période;${periodLabel}`,
-    "",
-    "Résumé;Ventes;Dépenses;Bénéfice;Transactions",
-    `;${data.periodRevenue};${data.periodExpenses};${data.periodProfit};${data.periodSalesCount}`,
-    "",
-    "Ventes récentes",
-    "N° ticket;Date;Heure;Montant (F);Paiement",
-  ];
-  const salesFiltered = data.recentSales.filter((s) =>
-    isYmdInInclusiveRange(s.createdAt.slice(0, 10), periodRange.start, periodRange.end)
-  );
-  for (const s of salesFiltered) {
-    const date = s.createdAt.slice(0, 10);
-    const time = formatTime(s.createdAt);
-    const method = LABELS[s.paymentMethod] || s.paymentMethod;
-    rows.push(
-      `${escapeCsvCell(s.receiptNumber)};${date};${time};${s.total};${escapeCsvCell(method)}`
-    );
-  }
-  const csv = rows.join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `rapport-${tab}-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+const LABELS = REPORT_PAYMENT_LABELS;
 
 function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
@@ -185,7 +127,11 @@ export default function Reports() {
   const { matrixCan } = useMatrixCan();
   const { canExportPdf, canExportExcel } = usePlanFeatures();
   const { canAccess } = usePermissions();
+  const { profile } = useBusinessProfile();
+  const { activeStore } = useStore();
   const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [exportPdfLoading, setExportPdfLoading] = useState(false);
+  const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
@@ -371,6 +317,121 @@ export default function Reports() {
     ? paymentData
     : [{ name: "Aucune donnée", value: 100, color: "#ccc" }];
 
+  const buildExportSnapshot = useCallback(() => {
+    if (!data) return null;
+    return buildReportExportSnapshot({
+      data,
+      periodRange,
+      periodLabel: getReportPeriodLabel(activeTab, selectedMonth),
+      business: {
+        name: profile?.name ?? t.reports.exportProductBrand,
+        address: profile?.address,
+        phone: profile?.phone,
+        logoUrl: profile?.logoUrl,
+      },
+      storeName: activeStore?.name,
+      labels: {
+        kpiRevenue: t.reports.kpiRevenue,
+        kpiExpenses: t.reports.kpiExpenses,
+        kpiProfit: t.reports.kpiProfit,
+        kpiTransactions: t.reports.kpiTransactions,
+        kpiGrossMargin: t.reports.kpiGrossMargin,
+        productBrand: t.reports.exportProductBrand,
+      },
+      includeGrossMargin: data.periodGrossMargin != null,
+    });
+  }, [data, periodRange, activeTab, selectedMonth, profile, activeStore?.name]);
+
+  const handleExportPdf = useCallback(async () => {
+    const snapshot = buildExportSnapshot();
+    if (!snapshot) {
+      message.warning(t.common.dataLoadingWait);
+      return;
+    }
+    setExportPdfLoading(true);
+    try {
+      const { printReportA4 } = await import("@/utils/printReportA4");
+      printReportA4(snapshot, {
+        docTitle: t.reports.exportDocTitle,
+        periodLabel: t.reports.exportPeriodLabel,
+        generatedLabel: t.reports.exportGeneratedLabel,
+        storeLabel: t.reports.exportStoreLabel,
+        sectionKpis: t.reports.exportSectionKpis,
+        sectionPayments: t.reports.exportSectionPayments,
+        sectionMargin: t.reports.exportSectionMargin,
+        sectionSales: t.reports.exportSectionSales,
+        colMethod: t.reports.cashSummaryColMethod,
+        colAmount: t.reports.cashSummaryColAmount,
+        colPct: t.reports.cashSummaryColPct,
+        colReceipt: t.reports.exportColReceipt,
+        colDate: t.reports.exportColDate,
+        colTime: t.reports.exportColTime,
+        colTotal: t.reports.exportColTotal,
+        colPayment: t.reports.exportColPayment,
+        colStatus: t.reports.exportColStatus,
+        colProduct: t.reports.columnProduct,
+        colMargin: t.reports.columnEstimatedMargin,
+        trendVsPrev: t.reports.exportTrendVsPrev,
+        footerDisclaimer: t.reports.exportFooterDisclaimer,
+        salesExcerptNote: t.reports.exportSalesExcerptNote,
+        thankYou: t.reports.exportThankYou,
+      });
+      message.success(t.reports.exportPdfReady);
+    } catch (e) {
+      if (e instanceof Error && e.message === "PRINT_WINDOW_BLOCKED") {
+        message.error(t.reports.exportPrintBlocked);
+      } else {
+        message.error(e instanceof Error ? e.message : t.reports.msgLoadError);
+      }
+    } finally {
+      setExportPdfLoading(false);
+    }
+  }, [buildExportSnapshot]);
+
+  const handleExportExcel = useCallback(async () => {
+    const snapshot = buildExportSnapshot();
+    if (!snapshot) {
+      message.warning(t.common.dataLoadingWait);
+      return;
+    }
+    setExportExcelLoading(true);
+    try {
+      const { downloadReportWorkbook } = await import("@/utils/buildReportWorkbook");
+      await downloadReportWorkbook(snapshot, {
+        sheetSummary: t.reports.exportSheetSummary,
+        sheetPayments: t.reports.exportSheetPayments,
+        sheetSales: t.reports.exportSheetSales,
+        sheetMargin: t.reports.exportSheetMargin,
+        headerBusiness: t.reports.exportHeaderBusiness,
+        headerPeriod: t.reports.exportHeaderPeriod,
+        headerGenerated: t.reports.exportHeaderGenerated,
+        headerStore: t.reports.exportHeaderStore,
+        colIndicator: t.reports.exportColIndicator,
+        colValue: t.reports.exportColValue,
+        colTrend: t.reports.exportColTrend,
+        colMethod: t.reports.cashSummaryColMethod,
+        colAmount: t.reports.cashSummaryColAmount,
+        colPct: t.reports.cashSummaryColPct,
+        colReceipt: t.reports.exportColReceipt,
+        colDate: t.reports.exportColDate,
+        colTime: t.reports.exportColTime,
+        colTotal: t.reports.exportColTotal,
+        colPayment: t.reports.exportColPayment,
+        colStatus: t.reports.exportColStatus,
+        colProduct: t.reports.columnProduct,
+        colMargin: t.reports.columnEstimatedMargin,
+        marginTotalLabel: t.reports.kpiGrossMargin,
+        salesExcerptNote: t.reports.exportSalesExcerptNote,
+        productBrand: t.reports.exportProductBrand,
+      });
+      message.success(t.reports.exportXlsxReady);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : t.reports.msgLoadError);
+    } finally {
+      setExportExcelLoading(false);
+    }
+  }, [buildExportSnapshot]);
+
   if (loading) {
     return (
       <div className={`${styles.page} pageWrapper`}>
@@ -395,7 +456,11 @@ export default function Reports() {
               {t.reports.helpIndicatorsLink}
             </Button>
             {canExportPdf && (
-              <Button icon={<FileDown size={16} />} onClick={() => window.print()}>
+              <Button
+                icon={<FileDown size={16} />}
+                loading={exportPdfLoading}
+                onClick={() => void handleExportPdf()}
+              >
                 {t.reports.exportPdf}
               </Button>
             )}
@@ -403,14 +468,8 @@ export default function Reports() {
               <Button
                 icon={<FileDown size={16} />}
                 type="primary"
-                onClick={() => {
-                  if (data) {
-                    exportToCsv(data, activeTab, selectedMonth, periodRange);
-                    message.success(t.reports.exportCsvReady);
-                  } else {
-                    message.warning(t.common.dataLoadingWait);
-                  }
-                }}
+                loading={exportExcelLoading}
+                onClick={() => void handleExportExcel()}
               >
                 {t.reports.exportExcelAccountant}
               </Button>
