@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Typography, Space, Badge, Dropdown } from "antd";
+import { Layout, Menu, Typography, Space, Badge, Dropdown, Drawer } from "antd";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -15,6 +15,7 @@ import {
   Settings,
   Store,
   MoreHorizontal,
+  Menu as MenuIcon,
   Shield,
   Bell,
   AlertTriangle,
@@ -107,10 +108,27 @@ const navConfig = [
   },
 ];
 
+/** Highlight bottom nav « Plus » when user is on these sections. */
+const MORE_SECTION_PREFIXES = [
+  "/settings",
+  "/clients",
+  "/expenses",
+  "/suppliers",
+  "/livreurs",
+  "/sales",
+  "/vue-globale",
+  "/profile",
+] as const;
+
+function matchesMoreSection(pathname: string): boolean {
+  return MORE_SECTION_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { isSuperAdmin } = useAuthRole();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
@@ -127,6 +145,10 @@ export default function MainLayout() {
     setDefaultLogoBroken(false);
   }, [brandLogoUrl]);
   const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom 360 PME";
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   const notificationItems = useMemo(() => {
     const items: { key: string; label: React.ReactNode }[] = [];
@@ -239,6 +261,11 @@ export default function MainLayout() {
     return items;
   }, [canAccessBackend, canAccessPlan, isSuperAdmin]);
 
+  const moreNavActive =
+    location.pathname === "/more" ||
+    location.pathname === "/backoffice" ||
+    matchesMoreSection(location.pathname);
+
   return (
     <Layout className={styles.root}>
       <SkipLink />
@@ -299,7 +326,18 @@ export default function MainLayout() {
 
       <Layout>
         <Header className={styles.header}>
-          <StoreSwitcher />
+          <div className={styles.headerLeft}>
+            <button
+              type="button"
+              className={styles.mobileMenuBtn}
+              aria-label={t.common.openNavigationMenu}
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <MenuIcon size={22} aria-hidden />
+            </button>
+            <StoreSwitcher />
+          </div>
           <Space size="middle">
             <SyncIndicator offline={offline} />
             <Dropdown
@@ -370,26 +408,46 @@ export default function MainLayout() {
         </button>
         <button
           type="button"
-          className={
-            location.pathname === "/more" ||
-            location.pathname === "/backoffice" ||
-            ["/settings", "/clients", "/expenses", "/suppliers"].some((p) =>
-              location.pathname.startsWith(p)
-            )
-              ? styles.navActive
-              : ""
-          }
+          className={moreNavActive ? styles.navActive : ""}
           onClick={() => navigate("/more")}
           aria-label="Plus"
         >
           <MoreHorizontal size={22} />
           <span>Plus</span>
-          {(location.pathname === "/more" ||
-            ["/settings", "/clients", "/expenses", "/suppliers"].some((p) =>
-              location.pathname.startsWith(p)
-            )) && <span className={styles.navDot} />}
+          {moreNavActive && <span className={styles.navDot} />}
         </button>
       </nav>
+
+      <Drawer
+        title={
+          <div>
+            <Typography.Text strong>{sidebarBrandTitle}</Typography.Text>
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", fontSize: 12, marginTop: 2 }}
+            >
+              {t.common.menu}
+            </Typography.Text>
+          </div>
+        }
+        placement="left"
+        width={280}
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        styles={{ body: { padding: "8px 12px 24px" } }}
+      >
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={navItems}
+          onClick={({ key }) => {
+            navigate(key);
+            setMobileNavOpen(false);
+          }}
+          style={{ borderRight: 0 }}
+          className={styles.menu}
+        />
+      </Drawer>
 
       <OnboardingTour />
     </Layout>

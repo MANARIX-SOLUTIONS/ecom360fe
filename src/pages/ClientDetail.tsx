@@ -2,7 +2,8 @@ import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Typography, Table, Tag, Modal, Form, Input, message, Skeleton } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
-import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2, Wallet } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
 import {
@@ -59,7 +60,7 @@ export default function ClientDetail() {
       if (e instanceof ApiError && e.status === 404) {
         setNotFound(true);
       } else {
-        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setClient(null);
       }
     } finally {
@@ -108,7 +109,11 @@ export default function ClientDetail() {
 
   if (notFound)
     return (
-      <ResourceNotFound resource="Client" backPath="/clients" backLabel="Retour aux clients" />
+      <ResourceNotFound
+        resource={t.clients.resourceLabel}
+        backPath="/clients"
+        backLabel={t.clients.notFoundBack}
+      />
     );
   if (!client) return <Navigate to="/clients" replace />;
 
@@ -128,11 +133,11 @@ export default function ClientDetail() {
           email: values.email || undefined,
           address: values.address || undefined,
         });
-        message.success("Client mis à jour");
+        message.success(t.clients.msgUpdated);
         setEditOpen(false);
         fetchClient();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -141,14 +146,18 @@ export default function ClientDetail() {
     if (!window.confirm(t.common.delete + " ?")) return;
     deleteClient(id)
       .then(() => {
-        message.success("Client supprimé");
+        message.success(t.clients.msgDeleted);
         navigate("/clients");
       })
-      .catch((e) => message.error(e instanceof Error ? e.message : "Erreur"));
+      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
   };
 
   const handlePayment = async () => {
-    if (paymentAmount <= 0 || !activeStore?.id) {
+    if (!activeStore?.id) {
+      message.error(t.clients.paymentNeedsActiveStore);
+      return;
+    }
+    if (paymentAmount <= 0) {
       message.error(t.validation.amountMin);
       return;
     }
@@ -158,13 +167,13 @@ export default function ClientDetail() {
         amount: paymentAmount,
         paymentMethod: "cash",
       });
-      message.success("Paiement enregistré");
+      message.success(t.common.paymentRecorded);
       setPaymentOpen(false);
       setPaymentAmount(Math.abs(client.creditBalance));
       fetchClient();
       fetchPayments();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -245,7 +254,12 @@ export default function ClientDetail() {
         className={`${styles.card} contentCard`}
       >
         {payments.length === 0 ? (
-          <Typography.Text type="secondary">Aucun paiement enregistré</Typography.Text>
+          <EmptyState
+            compact
+            icon={Wallet}
+            title={t.clients.emptyPaymentHistoryTitle}
+            description={t.clients.emptyPaymentHistoryDesc}
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -280,7 +294,7 @@ export default function ClientDetail() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du client" />
+            <Input placeholder={t.clients.placeholderClientName} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -292,7 +306,7 @@ export default function ClientDetail() {
               },
             ]}
           >
-            <Input placeholder="77 123 45 67" />
+            <Input placeholder={t.clients.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -302,7 +316,7 @@ export default function ClientDetail() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="address" label={t.common.address}>
-            <Input placeholder="Adresse du client" />
+            <Input placeholder={t.clients.placeholderAddress} />
           </Form.Item>
         </Form>
       </Modal>

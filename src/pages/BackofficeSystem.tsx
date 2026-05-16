@@ -34,6 +34,7 @@ import {
   FileText,
 } from "lucide-react";
 import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
+import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
 const healthItems = (apiStatus: string | null, apiOk: boolean) => [
@@ -224,7 +225,7 @@ export default function BackofficeSystem() {
       setAuditLogs(res.content);
       setAuditTotal(res.totalElements);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement journal d'audit");
+      message.error(e instanceof Error ? e.message : t.backoffice.auditLogLoadError);
     } finally {
       setAuditLoading(false);
     }
@@ -249,7 +250,7 @@ export default function BackofficeSystem() {
     loadAuditLogs();
     setTimeout(() => {
       setRefreshing(false);
-      message.success("Système actualisé");
+      message.success(t.backoffice.systemRefreshed);
     }, 800);
   }, [loadHealth, loadAuditLogs]);
 
@@ -272,9 +273,9 @@ export default function BackofficeSystem() {
       a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      message.success("Journal d'audit exporté");
+      message.success(t.backoffice.auditExportSuccess);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur export");
+      message.error(e instanceof Error ? e.message : t.backoffice.auditExportError);
     }
   }, [auditEntityFilter]);
 
@@ -294,7 +295,11 @@ export default function BackofficeSystem() {
             saveFlags(next);
             return next;
           });
-          message.success(`${label} ${checked ? "activé" : "désactivé"}`);
+          message.success(
+            checked
+              ? t.backoffice.featureFlagEnabled.replace("{label}", label)
+              : t.backoffice.featureFlagDisabled.replace("{label}", label)
+          );
         },
       });
     },

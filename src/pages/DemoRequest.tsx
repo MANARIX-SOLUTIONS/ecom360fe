@@ -184,7 +184,7 @@ export default function DemoRequest() {
             >
               <Input
                 prefix={<User size={18} />}
-                placeholder="Votre nom complet"
+                placeholder={t.demo.placeholderFullName}
                 autoComplete="name"
               />
             </Form.Item>
@@ -211,7 +211,7 @@ export default function DemoRequest() {
             >
               <Input
                 prefix={<Phone size={18} />}
-                placeholder="Ex. +221 77 123 45 67"
+                placeholder={t.demo.placeholderPhoneExample}
                 autoComplete="tel"
               />
             </Form.Item>
@@ -224,7 +224,7 @@ export default function DemoRequest() {
             >
               <Input
                 prefix={<Building2 size={18} />}
-                placeholder="Nom de votre commerce / entreprise"
+                placeholder={t.demo.placeholderBusinessName}
                 autoComplete="organization"
               />
             </Form.Item>

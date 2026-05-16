@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Skeleton, Alert, Button, Table, DatePicker } from "antd";
+import { Card, Skeleton, Alert, Button, Table, DatePicker, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import type { LucideIcon } from "lucide-react";
@@ -15,9 +15,12 @@ import {
   ShoppingBag,
   Wallet,
   TrendingDown,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { getGlobalView } from "@/api/dashboard";
 import type { GlobalViewResponse } from "@/api/dashboard";
+import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
 import {
   formatRangeSummaryFr,
@@ -58,7 +61,7 @@ function formatFCFA(n: number) {
   return `${frInteger.format(Math.round(n))} F`;
 }
 
-/** Montant + devise sur la carte KPI : pas de coupure à l’intérieur du nombre, taille fluide (voir CSS container). */
+/** Montant + devise sur la carte KPI : pas de coupure à l’intérieur du nombre. */
 function KpiMoney({
   value,
   large,
@@ -106,11 +109,102 @@ function KpiCard({
   );
 }
 
-function formatPeriodLabel(key: PeriodKey): string {
-  if (key === "today") return "Aujourd'hui";
-  if (key === "last7") return "7 derniers jours";
-  if (key === "month") return "Un mois";
-  return "Ce mois";
+function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
+  const sorted = useMemo(
+    () => [...data.salesByStore].sort((a, b) => b.revenue - a.revenue),
+    [data.salesByStore]
+  );
+  const leader = sorted[0];
+  const rev = data.totalRevenue;
+  const netMarginPct = rev > 0 ? Math.round((data.totalProfit / rev) * 1000) / 10 : null;
+  const expenseRatioPct =
+    rev > 0 ? Math.min(100, Math.round((data.totalExpenses / rev) * 1000) / 10) : null;
+
+  const profitPositive = data.totalProfit >= 0;
+
+  const showExpenseBar = rev > 0 && data.totalSalesCount > 0 && expenseRatioPct != null;
+
+  return (
+    <div className={styles.execSummary}>
+      <div className={styles.execSummaryInner}>
+        <div className={styles.execSummaryHeader}>
+          <div className={styles.execSummaryTitleRow}>
+            <span className={styles.execSummaryIcon} aria-hidden>
+              <Sparkles size={20} strokeWidth={2} />
+            </span>
+            <Typography.Title level={4} className={styles.execSummaryTitle}>
+              {t.globalView.execSummaryTitle}
+            </Typography.Title>
+          </div>
+          {netMarginPct != null && data.totalSalesCount > 0 && (
+            <span
+              className={`${styles.execChip} ${profitPositive ? styles.execChipPositive : styles.execChipNegative}`}
+            >
+              {t.globalView.execSummaryMarginLabel} <strong>{netMarginPct}%</strong>
+            </span>
+          )}
+        </div>
+
+        {data.totalSalesCount === 0 ? (
+          <p className={styles.execSummaryMuted}>{t.globalView.execSummaryNoActivity}</p>
+        ) : (
+          <>
+            <div className={styles.execHeroMoney}>
+              <KpiMoney value={data.totalRevenue} large className={styles.execHeroMoneyInner} />
+            </div>
+            <p className={styles.execSummaryLine}>
+              {t.globalView.execSummarySalesLine
+                .replace("{count}", frInteger.format(data.totalSalesCount))
+                .replace("{basket}", formatFCFA(data.averageBasket))}
+            </p>
+
+            {showExpenseBar && (
+              <div className={styles.execBarBlock}>
+                <div className={styles.execBarTrack} role="img" aria-hidden>
+                  <div
+                    className={styles.execBarSegExpense}
+                    style={{ width: `${expenseRatioPct}%` }}
+                  />
+                  <div
+                    className={styles.execBarSegRemainder}
+                    style={{ width: `${100 - expenseRatioPct}%` }}
+                  />
+                </div>
+                <div className={styles.execBarLegend}>
+                  <span>
+                    <i className={styles.execDotExpense} />{" "}
+                    {t.globalView.execSummaryExpensePressureLabel}{" "}
+                    <strong>{expenseRatioPct}%</strong>
+                  </span>
+                  <span className={styles.execLegendMuted}>
+                    {t.globalView.execSummaryLegendMarginNote}{" "}
+                    <strong
+                      className={profitPositive ? styles.execStrongPos : styles.execStrongNeg}
+                    >
+                      {netMarginPct != null ? `${netMarginPct}%` : "—"}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {leader && leader.revenue > 0 && (
+              <div className={styles.execLeader}>
+                <span className={styles.execLeaderLabel}>
+                  {t.globalView.execSummaryTopStoreLabel}
+                </span>
+                <span className={styles.execLeaderValue}>
+                  {t.globalView.execSummaryTopStoreShare
+                    .replace("{name}", leader.storeName)
+                    .replace("{percent}", String(leader.sharePercent))}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function VueGlobale() {
@@ -120,6 +214,13 @@ export default function VueGlobale() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GlobalViewResponse | null>(null);
+
+  const periodLabels: Record<PeriodKey, string> = {
+    today: t.globalView.periodToday,
+    last7: t.globalView.periodLast7,
+    thisMonth: t.globalView.periodThisMonth,
+    month: t.globalView.periodPickMonth,
+  };
 
   const load = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -133,7 +234,7 @@ export default function VueGlobale() {
       const res = await getGlobalView({ periodStart: start, periodEnd: end });
       setData(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur chargement");
+      setError(e instanceof Error ? e.message : t.globalView.loadError);
       setData(null);
     } finally {
       setLoading(false);
@@ -148,19 +249,28 @@ export default function VueGlobale() {
     ? Math.max(...data.salesByStore.map((s) => s.revenue), 1)
     : 1;
 
+  const rankedStores = useMemo(() => {
+    if (!data?.salesByStore.length) return [];
+    return [...data.salesByStore].sort((a, b) => b.revenue - a.revenue);
+  }, [data?.salesByStore]);
+
   if (loading) {
     return (
       <div className={styles.page}>
         <div className={styles.hero}>
-          <Skeleton.Input active style={{ width: 200, height: 32 }} />
-          <Skeleton.Input active style={{ width: 280, height: 20, marginTop: 12 }} />
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton.Button key={i} active style={{ width: 120 }} />
-            ))}
+          <div className={styles.heroBackdrop} aria-hidden />
+          <div className={styles.heroContent}>
+            <Skeleton.Input active style={{ width: 200, height: 32 }} />
+            <Skeleton.Input active style={{ width: 280, height: 20, marginTop: 12 }} />
+            <div className={styles.periodTabs}>
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton.Button key={i} active style={{ width: 120 }} />
+              ))}
+            </div>
           </div>
         </div>
         <div className={styles.content}>
+          <Skeleton active paragraph={{ rows: 2 }} className={styles.execSkeleton} />
           <div className={styles.kpiGrid} style={{ marginBottom: 32 }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i} variant="borderless" className={styles.kpiCard}>
@@ -183,52 +293,57 @@ export default function VueGlobale() {
   return (
     <div className={styles.page}>
       <header className={styles.hero}>
-        <p className={styles.heroBadge}>Multi-boutiques</p>
-        <h1 className={styles.heroTitle}>Vue globale</h1>
-        <p className={styles.heroSubtitle}>
-          Toutes vos boutiques en un coup d&apos;œil — CA, répartition et performance
-        </p>
-        <div className={styles.periodTabs} role="tablist" aria-label="Choisir la période">
-          {(["today", "last7", "thisMonth", "month"] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={period === key}
-              aria-label={formatPeriodLabel(key)}
-              className={`${styles.periodTab} ${period === key ? styles.periodTabActive : ""}`}
-              onClick={() => setPeriod(key)}
-            >
-              {formatPeriodLabel(key)}
-            </button>
-          ))}
-        </div>
-        {period === "month" && (
-          <div className={styles.monthPickerWrap}>
-            <label htmlFor="vue-globale-month" className={styles.monthPickerLabel}>
-              Mois affiché
-            </label>
-            <DatePicker
-              id="vue-globale-month"
-              picker="month"
-              value={selectedMonth}
-              onChange={(d) => {
-                if (d) setSelectedMonth(d);
-              }}
-              format="MMMM YYYY"
-              allowClear={false}
-              disabledDate={(current) =>
-                current ? current.isAfter(dayjs().endOf("month")) : false
-              }
-              className={styles.monthPicker}
-            />
+        <div className={styles.heroBackdrop} aria-hidden />
+        <div className={styles.heroContent}>
+          <p className={styles.heroBadge}>{t.globalView.heroBadge}</p>
+          <h1 className={styles.heroTitle}>{t.globalView.title}</h1>
+          <p className={styles.heroSubtitle}>{t.globalView.subtitle}</p>
+          <div
+            className={styles.periodTabs}
+            role="tablist"
+            aria-label={t.globalView.periodTabsAria}
+          >
+            {(["today", "last7", "thisMonth", "month"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={period === key}
+                aria-label={periodLabels[key]}
+                className={`${styles.periodTab} ${period === key ? styles.periodTabActive : ""}`}
+                onClick={() => setPeriod(key)}
+              >
+                {periodLabels[key]}
+              </button>
+            ))}
           </div>
-        )}
-        {data && (
-          <p className={styles.periodSummary}>
-            {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
-          </p>
-        )}
+          {period === "month" && (
+            <div className={styles.monthPickerWrap}>
+              <label htmlFor="vue-globale-month" className={styles.monthPickerLabel}>
+                {t.globalView.monthDisplayedLabel}
+              </label>
+              <DatePicker
+                id="vue-globale-month"
+                picker="month"
+                value={selectedMonth}
+                onChange={(d) => {
+                  if (d) setSelectedMonth(d);
+                }}
+                format="MMMM YYYY"
+                allowClear={false}
+                disabledDate={(current) =>
+                  current ? current.isAfter(dayjs().endOf("month")) : false
+                }
+                className={styles.monthPicker}
+              />
+            </div>
+          )}
+          {data && (
+            <p className={styles.periodSummary}>
+              {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
+            </p>
+          )}
+        </div>
       </header>
 
       <div className={styles.content}>
@@ -241,30 +356,30 @@ export default function VueGlobale() {
             onClose={() => setError(null)}
             action={
               <Button size="small" onClick={load}>
-                Réessayer
+                {t.globalView.retry}
               </Button>
             }
-            style={{ marginBottom: 24 }}
+            className={styles.alertBanner}
           />
         )}
 
         {data && (
           <>
+            <ExecutiveSummary data={data} />
+
             <section className={styles.section} aria-labelledby="kpi-heading">
-              <div className={styles.kpiSectionIntro}>
-                <h2 id="kpi-heading" className={styles.kpiSectionTitle}>
-                  Synthèse
+              <div className={styles.sectionIntroPremium}>
+                <h2 id="kpi-heading" className={styles.sectionIntroTitle}>
+                  {t.globalView.synthesisTitle}
                 </h2>
-                <p className={styles.kpiSectionDesc}>
-                  Indicateurs agrégés sur la période sélectionnée ci-dessus
-                </p>
+                <p className={styles.sectionIntroDesc}>{t.globalView.synthesisDesc}</p>
               </div>
               <div className={styles.kpiGrid}>
                 <KpiCard
-                  className={`${styles.kpiCard} ${styles.kpiCardHero}`}
+                  className={`${styles.kpiCard} ${styles.kpiCardHero} ${styles.kpiSpan2}`}
                   icon={CircleDollarSign}
                   iconWrapClass={styles.kpiIconPrimary}
-                  label="Chiffre d'affaires"
+                  label={t.globalView.kpiRevenue}
                 >
                   <KpiMoney value={data.totalRevenue} large className={styles.kpiValuePrimary} />
                 </KpiCard>
@@ -272,7 +387,7 @@ export default function VueGlobale() {
                   className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
                   icon={Receipt}
                   iconWrapClass={styles.kpiIconNeutral}
-                  label="Nombre de ventes"
+                  label={t.globalView.kpiSalesCount}
                 >
                   <div className={styles.kpiValue}>{frInteger.format(data.totalSalesCount)}</div>
                 </KpiCard>
@@ -280,7 +395,7 @@ export default function VueGlobale() {
                   className={`${styles.kpiCard} ${styles.kpiCardToneAccent}`}
                   icon={ShoppingBag}
                   iconWrapClass={styles.kpiIconAccent}
-                  label="Panier moyen"
+                  label={t.globalView.kpiAvgBasket}
                 >
                   <KpiMoney value={Math.round(data.averageBasket)} />
                 </KpiCard>
@@ -288,7 +403,7 @@ export default function VueGlobale() {
                   className={`${styles.kpiCard} ${styles.kpiCardToneExpense}`}
                   icon={Wallet}
                   iconWrapClass={styles.kpiIconWarning}
-                  label="Dépenses"
+                  label={t.globalView.kpiExpenses}
                 >
                   <KpiMoney value={data.totalExpenses} className={styles.kpiValueWarning} />
                 </KpiCard>
@@ -300,7 +415,7 @@ export default function VueGlobale() {
                   iconWrapClass={
                     data.totalProfit >= 0 ? styles.kpiIconSuccess : styles.kpiIconWarning
                   }
-                  label="Bénéfice"
+                  label={t.globalView.kpiProfit}
                 >
                   <KpiMoney
                     value={data.totalProfit}
@@ -313,7 +428,7 @@ export default function VueGlobale() {
                   className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
                   icon={Store}
                   iconWrapClass={styles.kpiIconNeutral}
-                  label="Boutiques"
+                  label={t.globalView.kpiStores}
                 >
                   <div className={styles.kpiValue}>{frInteger.format(data.storeCount)}</div>
                 </KpiCard>
@@ -324,7 +439,7 @@ export default function VueGlobale() {
               <div className={styles.sectionHead}>
                 <h2 id="repartition-heading" className={styles.sectionTitle}>
                   <BarChart3 size={22} className={styles.sectionTitleIcon} aria-hidden />
-                  Répartition par boutique
+                  {t.globalView.sectionStoresTitle}
                 </h2>
                 {data.totalSalesCount > 0 && (
                   <button
@@ -332,27 +447,35 @@ export default function VueGlobale() {
                     className={styles.sectionLink}
                     onClick={() => navigate("/sales")}
                   >
-                    Voir les ventes
+                    {t.globalView.linkSeeSales}
+                    <ChevronRight size={16} aria-hidden />
                   </button>
                 )}
               </div>
-              <div className={styles.card}>
+              <div className={styles.panel}>
                 {data.salesByStore.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <Store size={40} className={styles.emptyStateIcon} aria-hidden />
-                    <p>Aucune vente sur la période pour vos boutiques.</p>
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={Store}
+                    title={t.globalView.emptyStoresTitle}
+                    description={t.globalView.emptyStoresDesc}
+                  />
                 ) : (
                   <div className={styles.storeBars}>
-                    {data.salesByStore.map((store) => (
+                    {rankedStores.map((store, index) => (
                       <div key={store.storeId} className={styles.storeBarRow}>
-                        <span className={styles.storeBarName}>{store.storeName}</span>
+                        <div className={styles.storeBarHead}>
+                          <span className={styles.storeRank} aria-hidden>
+                            {index + 1}
+                          </span>
+                          <span className={styles.storeBarName}>{store.storeName}</span>
+                        </div>
                         <span className={styles.storeBarStats}>
                           <span className={styles.storeBarAmount}>{formatFCFA(store.revenue)}</span>
                           {" · "}
-                          {store.salesCount} ventes
+                          {store.salesCount} {t.globalView.storeSalesSuffix}
                           {" · "}
-                          {store.sharePercent}%
+                          <span className={styles.storeShare}>{store.sharePercent}%</span>
                         </span>
                         <div className={styles.storeBarBg} role="presentation">
                           <div
@@ -375,12 +498,14 @@ export default function VueGlobale() {
                   <TrendingUp size={22} className={styles.sectionTitleIcon} aria-hidden />
                   {t.dashboard.topProducts}
                 </h2>
-                <div className={styles.card}>
+                <div className={styles.panel}>
                   {data.topProducts.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      <Package size={36} className={styles.emptyStateIcon} aria-hidden />
-                      <p>Aucune vente sur la période.</p>
-                    </div>
+                    <EmptyState
+                      compact
+                      icon={Package}
+                      title={t.globalView.emptyProductsTitle}
+                      description={t.globalView.emptyProductsDesc}
+                    />
                   ) : (
                     <Table
                       dataSource={data.topProducts.map((p) => ({
@@ -391,20 +516,27 @@ export default function VueGlobale() {
                       }))}
                       pagination={false}
                       size="small"
-                      className={styles.dataTable}
+                      className={styles.dataTablePremium}
                       onRow={(r) => ({
                         onClick: () => navigate(`/products/${r.key}`),
                         style: { cursor: "pointer" },
                       })}
                       columns={[
                         { title: t.common.name, dataIndex: "name", ellipsis: true },
-                        { title: "Qté", dataIndex: "qty", width: 64, align: "center" },
                         {
-                          title: "CA",
+                          title: t.globalView.columnQtyShort,
+                          dataIndex: "qty",
+                          width: 64,
+                          align: "center",
+                        },
+                        {
+                          title: t.globalView.columnRevenueShort,
                           dataIndex: "revenue",
                           width: 100,
                           align: "right",
-                          render: (v: number) => <span className="amount">{formatFCFA(v)}</span>,
+                          render: (v: number) => (
+                            <span className={styles.tableAmount}>{formatFCFA(v)}</span>
+                          ),
                         },
                       ]}
                     />
@@ -417,12 +549,14 @@ export default function VueGlobale() {
                   <AlertTriangle size={22} className={styles.sectionTitleIcon} aria-hidden />
                   {t.dashboard.lowStockAlerts}
                 </h2>
-                <div className={styles.card}>
+                <div className={styles.panel}>
                   {data.lowStockItems.length === 0 ? (
-                    <div className={styles.emptyState}>
-                      <Package size={36} className={styles.emptyStateIcon} aria-hidden />
-                      <p>Aucune alerte stock — niveaux OK.</p>
-                    </div>
+                    <EmptyState
+                      compact
+                      icon={AlertTriangle}
+                      title={t.globalView.emptyStockTitle}
+                      description={t.globalView.emptyStockDesc}
+                    />
                   ) : (
                     <ul className={styles.lowStockList}>
                       {data.lowStockItems.slice(0, 10).map((item) => (

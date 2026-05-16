@@ -17,7 +17,7 @@ export default function ForgotPassword() {
       setSent(true);
       message.success(t.auth.forgotPasswordSent);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }

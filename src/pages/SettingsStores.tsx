@@ -5,6 +5,7 @@ import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-re
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { getSubscriptionUsage } from "@/api";
+import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
 import styles from "./SettingsStores.module.css";
 import layoutStyles from "./Settings.module.css";
@@ -52,7 +53,7 @@ export default function SettingsStores() {
         setModalOpen(false);
         form.resetFields();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -62,7 +63,7 @@ export default function SettingsStores() {
     try {
       await removeStore(id);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -99,29 +100,24 @@ export default function SettingsStores() {
 
       <Card variant="borderless" className={styles.card}>
         {!hasStores ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Store size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} className={styles.emptyTitle}>
-              {t.stores.emptyTitle}
-            </Typography.Title>
-            <Typography.Text type="secondary" className={styles.emptySubtitle}>
-              Créez votre premier point de vente pour commencer à utiliser 360 PME. Gérez vos
-              stocks, enregistrez des ventes et suivez votre activité.
-            </Typography.Text>
-            {!storesAtLimit && matrixCan("STORES_CREATE", "settings:stores") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<Plus size={18} />}
-                onClick={openAdd}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                Créer ma première boutique
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Store}
+            title={t.stores.emptyTitle}
+            description={t.stores.emptyDesc}
+            action={
+              !storesAtLimit && matrixCan("STORES_CREATE", "settings:stores") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Plus size={18} />}
+                  onClick={openAdd}
+                  style={{ height: 48 }}
+                >
+                  {t.stores.emptyCta}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <ul className={styles.storeList}>
             {stores.map((store) => (
