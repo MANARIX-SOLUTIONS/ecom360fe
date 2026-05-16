@@ -36,6 +36,7 @@ import {
   listAdminBusinesses,
   type AdminUser,
 } from "@/api/backoffice";
+import { t } from "@/i18n";
 
 type PlatformUser = AdminUser & { lastLogin: string };
 
@@ -122,7 +123,7 @@ export default function BackofficeUsers() {
       setUsers(mapped);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement utilisateurs");
+      message.error(e instanceof Error ? e.message : t.backoffice.platformUsersLoadError);
     } finally {
       setLoading(false);
     }
@@ -159,13 +160,13 @@ export default function BackofficeUsers() {
         role: values.role,
         businessId: values.businessId,
       });
-      message.success("Invitation envoyée");
+      message.success(t.settings.invitationSentSuccess);
       setInviteOpen(false);
       form.resetFields();
       loadUsers();
     } catch (e) {
       if ((e as { errorFields?: unknown })?.errorFields) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors de l'invitation");
+      message.error(e instanceof Error ? e.message : t.settings.invitationSendError);
       throw e;
     } finally {
       setInviteLoading(false);
@@ -196,9 +197,13 @@ export default function BackofficeUsers() {
               setDetail((prev) =>
                 prev ? { ...prev, status: isDisabled ? "active" : "disabled" } : null
               );
-            message.success(`${user.name} ${isDisabled ? "réactivé" : "désactivé"}`);
+            message.success(
+              isDisabled
+                ? t.backoffice.platformUserReactivated.replace("{name}", user.name)
+                : t.backoffice.platformUserDisabled.replace("{name}", user.name)
+            );
           } catch (e) {
-            message.error(e instanceof Error ? e.message : "Erreur");
+            message.error(e instanceof Error ? e.message : t.common.errorGeneric);
           }
         },
       });
@@ -235,7 +240,7 @@ export default function BackofficeUsers() {
         <div className={styles.toolbarLeft}>
           <Input
             prefix={<Search size={16} />}
-            placeholder="Rechercher nom, email ou entreprise..."
+            placeholder={t.backoffice.searchPlatformUsersPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
@@ -516,14 +521,14 @@ export default function BackofficeUsers() {
             label="Nom complet"
             rules={[{ required: true, message: "Nom requis" }]}
           >
-            <Input placeholder="Ex: Moussa Keita" />
+            <Input placeholder={t.backoffice.inviteNamePlaceholder} />
           </Form.Item>
           <Form.Item
             name="email"
             label="Adresse email"
             rules={[{ required: true, type: "email", message: "Email valide requis" }]}
           >
-            <Input prefix={<Mail size={16} />} placeholder="email@exemple.sn" />
+            <Input prefix={<Mail size={16} />} placeholder={t.backoffice.inviteEmailPlaceholder} />
           </Form.Item>
           <Form.Item name="role" label="Rôle" initialValue="Caissier">
             <Select
@@ -540,7 +545,7 @@ export default function BackofficeUsers() {
             rules={[{ required: true, message: "Requis" }]}
           >
             <Select
-              placeholder="Sélectionner l'entreprise"
+              placeholder={t.backoffice.selectBusinessPlaceholder}
               options={businesses.map((b) => ({ value: b.id, label: b.name }))}
               showSearch
               optionFilterProp="label"

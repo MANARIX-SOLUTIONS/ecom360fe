@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Result, Button } from "antd";
 import { ArrowLeft } from "lucide-react";
+import { t } from "@/i18n";
 
 type Props = {
   resource: string;
@@ -10,6 +11,7 @@ type Props = {
 
 export function ResourceNotFound({ resource, backPath, backLabel }: Props) {
   const navigate = useNavigate();
+  const title = t.common.resourceNotFoundTitle.replace("{resource}", resource);
   return (
     <div
       style={{
@@ -22,11 +24,11 @@ export function ResourceNotFound({ resource, backPath, backLabel }: Props) {
     >
       <Result
         status="404"
-        title={`${resource} introuvable`}
-        subTitle="Cette ressource n'existe pas ou a été supprimée."
+        title={title}
+        subTitle={t.common.resourceNotFoundSubtitle}
         extra={
           <Button type="primary" icon={<ArrowLeft size={16} />} onClick={() => navigate(backPath)}>
-            {backLabel ?? "Retour à la liste"}
+            {backLabel ?? t.common.backToList}
           </Button>
         }
       />

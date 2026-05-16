@@ -17,6 +17,7 @@ import {
   Space,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { EmptyState } from "@/components/EmptyState";
 import { Search, Plus, Pencil, Package, Trash2, Tags } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
@@ -164,7 +165,7 @@ export default function Products() {
         );
         hasLoadedOnce.current = true;
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setProducts([]);
       } finally {
         if (!silent && isInitialLoad) setLoading(false);
@@ -222,7 +223,7 @@ export default function Products() {
             color: values.color,
             sortOrder: values.sortOrder ?? 0,
           });
-          message.success("Catégorie mise à jour");
+          message.success(t.common.categoryUpdated);
         } else {
           const created = await createCategory({
             name: values.name,
@@ -230,7 +231,7 @@ export default function Products() {
             sortOrder: values.sortOrder ?? 0,
           });
           createdId = created.id;
-          message.success("Catégorie ajoutée");
+          message.success(t.common.categoryAdded);
         }
         setCategoryModalOpen(false);
         categoryForm.resetFields();
@@ -240,7 +241,7 @@ export default function Products() {
           form.setFieldValue("categoryId", createdId);
         }
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -249,12 +250,12 @@ export default function Products() {
     if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
     try {
       await deleteCategory(c.id);
-      message.success("Catégorie supprimée");
+      message.success(t.common.categoryDeleted);
       const refreshed = await listCategories();
       setCategories(refreshed);
       fetchData(true, "");
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -274,7 +275,7 @@ export default function Products() {
     form.validateFields().then(async (values) => {
       try {
         if (!activeStore?.id) {
-          message.warning("Sélectionnez une boutique pour gérer les produits");
+          message.warning(t.products.warnSelectStoreForProducts);
           return;
         }
         if (editing) {
@@ -286,7 +287,7 @@ export default function Products() {
             isActive: true,
             storeId: activeStore.id,
           });
-          message.success("Produit mis à jour");
+          message.success(t.products.msgUpdated);
         } else {
           const created = await createProduct({
             name: values.name,
@@ -304,13 +305,13 @@ export default function Products() {
               minStock: values.minStockAlert ?? 0,
             });
           }
-          message.success("Produit ajouté");
+          message.success(t.products.msgAdded);
         }
         setModalOpen(false);
         form.resetFields();
         fetchData(true, "");
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -334,13 +335,13 @@ export default function Products() {
           type: "adjustment",
           note: values.reason || "Ajustement manuel",
         });
-        message.success("Stock mis à jour");
+        message.success(t.products.msgStockUpdated);
         setStockModalOpen(false);
         setStockProduct(null);
         stockForm.resetFields();
         fetchData(true, "");
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -366,7 +367,7 @@ export default function Products() {
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
         <Typography.Title level={4} className="pageTitle">
-          Produits
+          {t.products.title}
         </Typography.Title>
         <div className={styles.toolbar}>
           <div className={styles.filters}>
@@ -414,32 +415,24 @@ export default function Products() {
 
       <Card variant="borderless" className={`${styles.card} contentCard`}>
         {filtered.length === 0 && search === "" && filterStock === "all" ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Package size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              Aucun produit
-            </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
-            >
-              Ajoutez votre premier produit pour commencer à vendre. Gérez les prix, le stock et les
-              catégories.
-            </Typography.Text>
-            {!productsAtLimit && matrixCan("PRODUCTS_CREATE", "products") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<Plus size={16} />}
-                onClick={openAdd}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                Ajouter mon premier produit
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Package}
+            title={t.products.emptyTitle}
+            description={t.products.emptyDesc}
+            action={
+              !productsAtLimit && matrixCan("PRODUCTS_CREATE", "products") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Plus size={16} />}
+                  onClick={openAdd}
+                  style={{ height: 48 }}
+                >
+                  {t.products.emptyCta}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -535,11 +528,13 @@ export default function Products() {
                             if (window.confirm(t.common.delete + " ?")) {
                               deleteProduct(r.id)
                                 .then(() => {
-                                  message.success("Produit supprimé");
+                                  message.success(t.products.msgDeleted);
                                   fetchData(true, "");
                                 })
                                 .catch((e) =>
-                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                  message.error(
+                                    e instanceof Error ? e.message : t.common.errorGeneric
+                                  )
                                 );
                             }
                           }}
@@ -570,7 +565,7 @@ export default function Products() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du produit" />
+            <Input placeholder={t.products.placeholderProductName} />
           </Form.Item>
           <Form.Item name="categoryId" label={t.products.category}>
             <Select
@@ -689,9 +684,12 @@ export default function Products() {
         }
       >
         {categories.length === 0 ? (
-          <Typography.Text type="secondary">
-            Aucune catégorie. Cliquez sur &quot;Ajouter une catégorie&quot; pour commencer.
-          </Typography.Text>
+          <EmptyState
+            compact
+            icon={Tags}
+            title={t.products.emptyCategoriesTitle}
+            description={t.products.emptyCategoriesDesc}
+          />
         ) : (
           <Space direction="vertical" style={{ width: "100%" }} size="middle">
             {categories.map((c) => (
@@ -755,7 +753,7 @@ export default function Products() {
             label={t.products.categoryName}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Ex: Boissons, Snacks..." />
+            <Input placeholder={t.products.placeholderCategoryExamples} />
           </Form.Item>
           <Form.Item name="color" label={t.products.categoryColor} initialValue="default">
             <Select options={CATEGORY_COLOR_OPTIONS} />

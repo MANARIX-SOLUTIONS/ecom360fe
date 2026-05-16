@@ -246,19 +246,10 @@
 .cartEmpty {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  padding: 32px 0;
-  opacity: 0.5;
-}
-
-.cartEmptyHint {
-  font-size: 12px;
-  opacity: 0.8;
+  padding: 16px 8px;
+  min-height: 140px;
 }
 
 .cartList {

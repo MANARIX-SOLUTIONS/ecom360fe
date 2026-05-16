@@ -13,9 +13,10 @@ import {
   message,
   Skeleton,
 } from "antd";
-import { FileDown, Ban, Pencil } from "lucide-react";
+import { FileDown, Ban, Pencil, ListOrdered } from "lucide-react";
 import type { SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
+import { EmptyState } from "@/components/EmptyState";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { t } from "@/i18n";
@@ -105,7 +106,7 @@ export default function Sales() {
       setSales(res.content ?? []);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement ventes");
+      message.error(e instanceof Error ? e.message : t.sales.msgLoadError);
       setSales([]);
       setTotal(0);
     } finally {
@@ -132,10 +133,10 @@ export default function Sales() {
           setVoidingId(sale.id);
           try {
             await voidSale(sale.id);
-            message.success("Vente annulée");
+            message.success(t.sales.saleCancelled);
             fetchSales();
           } catch (err) {
-            message.error(err instanceof Error ? err.message : "Impossible d'annuler");
+            message.error(err instanceof Error ? err.message : t.sales.cancelSaleFailed);
           } finally {
             setVoidingId(null);
           }
@@ -164,7 +165,7 @@ export default function Sales() {
     a.download = `ventes-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    message.success("Export téléchargé");
+    message.success(t.sales.exportReady);
   }, [sales]);
 
   const resetFilters = useCallback(() => {
@@ -194,12 +195,9 @@ export default function Sales() {
         <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
           {t.sales.title}
         </Typography.Title>
-        <Button icon={<FileDown size={16} />} onClick={exportCsv} disabled={sales.length === 0}>
-          Export CSV
-        </Button>
       </header>
 
-      <div className={styles.filters}>
+      <div className={styles.toolbar}>
         <Space wrap size="middle">
           <Select
             placeholder={t.sales.filterByStore}
@@ -234,16 +232,30 @@ export default function Sales() {
             }}
             format="DD/MM/YYYY"
           />
-          <Button onClick={resetFilters}>Réinitialiser</Button>
+          <Button onClick={resetFilters}>{t.sales.resetFilters}</Button>
         </Space>
+        <Button icon={<FileDown size={16} />} onClick={exportCsv} disabled={sales.length === 0}>
+          {t.sales.exportCsv}
+        </Button>
       </div>
 
       <Card variant="borderless" className={styles.card}>
         {sales.length === 0 ? (
-          <div className={styles.emptyHero}>
-            <Typography.Title level={4}>{t.sales.emptyTitle}</Typography.Title>
-            <Typography.Text type="secondary">{t.sales.emptyDesc}</Typography.Text>
-          </div>
+          <EmptyState
+            icon={ListOrdered}
+            title={t.sales.emptyTitle}
+            description={t.sales.emptyDesc}
+            action={
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => navigate("/pos")}
+                style={{ height: 48 }}
+              >
+                {t.sales.emptyCta}
+              </Button>
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table

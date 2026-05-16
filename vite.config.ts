@@ -18,15 +18,17 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-ui": ["antd"],
-          "vendor-charts": ["recharts"],
-          "vendor-icons": ["lucide-react"],
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/\/react(?:-dom|-router-dom)?\//.test(id)) return "vendor-react";
+          if (/\/recharts\/|\/d3-/.test(id)) return "vendor-charts";
+          if (/\/lucide-react\//.test(id)) return "vendor-icons";
+          // antd, rc-* and @ant-design/* share circular deps — keep together
+          if (/\/antd\/|\/rc-[^/]+\/|\/@ant-design\//.test(id)) return "vendor-antd";
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 1400,
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

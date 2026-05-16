@@ -20,6 +20,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { EmptyState } from "@/components/EmptyState";
 import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
@@ -91,7 +92,7 @@ export default function Expenses() {
       setExpenses(expRes.content);
       setCategories(catRes);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
       setExpenses([]);
     } finally {
       setLoading(false);
@@ -175,7 +176,7 @@ export default function Expenses() {
             color: values.color,
             sortOrder: values.sortOrder ?? 0,
           });
-          message.success("Catégorie mise à jour");
+          message.success(t.common.categoryUpdated);
         } else {
           const created = await createExpenseCategory({
             name: values.name,
@@ -183,7 +184,7 @@ export default function Expenses() {
             sortOrder: values.sortOrder ?? 0,
           });
           createdId = created.id;
-          message.success("Catégorie ajoutée");
+          message.success(t.common.categoryAdded);
         }
         setCategoryModalOpen(false);
         categoryForm.resetFields();
@@ -193,7 +194,7 @@ export default function Expenses() {
           form.setFieldValue("categoryId", createdId);
         }
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -202,12 +203,12 @@ export default function Expenses() {
     if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
     try {
       await deleteExpenseCategory(c.id);
-      message.success("Catégorie supprimée");
+      message.success(t.common.categoryDeleted);
       const refreshed = await listExpenseCategories();
       setCategories(refreshed);
       fetchData();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -220,7 +221,7 @@ export default function Expenses() {
       cancelText: t.common.cancel,
       onOk: async () => {
         await deleteExpense(exp.id);
-        message.success("Dépense supprimée");
+        message.success(t.expenses.msgDeleted);
         fetchData();
       },
     });
@@ -258,17 +259,17 @@ export default function Expenses() {
     try {
       if (editingExpense) {
         await updateExpense(editingExpense.id, payload);
-        message.success("Dépense mise à jour");
+        message.success(t.expenses.msgUpdated);
       } else {
         await createExpense(payload);
-        message.success("Dépense ajoutée");
+        message.success(t.expenses.msgAdded);
       }
       form.resetFields();
       setDrawerOpen(false);
       setEditingExpense(null);
       fetchData();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -359,32 +360,24 @@ export default function Expenses() {
 
       <Card title={t.expenses.list} variant="borderless" className={`${styles.card} contentCard`}>
         {expenses.length === 0 ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Wallet size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              Aucune dépense
-            </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
-            >
-              Enregistrez vos dépenses pour suivre vos charges et mieux comprendre votre
-              rentabilité.
-            </Typography.Text>
-            {matrixCan("EXPENSES_CREATE", "expenses") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<Plus size={16} />}
-                onClick={openAddExpense}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                Ajouter une dépense
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Wallet}
+            title={t.expenses.emptyTitle}
+            description={t.expenses.emptyDesc}
+            action={
+              matrixCan("EXPENSES_CREATE", "expenses") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Plus size={16} />}
+                  onClick={openAddExpense}
+                  style={{ height: 48 }}
+                >
+                  {t.expenses.addExpense}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -530,10 +523,14 @@ export default function Expenses() {
               { type: "number", min: 1, message: t.validation.amountMin },
             ]}
           >
-            <CurrencyInput min={1} style={{ width: "100%" }} placeholder="0" />
+            <CurrencyInput
+              min={1}
+              style={{ width: "100%" }}
+              placeholder={t.expenses.placeholderAmountZero}
+            />
           </Form.Item>
           <Form.Item name="description" label={t.expenses.description}>
-            <Input.TextArea rows={3} placeholder="Description (optionnel)" />
+            <Input.TextArea rows={3} placeholder={t.expenses.descriptionOptionalPlaceholder} />
           </Form.Item>
         </Form>
       </Drawer>
@@ -619,7 +616,7 @@ export default function Expenses() {
             label={t.expenses.categoryName}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Ex: Achats, Transport, Loyer..." />
+            <Input placeholder={t.expenses.placeholderCategoryExamplesLong} />
           </Form.Item>
           <Form.Item name="color" label={t.expenses.categoryColor} initialValue="default">
             <Select options={CATEGORY_COLOR_OPTIONS} />

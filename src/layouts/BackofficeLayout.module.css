@@ -9,8 +9,11 @@
   top: 0;
   bottom: 0;
   z-index: 100;
-  border-right: 1px solid var(--color-border);
-  background: #fff !important;
+  border-right: 1px solid var(--v2-border-subtle);
+  background: var(--v2-glass-bg) !important;
+  backdrop-filter: blur(var(--v2-glass-blur));
+  -webkit-backdrop-filter: blur(var(--v2-glass-blur));
+  box-shadow: var(--v2-shadow-xs);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -29,7 +32,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--v2-border-subtle);
 }
 
 .logoGroup {

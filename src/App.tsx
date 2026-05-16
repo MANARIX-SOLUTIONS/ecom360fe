@@ -5,6 +5,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { Spin, message } from "antd";
 import { useAuth } from "./hooks/useAuth";
+import { t } from "@/i18n";
 import { RequirePermission } from "./components/RequirePermission";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -79,7 +80,7 @@ function SubscriptionRequiredHandler() {
   useEffect(() => {
     const handler = () => {
       navigate("/settings/subscription", { replace: true });
-      message.info("Votre période d'essai est terminée. Veuillez souscrire à un plan.");
+      message.info(t.auth.trialEndedInfo);
     };
     window.addEventListener("ecom360:subscription-required", handler);
     return () => window.removeEventListener("ecom360:subscription-required", handler);
@@ -89,7 +90,7 @@ function SubscriptionRequiredHandler() {
 
 export default function App() {
   useEffect(() => {
-    const onExpired = () => message.error("Session expirée — veuillez vous reconnecter");
+    const onExpired = () => message.error(t.auth.sessionExpired);
     window.addEventListener("ecom360:auth-expired", onExpired);
     return () => window.removeEventListener("ecom360:auth-expired", onExpired);
   }, []);
