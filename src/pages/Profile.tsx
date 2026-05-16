@@ -25,7 +25,7 @@ export default function Profile() {
   useEffect(() => {
     getUserProfile()
       .then((data) => setProfile({ fullName: data.fullName, email: data.email, phone: data.phone }))
-      .catch(() => message.error("Impossible de charger le profil"))
+      .catch(() => message.error(t.profile.loadError))
       .finally(() => setLoading(false));
   }, []);
 
@@ -92,9 +92,9 @@ export default function Profile() {
       }
       window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       setEditing(false);
-      message.success("Profil mis à jour");
+      message.success(t.profile.msgUpdated);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+      message.error(e instanceof Error ? e.message : t.profile.updateError);
     } finally {
       setSaving(false);
     }
@@ -222,7 +222,7 @@ export default function Profile() {
                 },
               ]}
             >
-              <Input placeholder="33 123 45 67" />
+              <Input placeholder={t.profile.placeholderPhoneExample} />
             </Form.Item>
             <div className={styles.formActions}>
               <Button onClick={cancelEdit}>{t.common.cancel}</Button>

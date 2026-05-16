@@ -15,7 +15,8 @@ import {
   Skeleton,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
-import { ArrowLeft, Package, Pencil, Trash2, Layers } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { ArrowLeft, Package, Pencil, Trash2, Layers, History } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import {
@@ -36,6 +37,19 @@ function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical"
   if (stock <= 0) return "critical";
   if (stock <= minStock) return "low";
   return "ok";
+}
+
+function movementTypeLabel(type: string): string {
+  switch (type) {
+    case "in":
+      return t.products.movementTypeIn;
+    case "out":
+      return t.products.movementTypeOut;
+    case "adjustment":
+      return t.products.movementTypeAdjustment;
+    default:
+      return type;
+  }
 }
 
 export default function ProductDetail() {
@@ -75,7 +89,7 @@ export default function ProductDetail() {
       if (e instanceof ApiError && e.status === 404) {
         setNotFound(true);
       } else {
-        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setProduct(null);
       }
     } finally {
@@ -154,7 +168,11 @@ export default function ProductDetail() {
 
   if (notFound)
     return (
-      <ResourceNotFound resource="Produit" backPath="/products" backLabel="Retour aux produits" />
+      <ResourceNotFound
+        resource={t.products.resourceLabel}
+        backPath="/products"
+        backLabel={t.products.notFoundBack}
+      />
     );
   if (!product) return <Navigate to="/products" replace />;
 
@@ -166,7 +184,7 @@ export default function ProductDetail() {
     editForm.validateFields().then(async (values) => {
       try {
         if (!values.storeId) {
-          message.warning("Sélectionnez une boutique propriétaire pour le produit");
+          message.warning(t.products.msgSelectOwnerStore);
           return;
         }
         await updateProduct(id, {
@@ -176,11 +194,11 @@ export default function ProductDetail() {
           salePrice: values.salePrice,
           storeId: values.storeId,
         });
-        message.success("Produit mis à jour");
+        message.success(t.products.msgUpdated);
         setEditOpen(false);
         fetchProduct();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -189,10 +207,10 @@ export default function ProductDetail() {
     if (!window.confirm(t.common.delete + " ?")) return;
     deleteProduct(id)
       .then(() => {
-        message.success("Produit supprimé");
+        message.success(t.products.msgDeleted);
         navigate("/products");
       })
-      .catch((e) => message.error(e instanceof Error ? e.message : "Erreur"));
+      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
   };
 
   const handleStockSave = () => {
@@ -204,14 +222,14 @@ export default function ProductDetail() {
           storeId: activeStore.id,
           quantity: values.newStock,
           type: "adjustment",
-          note: values.reason || "Ajustement manuel",
+          note: values.reason || t.products.manualAdjustmentReason,
         });
-        message.success("Stock mis à jour");
+        message.success(t.products.msgStockUpdated);
         setStockOpen(false);
         fetchStock();
         fetchMovements();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -219,7 +237,7 @@ export default function ProductDetail() {
   const openStockModal = () => {
     stockForm.setFieldsValue({
       newStock: activeStock?.quantity ?? 0,
-      reason: "Ajustement manuel",
+      reason: t.products.manualAdjustmentReason,
     });
     setStockOpen(true);
   };
@@ -244,10 +262,14 @@ export default function ProductDetail() {
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
               {categoryName && <Tag color="blue">{categoryName}</Tag>}
               {product.sku && (
-                <Typography.Text type="secondary">SKU: {product.sku}</Typography.Text>
+                <Typography.Text type="secondary">
+                  {t.products.skuAbbrev}: {product.sku}
+                </Typography.Text>
               )}
               {product.barcode && (
-                <Typography.Text type="secondary">Code: {product.barcode}</Typography.Text>
+                <Typography.Text type="secondary">
+                  {t.products.barcodeAbbrev}: {product.barcode}
+                </Typography.Text>
               )}
             </div>
           </div>
@@ -270,7 +292,7 @@ export default function ProductDetail() {
             {activeStock && (
               <div>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Stock ({activeStore?.name})
+                  {t.products.heroStockLabel.replace("{store}", activeStore?.name ?? "")}
                 </Typography.Text>
                 <Tag
                   color={
@@ -338,12 +360,12 @@ export default function ProductDetail() {
             <div className={styles.infoValue}>{product.salePrice.toLocaleString("fr-FR")} F</div>
           </div>
           <div>
-            <div className={styles.infoLabel}>Unité</div>
-            <div className={styles.infoValue}>{product.unit || "pièce"}</div>
+            <div className={styles.infoLabel}>{t.products.unitLabel}</div>
+            <div className={styles.infoValue}>{product.unit || t.products.unitPieceDefault}</div>
           </div>
           {product.description && (
             <div style={{ gridColumn: "1 / -1" }}>
-              <div className={styles.infoLabel}>Description</div>
+              <div className={styles.infoLabel}>{t.products.descriptionLabel}</div>
               <div className={styles.infoValue}>{product.description}</div>
             </div>
           )}
@@ -356,7 +378,12 @@ export default function ProductDetail() {
         className={`${styles.card} ${styles.sectionCard} contentCard`}
       >
         {stockLevels.length === 0 ? (
-          <Typography.Text type="secondary">Aucun stock configuré</Typography.Text>
+          <EmptyState
+            compact
+            icon={Layers}
+            title={t.products.emptyStockByStoreTitle}
+            description={t.products.emptyStockByStoreDesc}
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -366,9 +393,9 @@ export default function ProductDetail() {
               size="small"
               className="dataTable"
               columns={[
-                { title: "Boutique", dataIndex: "storeName" },
+                { title: t.products.tableStoreColumn, dataIndex: "storeName" },
                 {
-                  title: "Quantité",
+                  title: t.products.stockQtyColumn,
                   dataIndex: "quantity",
                   render: (v: number, r: StockLevelResponse) => (
                     <Tag
@@ -401,7 +428,12 @@ export default function ProductDetail() {
           className={`${styles.card} contentCard`}
         >
           {movements.length === 0 ? (
-            <Typography.Text type="secondary">Aucun mouvement</Typography.Text>
+            <EmptyState
+              compact
+              icon={History}
+              title={t.products.emptyMovementsTitle}
+              description={t.products.emptyMovementsDesc}
+            />
           ) : (
             <div className="tableResponsive">
               <Table
@@ -416,9 +448,13 @@ export default function ProductDetail() {
                     dataIndex: "createdAt",
                     render: (v: string) => v?.split("T")[0] ?? "-",
                   },
-                  { title: "Type", dataIndex: "type" },
                   {
-                    title: "Qté",
+                    title: t.products.movementTypeColumn,
+                    dataIndex: "type",
+                    render: (type: string) => movementTypeLabel(type),
+                  },
+                  {
+                    title: t.receipt.qtyShort,
                     dataIndex: "quantity",
                     render: (v: number, r: StockMovementResponse) => (
                       <span
@@ -435,11 +471,11 @@ export default function ProductDetail() {
                     ),
                   },
                   {
-                    title: "Avant → Après",
+                    title: t.products.movementBeforeAfterColumn,
                     render: (_, r: StockMovementResponse) =>
                       `${r.quantityBefore} → ${r.quantityAfter}`,
                   },
-                  { title: "Note", dataIndex: "note" },
+                  { title: t.products.movementNoteColumn, dataIndex: "note" },
                 ]}
               />
             </div>
@@ -461,25 +497,23 @@ export default function ProductDetail() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du produit" />
+            <Input placeholder={t.products.placeholderProductName} />
           </Form.Item>
           <Form.Item
             name="storeId"
-            label={t.stores.title}
-            rules={[{ required: true, message: "Sélectionnez une boutique" }]}
+            label={t.products.ownerStoreLabel}
+            rules={[{ required: true, message: t.validation.storeRequired }]}
           >
             <>
               <Select
-                placeholder="Boutique propriétaire"
+                placeholder={t.products.ownerStorePlaceholder}
                 options={stores.map((s) => ({ value: s.id, label: s.name }))}
               />
               <Typography.Text
                 type="secondary"
                 style={{ fontSize: 12, marginTop: 4, display: "block" }}
               >
-                Changer de boutique transfère ce produit dans une autre boutique. Il ne sera plus
-                visible dans la boutique actuelle et son stock reste géré par boutique via les
-                mouvements de stock.
+                {t.products.transferStoreHint}
               </Typography.Text>
             </>
           </Form.Item>
@@ -521,7 +555,7 @@ export default function ProductDetail() {
         <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
           <Typography.Text type="secondary">{product.name}</Typography.Text>
           <Typography.Text strong style={{ display: "block", marginBottom: 16 }}>
-            Stock actuel : {activeStock?.quantity ?? 0}
+            {t.products.currentStockLabel} : {activeStock?.quantity ?? 0}
           </Typography.Text>
           <Form.Item
             name="newStock"

@@ -36,7 +36,7 @@ export default function SettingsRoles() {
       setRoles(r);
       setCatalog(c);
     } catch {
-      message.error("Impossible de charger les rôles");
+      message.error(t.settings.rolesLoadError);
     } finally {
       setLoading(false);
     }
@@ -57,12 +57,12 @@ export default function SettingsRoles() {
     try {
       setSaving(true);
       const updated = await assignRolePermissions(editing.id, selected);
-      message.success("Permissions enregistrées");
+      message.success(t.settings.permissionsSavedSuccess);
       setRoles((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       setEditOpen(false);
       setEditing(null);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur à l'enregistrement");
+      message.error(e instanceof Error ? e.message : t.settings.permissionsSaveError);
     } finally {
       setSaving(false);
     }
@@ -74,13 +74,13 @@ export default function SettingsRoles() {
       setCreating(true);
       const name = createForm.getFieldValue("name") as string;
       const created = await createRole(name.trim());
-      message.success("Rôle créé");
+      message.success(t.settings.roleCreatedSuccess);
       setCreateOpen(false);
       createForm.resetFields();
       setRoles((prev) => [...prev, created]);
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setCreating(false);
     }
@@ -179,7 +179,7 @@ export default function SettingsRoles() {
             label={t.settings.customRoleName}
             rules={[{ required: true, message: t.validation.requiredField }]}
           >
-            <Input placeholder="Ex. Chef de rayon" />
+            <Input placeholder={t.settings.customRoleNamePlaceholder} />
           </Form.Item>
         </Form>
       </Modal>

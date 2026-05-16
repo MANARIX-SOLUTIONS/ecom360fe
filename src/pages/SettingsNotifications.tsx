@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Typography, Switch, Button, Table, message, Spin, Empty } from "antd";
+import { Card, Typography, Switch, Button, Table, message, Spin } from "antd";
 import { ArrowLeft, Bell, CheckCheck, Package, Wallet, CreditCard, Info } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
 import {
   getNotificationPreferences,
@@ -14,12 +15,27 @@ import type { NotificationPreferenceResponse, NotificationResponse } from "@/api
 import { useNotifications } from "@/hooks/useNotifications";
 import styles from "./Settings.module.css";
 
-const NOTIFICATION_TYPE_LABELS: Record<string, { label: string; icon: typeof Bell }> = {
-  low_stock: { label: "Alertes stock faible", icon: Package },
-  payment_received: { label: "Paiements reçus", icon: Wallet },
-  subscription: { label: "Abonnement", icon: CreditCard },
-  system: { label: "Système", icon: Info },
+const NOTIFICATION_TYPE_ICONS: Record<string, typeof Bell> = {
+  low_stock: Package,
+  payment_received: Wallet,
+  subscription: CreditCard,
+  system: Info,
 };
+
+function notificationTypeLabel(type: string): string {
+  switch (type) {
+    case "low_stock":
+      return t.settings.notificationTypeLowStock;
+    case "payment_received":
+      return t.settings.notificationTypePaymentReceived;
+    case "subscription":
+      return t.settings.notificationTypeSubscription;
+    case "system":
+      return t.settings.notificationTypeSystem;
+    default:
+      return type;
+  }
+}
 
 export default function SettingsNotifications() {
   const navigate = useNavigate();
@@ -36,7 +52,7 @@ export default function SettingsNotifications() {
       const prefs = await getNotificationPreferences();
       setPreferences(prefs);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement préférences");
+      message.error(e instanceof Error ? e.message : t.settings.notificationsPrefsLoadError);
     } finally {
       setLoading(false);
     }
@@ -67,9 +83,9 @@ export default function SettingsNotifications() {
         [type]: enabled,
       });
       setPreferences(updated);
-      message.success("Préférences mises à jour");
+      message.success(t.settings.notificationsPrefsUpdated);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur mise à jour");
+      message.error(e instanceof Error ? e.message : t.settings.notificationsPrefsUpdateError);
     } finally {
       setSaving(false);
     }
@@ -81,9 +97,9 @@ export default function SettingsNotifications() {
       await markAllNotificationsRead();
       await loadNotifications();
       refetch();
-      message.success("Toutes les notifications marquées comme lues");
+      message.success(t.settings.notificationsMarkAllSuccess);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setMarkingAll(false);
     }
@@ -121,7 +137,7 @@ export default function SettingsNotifications() {
           className={styles.settingsPageSubtitle}
           style={{ marginBottom: 20, display: "block" }}
         >
-          Types de notifications à recevoir
+          {t.settings.notificationsTypesHeading}
         </Typography.Text>
         {loading ? (
           <div style={{ padding: 24, textAlign: "center" }}>
@@ -130,10 +146,8 @@ export default function SettingsNotifications() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {preferences.map((pref) => {
-              const { label, icon: Icon } = NOTIFICATION_TYPE_LABELS[pref.type] ?? {
-                label: pref.type,
-                icon: Bell,
-              };
+              const Icon = NOTIFICATION_TYPE_ICONS[pref.type] ?? Bell;
+              const label = notificationTypeLabel(pref.type);
               return (
                 <div
                   key={pref.type}
@@ -185,14 +199,14 @@ export default function SettingsNotifications() {
             gap: 12,
           }}
         >
-          <Typography.Text strong>Historique des notifications</Typography.Text>
+          <Typography.Text strong>{t.settings.notificationsHistoryTitle}</Typography.Text>
           <Button
             type="default"
             icon={<CheckCheck size={16} />}
             onClick={handleMarkAllRead}
             loading={markingAll}
           >
-            Tout marquer comme lu
+            {t.settings.notificationsMarkAllRead}
           </Button>
         </div>
         {notifLoading ? (
@@ -200,10 +214,11 @@ export default function SettingsNotifications() {
             <Spin />
           </div>
         ) : notifications.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="Aucune notification"
-            style={{ padding: 24 }}
+          <EmptyState
+            compact
+            icon={Bell}
+            title={t.settings.notificationsEmptyHistory}
+            description={t.settings.notificationsEmptyHistoryDesc}
           />
         ) : (
           <Table
@@ -213,7 +228,7 @@ export default function SettingsNotifications() {
             pagination={false}
             columns={[
               {
-                title: "Date",
+                title: t.common.date,
                 dataIndex: "createdAt",
                 key: "createdAt",
                 width: 140,
@@ -226,14 +241,14 @@ export default function SettingsNotifications() {
                     : "—",
               },
               {
-                title: "Type",
+                title: t.settings.notificationsColType,
                 dataIndex: "type",
                 key: "type",
                 width: 120,
-                render: (type: string) => NOTIFICATION_TYPE_LABELS[type]?.label ?? type,
+                render: (type: string) => notificationTypeLabel(type),
               },
               {
-                title: "Titre",
+                title: t.settings.notificationsColTitle,
                 dataIndex: "title",
                 key: "title",
                 ellipsis: true,
@@ -245,11 +260,11 @@ export default function SettingsNotifications() {
                 render: (_: unknown, record: NotificationResponse) =>
                   !record.isRead ? (
                     <Button type="link" size="small" onClick={() => handleMarkRead(record.id)}>
-                      Marquer lu
+                      {t.settings.notificationsMarkRead}
                     </Button>
                   ) : (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      Lu
+                      {t.settings.notificationsReadStatus}
                     </Typography.Text>
                   ),
               },

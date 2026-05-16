@@ -117,6 +117,148 @@
   margin-bottom: var(--section-gap);
 }
 
+.statsSectionTitle {
+  margin: 24px 0 12px;
+  font-weight: 700 !important;
+}
+
+.statsSectionTitle:first-child {
+  margin-top: 0;
+}
+
+.periodCollapse {
+  margin-top: 24px;
+  background: transparent;
+}
+
+.periodCollapse :global(.ant-collapse-item) {
+  border: none !important;
+}
+
+.periodCollapse :global(.ant-collapse-header) {
+  align-items: flex-start !important;
+  padding: 0 0 4px !important;
+}
+
+.periodCollapse :global(.ant-collapse-expand-icon) {
+  padding-inline-start: 8px !important;
+}
+
+.periodCollapse :global(.ant-collapse-content-box) {
+  padding: 12px 0 0 !important;
+}
+
+.periodCollapseLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  max-width: 100%;
+}
+
+.periodCollapseHeading {
+  margin: 0 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  line-height: 1.35 !important;
+  color: var(--color-text) !important;
+}
+
+.periodCollapseMeta {
+  font-size: 13px;
+  line-height: 1.4;
+  display: block;
+  width: 100%;
+}
+
+.periodCollapseMetaAmount {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.periodCollapseHint {
+  font-size: 12px;
+  display: block;
+  opacity: 0.85;
+}
+
+.statTooltipHit {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--color-text-muted);
+  cursor: help;
+}
+
+.moneyStoryCard {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.moneyStoryTitle {
+  margin: 0 0 8px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.moneyStoryBanner {
+  margin-bottom: 8px !important;
+  font-size: 13px;
+}
+
+.moneyStoryLine {
+  margin-bottom: 6px !important;
+  font-size: 14px;
+}
+
+.cashSplitCard {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+}
+
+.cashSplitTitle {
+  margin: 0 0 12px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.cashSplitAmount {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.cashSplitDisclaimer {
+  margin: 12px 0 0 !important;
+  font-size: 12px;
+}
+
+.statCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.statHint {
+  font-size: 12px;
+  display: block;
+}
+
+.trendCaption {
+  margin-left: 4px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
 .statCard {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
@@ -435,25 +577,7 @@
 
 /* ========== Empty state ========== */
 .emptyCard {
-  padding: 48px 24px;
-}
-
-.emptyDescription {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-align: center;
-}
-
-.emptyTitle {
-  font-size: 16px;
-  display: block;
-}
-
-.emptySubtitle {
-  font-size: 14px;
-  max-width: 280px;
-  margin: 0 auto;
+  padding: 0 !important;
 }
 
 .apiError {

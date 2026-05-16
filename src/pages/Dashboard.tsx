@@ -7,12 +7,16 @@ import {
   Table,
   Tag,
   Skeleton,
-  Empty,
   Button,
   message,
   notification,
   Alert,
+  Collapse,
+  Tooltip,
+  Space,
 } from "antd";
+import dayjs from "dayjs";
+import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp,
   TrendingDown,
@@ -27,6 +31,9 @@ import {
   FileText,
   Users,
   Store,
+  ShoppingBag,
+  Percent,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/hooks/useStore";
@@ -35,10 +42,20 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
+import { EmptyState } from "@/components/EmptyState";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
+import { formatRangeSummaryFr } from "@/utils/dateLocal";
+import { pctChangeVsPrevious } from "@/utils/kpiDelta";
 import styles from "./Dashboard.module.css";
+
+function getDashboardPeriodBounds() {
+  return {
+    periodStart: dayjs().startOf("month").format("YYYY-MM-DD"),
+    periodEnd: dayjs().format("YYYY-MM-DD"),
+  };
+}
 
 const DASH_LIST_BATCH = 10;
 
@@ -47,6 +64,17 @@ const PAYMENT_COLORS: Record<string, string> = {
   wave: "var(--color-success)",
   orange_money: "var(--color-warning)",
   credit: "var(--color-danger)",
+};
+
+type DashboardStatCard = {
+  key: string;
+  label: string;
+  value: string;
+  variant: "sales" | "expenses" | "profit";
+  icon: LucideIcon;
+  trendPct: number | null;
+  hint?: string;
+  tooltip?: string;
 };
 
 function formatFCFA(n: number) {
@@ -123,13 +151,16 @@ export default function Dashboard() {
     }
     setLoading(true);
     try {
+      const { periodStart, periodEnd } = getDashboardPeriodBounds();
       const res = await getDashboard({
+        periodStart,
+        periodEnd,
         storeId: activeStore?.id ?? undefined,
       });
       setData(res);
       setApiError(null);
     } catch (e) {
-      setApiError(e instanceof Error ? e.message : "Erreur chargement");
+      setApiError(e instanceof Error ? e.message : t.dashboard.loadError);
       setData(null);
     } finally {
       setLoading(false);
@@ -161,7 +192,10 @@ export default function Dashboard() {
     setLoadingMoreTop(true);
     try {
       const page = 1 + Math.floor(extraTopProducts.length / DASH_LIST_BATCH);
+      const { periodStart, periodEnd } = getDashboardPeriodBounds();
       const res = await getDashboardTopProductsSlice({
+        periodStart,
+        periodEnd,
         storeId: activeStore?.id,
         page,
         size: DASH_LIST_BATCH,
@@ -177,7 +211,7 @@ export default function Dashboard() {
       ]);
       setTopSliceHasNext(res.hasNext);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
     } finally {
       setLoadingMoreTop(false);
     }
@@ -205,7 +239,7 @@ export default function Dashboard() {
       ]);
       setLowSliceHasNext(res.hasNext);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
     } finally {
       setLoadingMoreLow(false);
     }
@@ -230,53 +264,148 @@ export default function Dashboard() {
     }
   }, []);
 
-  const statCards = data
-    ? [
-        {
-          key: "sales",
-          label: t.dashboard.salesToday,
-          value: formatFCFA(data.todayRevenue),
-          prevValue: null as string | null,
-          trend: 0,
-          up: true,
-          variant: "sales" as const,
-          icon: Wallet,
-        },
-        ...(canExpenses && canAccess("expenses")
-          ? [
-              {
-                key: "expenses",
-                label: t.dashboard.expensesToday,
-                value: formatFCFA(data.todayExpenses ?? 0),
-                prevValue: null,
-                trend: 0,
-                up: false,
-                variant: "expenses" as const,
-                icon: Receipt,
-              },
-            ]
-          : []),
-        ...(can("SALES_READ") && can("EXPENSES_READ")
-          ? [
-              {
-                key: "profit",
-                label: t.dashboard.profitEstimate,
-                value: formatFCFA(data.periodProfit),
-                prevValue: null,
-                trend: 0,
-                up: data.periodProfit >= 0,
-                variant: "profit" as const,
-                icon: PiggyBank,
-              },
-            ]
-          : []),
-      ]
-    : [];
+  const todayCards: DashboardStatCard[] = useMemo(() => {
+    if (!data) return [];
+    const rows: DashboardStatCard[] = [
+      {
+        key: "sales",
+        label: t.dashboard.salesToday,
+        value: formatFCFA(data.todayRevenue),
+        variant: "sales",
+        icon: Wallet,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipSalesToday,
+      },
+    ];
+    if (canExpenses && canAccess("expenses")) {
+      rows.push({
+        key: "expenses",
+        label: t.dashboard.expensesToday,
+        value: formatFCFA(data.todayExpenses ?? 0),
+        variant: "expenses",
+        icon: Receipt,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipExpensesToday,
+      });
+    }
+    const resultToday = data.todayRevenue - (data.todayExpenses ?? 0);
+    rows.push({
+      key: "todayResult",
+      label: t.dashboard.resultToday,
+      value: formatFCFA(resultToday),
+      variant: resultToday >= 0 ? "profit" : "expenses",
+      icon: PiggyBank,
+      trendPct: null,
+      tooltip: t.dashboard.tooltipResultToday,
+    });
+    return rows;
+  }, [data, canExpenses, canAccess]);
 
-  const statCardSkeletonCount =
-    1 +
-    (canExpenses && canAccess("expenses") ? 1 : 0) +
-    (can("SALES_READ") && can("EXPENSES_READ") ? 1 : 0);
+  const expenseTrendPct = useMemo(
+    () =>
+      data != null ? pctChangeVsPrevious(data.periodExpenses, data.previousPeriodExpenses) : null,
+    [data]
+  );
+
+  const periodCards: DashboardStatCard[] = useMemo(() => {
+    if (!data) return [];
+    const prevR = data.previousPeriodRevenue;
+    const prevC = data.previousPeriodSalesCount;
+    const prevP = data.previousPeriodProfit;
+
+    const avgBasket =
+      data.periodSalesCount > 0 ? Math.round(data.periodRevenue / data.periodSalesCount) : 0;
+    const expenseRatioPct =
+      data.periodRevenue > 0
+        ? Math.round((data.periodExpenses / data.periodRevenue) * 1000) / 10
+        : null;
+
+    const lowTotal = data.lowStockItemsTotal ?? data.lowStockItems.length;
+
+    const rows: DashboardStatCard[] = [
+      {
+        key: "pRev",
+        label: t.dashboard.periodRevenue,
+        value: formatFCFA(data.periodRevenue),
+        variant: "sales",
+        icon: Wallet,
+        trendPct: pctChangeVsPrevious(data.periodRevenue, prevR),
+        tooltip: t.dashboard.tooltipPeriodRevenue,
+      },
+      {
+        key: "pTxn",
+        label: t.dashboard.periodTransactions,
+        value: String(data.periodSalesCount),
+        variant: "profit",
+        icon: ShoppingBag,
+        trendPct: pctChangeVsPrevious(data.periodSalesCount, prevC),
+        tooltip: t.dashboard.tooltipPeriodTransactions,
+      },
+      {
+        key: "pBasket",
+        label: t.dashboard.periodAvgBasket,
+        value: formatFCFA(avgBasket),
+        variant: "profit",
+        icon: ShoppingCart,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipPeriodAvgBasket,
+      },
+      {
+        key: "pRatio",
+        label: t.dashboard.periodExpenseRatio,
+        value: expenseRatioPct != null ? `${expenseRatioPct} %` : "—",
+        variant: "expenses",
+        icon: Percent,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipPeriodExpenseRatio,
+      },
+    ];
+
+    if (can("SALES_READ") && can("EXPENSES_READ")) {
+      rows.push({
+        key: "pProfit",
+        label: t.dashboard.periodProfit,
+        value: formatFCFA(data.periodProfit),
+        variant: data.periodProfit >= 0 ? "profit" : "expenses",
+        icon: PiggyBank,
+        trendPct: pctChangeVsPrevious(data.periodProfit, prevP),
+        tooltip: t.dashboard.tooltipPeriodProfit,
+      });
+    }
+
+    if (canStockAlerts) {
+      rows.push({
+        key: "pLowStock",
+        label: t.dashboard.periodLowStockCount,
+        value: String(lowTotal),
+        variant: "expenses",
+        icon: AlertTriangle,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipPeriodLowStock,
+      });
+    }
+
+    if (canClientCredits) {
+      const debtors = data.debtorClientsCount ?? 0;
+      rows.push({
+        key: "pRecv",
+        label: t.dashboard.periodReceivable,
+        value: formatFCFA(data.totalReceivable ?? 0),
+        variant: "sales",
+        icon: CreditCard,
+        trendPct: null,
+        hint:
+          debtors > 0 ? t.dashboard.periodDebtorsHint.replace("{n}", String(debtors)) : undefined,
+        tooltip: t.dashboard.tooltipPeriodReceivable,
+      });
+    }
+
+    return rows;
+  }, [data, can, canStockAlerts, canClientCredits]);
+
+  const todayCardSkeletonCount = 2 + (canExpenses && canAccess("expenses") ? 1 : 0);
+
+  const periodCardSkeletonCount = 7;
 
   const topProducts = useMemo(() => {
     const base =
@@ -310,6 +439,52 @@ export default function Dashboard() {
       ? Math.max(0, (data.lowStockItemsTotal ?? data.lowStockItems.length) - lowStock.length)
       : 0;
 
+  const recentSalesPaymentStats = useMemo(() => {
+    if (!data?.recentSales?.length) {
+      return {
+        breakdown: [] as Array<{
+          method: string;
+          amount: string;
+          pct: number;
+          color: string;
+        }>,
+        collected: 0,
+        credit: 0,
+        total: 0,
+      };
+    }
+    const byMethod: Record<string, number> = {};
+    let collected = 0;
+    let credit = 0;
+    let total = 0;
+    const labels: Record<string, string> = {
+      cash: "Espèces",
+      wave: "Wave",
+      orange_money: "Orange Money",
+      credit: "Crédit",
+    };
+    for (const s of data.recentSales) {
+      const m = s.paymentMethod || "cash";
+      const amt = s.total;
+      byMethod[m] = (byMethod[m] || 0) + amt;
+      total += amt;
+      if (m === "credit") credit += amt;
+      else collected += amt;
+    }
+    if (total === 0) {
+      return { breakdown: [], collected: 0, credit: 0, total: 0 };
+    }
+    const breakdown = Object.entries(byMethod)
+      .map(([method, amount]) => ({
+        method: labels[method] || method,
+        amount: formatFCFA(amount),
+        pct: Math.round((amount / total) * 100),
+        color: PAYMENT_COLORS[method] || "var(--color-primary)",
+      }))
+      .sort((a, b) => b.pct - a.pct);
+    return { breakdown, collected, credit, total };
+  }, [data?.recentSales]);
+
   const recentSales =
     data?.recentSales.map((s, i) => ({
       saleId: s.saleId,
@@ -327,32 +502,6 @@ export default function Dashboard() {
               : s.paymentMethod,
     })) ?? [];
 
-  const paymentBreakdown = (() => {
-    if (!data?.recentSales.length) return [];
-    const byMethod: Record<string, number> = {};
-    let total = 0;
-    for (const s of data.recentSales) {
-      const m = s.paymentMethod || "cash";
-      byMethod[m] = (byMethod[m] || 0) + s.total;
-      total += s.total;
-    }
-    if (total === 0) return [];
-    const labels: Record<string, string> = {
-      cash: "Espèces",
-      wave: "Wave",
-      orange_money: "Orange Money",
-      credit: "Crédit",
-    };
-    return Object.entries(byMethod)
-      .map(([method, amount]) => ({
-        method: labels[method] || method,
-        amount: formatFCFA(amount),
-        pct: Math.round((amount / total) * 100),
-        color: PAYMENT_COLORS[method] || "var(--color-primary)",
-      }))
-      .sort((a, b) => b.pct - a.pct);
-  })();
-
   if (loading) {
     return (
       <div className={`${styles.page} pageWrapper`}>
@@ -361,15 +510,49 @@ export default function Dashboard() {
           <Skeleton.Input active style={{ width: 160, height: 18, marginTop: 10 }} />
         </div>
         <div className={styles.statsSection}>
+          <Typography.Title level={5} className={styles.statsSectionTitle}>
+            {t.dashboard.sectionToday}
+          </Typography.Title>
           <Row gutter={[16, 16]}>
-            {Array.from({ length: statCardSkeletonCount }, (_, i) => (
-              <Col xs={24} sm={12} lg={8} key={i}>
+            {Array.from({ length: todayCardSkeletonCount }, (_, i) => (
+              <Col xs={24} sm={12} lg={8} key={`t-${i}`}>
                 <Card variant="borderless" className={styles.statCard}>
                   <Skeleton active paragraph={{ rows: 2 }} />
                 </Card>
               </Col>
             ))}
           </Row>
+          <Collapse
+            bordered={false}
+            ghost
+            className={styles.periodCollapse}
+            defaultActiveKey={[]}
+            expandIconPosition="end"
+            items={[
+              {
+                key: "period",
+                label: (
+                  <div className={styles.periodCollapseLabel}>
+                    <Typography.Title level={5} className={styles.periodCollapseHeading}>
+                      {t.dashboard.sectionPeriod}
+                    </Typography.Title>
+                    <Skeleton.Input active size="small" style={{ width: 280, maxWidth: "100%" }} />
+                  </div>
+                ),
+                children: (
+                  <Row gutter={[16, 16]}>
+                    {Array.from({ length: periodCardSkeletonCount }, (_, i) => (
+                      <Col xs={24} sm={12} lg={8} key={`p-${i}`}>
+                        <Card variant="borderless" className={styles.statCard}>
+                          <Skeleton active paragraph={{ rows: 2 }} />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                ),
+              },
+            ]}
+          />
         </div>
         <div className={styles.tablesSection}>
           <Row gutter={[16, 16]}>
@@ -414,17 +597,14 @@ export default function Dashboard() {
           </div>
         </header>
         <Card variant="borderless" className={`${styles.card} ${styles.emptyCard}`}>
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <div className={styles.emptyDescription}>
-                <Typography.Text strong className={styles.emptyTitle}>
-                  {t.dashboard.emptyTitle}
-                </Typography.Text>
-                <Typography.Text type="secondary" className={styles.emptySubtitle}>
-                  {t.dashboard.emptySubtitle}
-                </Typography.Text>
-              </div>
+          <EmptyState
+            icon={ShoppingCart}
+            title={t.dashboard.emptyTitle}
+            description={t.dashboard.emptySubtitle}
+            action={
+              <Button type="primary" size="large" onClick={() => navigate("/pos")}>
+                {t.dashboard.emptyCta}
+              </Button>
             }
           />
         </Card>
@@ -457,7 +637,7 @@ export default function Dashboard() {
           onClose={() => setApiError(null)}
           action={
             <Button size="small" onClick={loadData}>
-              Réessayer
+              {t.dashboard.retryLoad}
             </Button>
           }
           className={styles.apiError}
@@ -468,11 +648,31 @@ export default function Dashboard() {
         <Alert
           type="info"
           showIcon
-          message="Vue du jour (plan Starter)"
-          description="Les chiffres ci-dessous concernent uniquement aujourd’hui. Passez au plan Pro pour analyser la semaine, le mois et exporter des rapports."
+          message={t.dashboard.starterPlanInfoTitle}
+          description={t.dashboard.starterPlanInfoDesc}
           className={styles.apiError + " mb-4"}
         />
       )}
+
+      {expenseTrendPct !== null &&
+        expenseTrendPct > 0 &&
+        canExpenses &&
+        canAccess("expenses") &&
+        data &&
+        (data.periodSalesCount > 0 || data.periodExpenses > 0) && (
+          <Alert
+            type="info"
+            showIcon
+            message={t.dashboard.expenseRisingTitle}
+            description={t.dashboard.expenseRisingDesc}
+            action={
+              <Button size="small" type="primary" onClick={() => navigate("/expenses")}>
+                {t.dashboard.expenseRisingCta}
+              </Button>
+            }
+            className={styles.apiError + " mb-4"}
+          />
+        )}
 
       {canClientCredits &&
         matrixCan("CLIENTS_READ", "clients") &&
@@ -481,18 +681,21 @@ export default function Dashboard() {
             type="warning"
             showIcon
             icon={<CreditCard size={18} aria-hidden />}
-            message="Crédits clients à suivre"
-            description={
-              <>
-                <strong>{data?.debtorClientsCount}</strong> client
-                {(data?.debtorClientsCount ?? 0) > 1 ? "s" : ""} avec une dette ouverte, pour un
-                encours total de <strong>{formatFCFA(data?.totalReceivable ?? 0)}</strong>.
-              </>
-            }
+            message={t.dashboard.creditFollowUpTitle}
+            description={t.dashboard.creditFollowUpDesc
+              .replace("{count}", String(data?.debtorClientsCount ?? 0))
+              .replace("{amount}", formatFCFA(data?.totalReceivable ?? 0))}
             action={
-              <Button size="small" type="primary" onClick={() => navigate("/clients")}>
-                Voir les clients
-              </Button>
+              <Space size={8} wrap>
+                <Button size="small" type="primary" onClick={() => navigate("/clients")}>
+                  {t.dashboard.creditFollowUpCta}
+                </Button>
+                {canAccessPlan("reports", matrixNavAccess("reports")) ? (
+                  <Button size="small" onClick={() => navigate("/reports")}>
+                    {t.dashboard.creditFollowUpReports}
+                  </Button>
+                ) : null}
+              </Space>
             }
             className={styles.apiError + " mb-4"}
           />
@@ -564,9 +767,12 @@ export default function Dashboard() {
           )}
       </section>
 
-      <section className={styles.statsSection} aria-label="Indicateurs du jour">
+      <section className={styles.statsSection} aria-label={t.dashboard.sectionToday}>
+        <Typography.Title level={5} className={styles.statsSectionTitle}>
+          {t.dashboard.sectionToday}
+        </Typography.Title>
         <Row gutter={[16, 16]}>
-          {statCards.map(({ key, label, value, prevValue, trend, up, variant, icon: Icon }) => (
+          {todayCards.map(({ key, label, value, variant, icon: Icon, tooltip }) => (
             <Col xs={24} sm={12} lg={8} key={key}>
               <Card variant="borderless" className={`${styles.statCard} ${styles[variant]}`}>
                 <div className={styles.statCardInner}>
@@ -575,30 +781,188 @@ export default function Dashboard() {
                       <Icon size={20} className={styles.statIcon} aria-hidden />
                     </span>
                     <Typography.Text className={styles.statLabel}>{label}</Typography.Text>
+                    {tooltip ? (
+                      <Tooltip title={tooltip}>
+                        <span className={styles.statTooltipHit} aria-label={tooltip}>
+                          <Info size={14} aria-hidden />
+                        </span>
+                      </Tooltip>
+                    ) : null}
                   </div>
                   <div className={styles.statRow}>
-                    <div>
-                      <span className={`amount ${styles.statValue}`}>{value}</span>
-                      {prevValue != null && (
-                        <span className={styles.statPrev}>vs {prevValue} hier</span>
-                      )}
-                    </div>
-                    {trend !== 0 && (
-                      <Tag color={up ? "success" : "warning"} className={styles.trend}>
-                        {up ? (
-                          <TrendingUp size={12} aria-hidden />
-                        ) : (
-                          <TrendingDown size={12} aria-hidden />
-                        )}
-                        <span>{trend}%</span>
-                      </Tag>
-                    )}
+                    <span className={`amount ${styles.statValue}`}>{value}</span>
                   </div>
                 </div>
               </Card>
             </Col>
           ))}
         </Row>
+
+        <Card variant="borderless" className={styles.moneyStoryCard}>
+          <Typography.Title level={5} className={styles.moneyStoryTitle}>
+            {t.dashboard.moneyStoryTitle}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" className={styles.moneyStoryBanner}>
+            {t.dashboard.periodDefaultBanner}
+          </Typography.Paragraph>
+          {recentSalesPaymentStats.total > 0 ? (
+            <Typography.Paragraph className={styles.moneyStoryLine}>
+              {t.dashboard.moneyStoryRecentPayments
+                .replace("{collected}", formatFCFA(recentSalesPaymentStats.collected))
+                .replace("{credit}", formatFCFA(recentSalesPaymentStats.credit))}
+            </Typography.Paragraph>
+          ) : null}
+          {canClientCredits ? (
+            <Typography.Paragraph className={styles.moneyStoryLine}>
+              {t.dashboard.moneyStoryReceivable.replace(
+                "{amount}",
+                formatFCFA(data?.totalReceivable ?? 0)
+              )}
+            </Typography.Paragraph>
+          ) : null}
+          {can("SALES_READ") && can("EXPENSES_READ") && data ? (
+            <Typography.Paragraph className={styles.moneyStoryLine}>
+              {t.dashboard.moneyStoryPeriodProfit.replace(
+                "{amount}",
+                formatFCFA(data.periodProfit)
+              )}
+            </Typography.Paragraph>
+          ) : null}
+          <Space wrap size={8}>
+            {canAccess("clients") ? (
+              <Button type="link" size="small" onClick={() => navigate("/clients")}>
+                {t.dashboard.moneyStoryDetailClients}
+              </Button>
+            ) : null}
+            {canAccessPlan("reports", matrixNavAccess("reports")) ? (
+              <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                {t.dashboard.moneyStoryDetailReports}
+              </Button>
+            ) : null}
+          </Space>
+        </Card>
+
+        <Collapse
+          bordered={false}
+          ghost
+          className={styles.periodCollapse}
+          defaultActiveKey={[]}
+          expandIconPosition="end"
+          items={[
+            {
+              key: "period",
+              label: (
+                <div className={styles.periodCollapseLabel}>
+                  <Typography.Title level={5} className={styles.periodCollapseHeading}>
+                    {t.dashboard.sectionPeriod}
+                  </Typography.Title>
+                  {data?.periodStart && data?.periodEnd ? (
+                    <>
+                      <Typography.Text type="secondary" className={styles.periodCollapseMeta}>
+                        {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
+                        {" · "}
+                        <span className={`amount ${styles.periodCollapseMetaAmount}`}>
+                          {formatFCFA(data.periodRevenue)}
+                        </span>
+                      </Typography.Text>
+                      <Typography.Text type="secondary" className={styles.periodCollapseHint}>
+                        {t.dashboard.periodCollapseHint}
+                      </Typography.Text>
+                    </>
+                  ) : (
+                    <Typography.Text type="secondary" className={styles.periodCollapseMeta}>
+                      {t.dashboard.periodCollapseHint}
+                    </Typography.Text>
+                  )}
+                </div>
+              ),
+              children: (
+                <Row gutter={[16, 16]}>
+                  {periodCards.map(
+                    ({ key, label, value, variant, icon: Icon, trendPct, hint, tooltip }) => (
+                      <Col xs={24} sm={12} lg={8} key={key}>
+                        <Card
+                          variant="borderless"
+                          className={`${styles.statCard} ${styles[variant]}`}
+                        >
+                          <div className={styles.statCardInner}>
+                            <div className={styles.statLabelRow}>
+                              <span className={styles.statIconWrap}>
+                                <Icon size={20} className={styles.statIcon} aria-hidden />
+                              </span>
+                              <Typography.Text className={styles.statLabel}>
+                                {label}
+                              </Typography.Text>
+                              {tooltip ? (
+                                <Tooltip title={tooltip}>
+                                  <span className={styles.statTooltipHit} aria-label={tooltip}>
+                                    <Info size={14} aria-hidden />
+                                  </span>
+                                </Tooltip>
+                              ) : null}
+                            </div>
+                            <div className={styles.statCol}>
+                              <span className={`amount ${styles.statValue}`}>{value}</span>
+                              {hint ? (
+                                <Typography.Text type="secondary" className={styles.statHint}>
+                                  {hint}
+                                </Typography.Text>
+                              ) : null}
+                              {trendPct !== null ? (
+                                <Tag
+                                  color={trendPct >= 0 ? "success" : "warning"}
+                                  className={styles.trend}
+                                >
+                                  {trendPct >= 0 ? (
+                                    <TrendingUp size={12} aria-hidden />
+                                  ) : (
+                                    <TrendingDown size={12} aria-hidden />
+                                  )}
+                                  <span>
+                                    {trendPct > 0 ? "+" : ""}
+                                    {trendPct}%
+                                  </span>
+                                  <span className={styles.trendCaption}>
+                                    {t.dashboard.vsPrevPeriod}
+                                  </span>
+                                </Tag>
+                              ) : null}
+                            </div>
+                          </div>
+                        </Card>
+                      </Col>
+                    )
+                  )}
+                </Row>
+              ),
+            },
+          ]}
+        />
+
+        {recentSalesPaymentStats.total > 0 ? (
+          <Card variant="borderless" className={styles.cashSplitCard}>
+            <Typography.Title level={5} className={styles.cashSplitTitle}>
+              {t.dashboard.cashSplitTitle}
+            </Typography.Title>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Typography.Text type="secondary">{t.dashboard.cashSplitCollected}</Typography.Text>
+                <div className={`amount ${styles.cashSplitAmount}`}>
+                  {formatFCFA(recentSalesPaymentStats.collected)}
+                </div>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Typography.Text type="secondary">{t.dashboard.cashSplitCredit}</Typography.Text>
+                <div className={`amount ${styles.cashSplitAmount}`}>
+                  {formatFCFA(recentSalesPaymentStats.credit)}
+                </div>
+              </Col>
+            </Row>
+            <Typography.Paragraph type="secondary" className={styles.cashSplitDisclaimer}>
+              {t.dashboard.cashSplitDisclaimer}
+            </Typography.Paragraph>
+          </Card>
+        ) : null}
       </section>
 
       <section className={styles.tablesSection} aria-label="Activité">
@@ -675,6 +1039,13 @@ export default function Dashboard() {
                     {t.dashboard.lowStockAlerts}
                   </span>
                 }
+                extra={
+                  lowStock.length > 0 && canAccess("products") ? (
+                    <Button type="link" size="small" onClick={() => navigate("/products")}>
+                      {t.dashboard.lowStockCta}
+                    </Button>
+                  ) : null
+                }
                 variant="borderless"
                 className={`${styles.card} ${styles.alertCard}`}
               >
@@ -748,7 +1119,7 @@ export default function Dashboard() {
               className={styles.card}
             >
               <div className={styles.paymentList}>
-                {paymentBreakdown.map(({ method, amount, pct, color }) => (
+                {recentSalesPaymentStats.breakdown.map(({ method, amount, pct, color }) => (
                   <div key={method} className={styles.paymentRow}>
                     <div className={styles.paymentLabel}>
                       <span className={styles.paymentMethod}>{method}</span>

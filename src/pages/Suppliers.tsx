@@ -12,6 +12,7 @@ import {
   getSubscriptionUsage,
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { EmptyState } from "@/components/EmptyState";
 
 type Supplier = {
   id: string;
@@ -70,7 +71,7 @@ export default function Suppliers() {
         }))
       );
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
       setSuppliers([]);
     } finally {
       setLoading(false);
@@ -115,7 +116,7 @@ export default function Suppliers() {
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}
-            placeholder={t.products.search}
+            placeholder={t.suppliers.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
@@ -134,31 +135,24 @@ export default function Suppliers() {
       </header>
       <Card variant="borderless" className={`${styles.card} contentCard`}>
         {suppliers.length === 0 ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Truck size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              Aucun fournisseur
-            </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
-            >
-              Ajoutez vos fournisseurs pour suivre vos achats et gérer vos approvisionnements.
-            </Typography.Text>
-            {!suppliersAtLimit && matrixCan("SUPPLIERS_CREATE", "suppliers") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<Truck size={16} />}
-                onClick={() => setAddOpen(true)}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                Ajouter un fournisseur
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Truck}
+            title={t.suppliers.emptyTitle}
+            description={t.suppliers.emptyDesc}
+            action={
+              !suppliersAtLimit && matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Truck size={16} />}
+                  onClick={() => setAddOpen(true)}
+                  style={{ height: 48 }}
+                >
+                  {t.suppliers.emptyCta}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -237,11 +231,13 @@ export default function Suppliers() {
                             if (window.confirm(t.common.delete + " ?")) {
                               deleteSupplier(r.id)
                                 .then(() => {
-                                  message.success("Fournisseur supprimé");
+                                  message.success(t.suppliers.msgDeleted);
                                   fetchSuppliers();
                                 })
                                 .catch((e) =>
-                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                  message.error(
+                                    e instanceof Error ? e.message : t.common.errorGeneric
+                                  )
                                 );
                             }
                           }}
@@ -269,12 +265,12 @@ export default function Suppliers() {
                 email: values.email || undefined,
                 zone: values.zone || undefined,
               });
-              message.success("Fournisseur ajouté");
+              message.success(t.suppliers.msgAdded);
               setAddOpen(false);
               addForm.resetFields();
               fetchSuppliers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -290,7 +286,7 @@ export default function Suppliers() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du fournisseur" />
+            <Input placeholder={t.suppliers.placeholderSupplierName} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -302,7 +298,7 @@ export default function Suppliers() {
               },
             ]}
           >
-            <Input placeholder="33 123 45 67" />
+            <Input placeholder={t.suppliers.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -312,7 +308,7 @@ export default function Suppliers() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="zone" label={t.common.zone}>
-            <Input placeholder="ex. Zone 4, Dakar" />
+            <Input placeholder={t.suppliers.placeholderZoneExample} />
           </Form.Item>
         </Form>
       </Modal>
@@ -330,12 +326,12 @@ export default function Suppliers() {
                 email: values.email || undefined,
                 zone: values.zone || undefined,
               });
-              message.success("Fournisseur mis à jour");
+              message.success(t.suppliers.msgUpdated);
               setEditOpen(null);
               editForm.resetFields();
               fetchSuppliers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -351,7 +347,7 @@ export default function Suppliers() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du fournisseur" />
+            <Input placeholder={t.suppliers.placeholderSupplierName} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -363,7 +359,7 @@ export default function Suppliers() {
               },
             ]}
           >
-            <Input placeholder="33 123 45 67" />
+            <Input placeholder={t.suppliers.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -373,7 +369,7 @@ export default function Suppliers() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="zone" label={t.common.zone}>
-            <Input placeholder="ex. Zone 4, Dakar" />
+            <Input placeholder={t.suppliers.placeholderZoneExample} />
           </Form.Item>
         </Form>
       </Modal>

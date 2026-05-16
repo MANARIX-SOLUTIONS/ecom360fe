@@ -14,6 +14,7 @@ import {
   Result,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { EmptyState } from "@/components/EmptyState";
 import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./POS.module.css";
@@ -345,7 +346,7 @@ export default function POS() {
           }))
         );
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur chargement produits");
+        message.error(e instanceof Error ? e.message : t.pos.msgProductsLoadError);
         setProducts([]);
         setClients([]);
       }
@@ -459,7 +460,7 @@ export default function POS() {
         setQuickClientOpen(false);
         quickClientForm.resetFields();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
         throw e;
       } finally {
         setCreatingClient(false);
@@ -472,15 +473,15 @@ export default function POS() {
       return;
     }
     if (!activeStore?.id) {
-      message.warning("Sélectionnez une boutique");
+      message.warning(t.pos.warnSelectStore);
       return;
     }
     if (!selectedClientId) {
-      message.warning("Sélectionnez un client avant de valider");
+      message.warning(t.pos.warnSelectClientBeforeSale);
       return;
     }
     if (paymentMethod === "credit" && selectedClient?.isWalkIn) {
-      message.warning("Pour le crédit, sélectionnez un client nominatif");
+      message.warning(t.pos.warnCreditNeedsNamedClient);
       return;
     }
     if (editSaleId && saleToEdit && activeStore.id !== saleToEdit.storeId) {
@@ -683,7 +684,7 @@ export default function POS() {
           <div className={styles.cartHeader}>
             <ShoppingBag size={18} />
             <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
-              Panier
+              {t.pos.cartTitle}
             </Typography.Text>
             {itemCount > 0 && (
               <>
@@ -692,18 +693,21 @@ export default function POS() {
                   type="button"
                   className={styles.clearCartBtn}
                   onClick={() => setCart([])}
-                  aria-label="Vider le panier"
+                  aria-label={t.pos.clearCartAria}
                 >
-                  Vider
+                  {t.pos.clearCart}
                 </button>
               </>
             )}
           </div>
           {cart.length === 0 ? (
             <div className={styles.cartEmpty}>
-              <ShoppingBag size={32} strokeWidth={1.5} />
-              <span>Aucun article</span>
-              <span className={styles.cartEmptyHint}>Cliquez sur un produit pour l'ajouter</span>
+              <EmptyState
+                compact
+                icon={ShoppingBag}
+                title={t.pos.cartEmptyTitle}
+                description={t.pos.cartEmptyHint}
+              />
             </div>
           ) : (
             <div className={styles.cartList}>
@@ -802,7 +806,9 @@ export default function POS() {
             <div className={styles.clientRow}>
               <div className={styles.clientRowHeader}>
                 <Typography.Text type="secondary">
-                  {paymentMethod === "credit" ? "Client (crédit)" : "Client"}
+                  {paymentMethod === "credit"
+                    ? t.pos.clientCreditLabelShort
+                    : t.pos.clientLabelShort}
                 </Typography.Text>
                 <Button
                   type="link"
@@ -818,12 +824,12 @@ export default function POS() {
                 {t.pos.quickAddClientHint}
               </Typography.Text>
               <Select
-                placeholder="Sélectionner un client"
+                placeholder={t.pos.placeholderSelectClient}
                 value={selectedClientId}
                 onChange={setSelectedClientId}
                 options={clients.map((c) => ({
                   value: c.id,
-                  label: c.isWalkIn ? `${c.name} (par défaut)` : c.name,
+                  label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
                 }))}
                 style={{ width: "100%" }}
                 size="large"
@@ -838,8 +844,9 @@ export default function POS() {
                   type="secondary"
                   style={{ display: "block", marginTop: 8, fontSize: 13 }}
                 >
-                  Dette actuelle : {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F
-                  {" · "}Après cette vente :{" "}
+                  {t.pos.currentDebtLabel} :{" "}
+                  {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
+                  {t.pos.afterThisSaleLabel}{" "}
                   <strong>
                     {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
                   </strong>
@@ -862,7 +869,7 @@ export default function POS() {
 
             {/* Total */}
             <div className={styles.totalRow}>
-              <Typography.Text type="secondary">Total</Typography.Text>
+              <Typography.Text type="secondary">{t.common.total}</Typography.Text>
               <Typography.Title level={2} className={styles.totalAmount}>
                 {total.toLocaleString("fr-FR")} F
               </Typography.Title>
@@ -879,9 +886,9 @@ export default function POS() {
                   color: "var(--color-danger)",
                 }}
               >
-                Limite des ventes mensuelles atteinte.{" "}
+                {t.pos.monthlySalesLimitReached}{" "}
                 <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
-                  Passer à un plan supérieur
+                  {t.pos.upgradePlanLink}
                 </Link>
               </div>
             )}
@@ -930,7 +937,7 @@ export default function POS() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom affiché sur le ticket" size="large" autoFocus />
+            <Input placeholder={t.pos.quickClientTicketNamePlaceholder} size="large" autoFocus />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -942,7 +949,7 @@ export default function POS() {
               },
             ]}
           >
-            <Input placeholder="77 123 45 67 (facultatif)" size="large" />
+            <Input placeholder={t.pos.quickClientPhoneOptionalPlaceholder} size="large" />
           </Form.Item>
         </Form>
       </Modal>

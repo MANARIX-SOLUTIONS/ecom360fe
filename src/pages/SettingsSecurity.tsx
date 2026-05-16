@@ -12,10 +12,10 @@ export default function SettingsSecurity() {
   const onFinish = async (values: { currentPassword: string; newPassword: string }) => {
     try {
       await changePassword(values.currentPassword, values.newPassword);
-      message.success("Mot de passe mis à jour");
+      message.success(t.settings.securityPasswordUpdated);
       form.resetFields();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+      message.error(e instanceof Error ? e.message : t.settings.securityPasswordUpdateError);
     }
   };
 
@@ -57,7 +57,7 @@ export default function SettingsSecurity() {
           >
             <Input.Password
               prefix={<Lock size={18} />}
-              placeholder="••••••••"
+              placeholder={t.settings.passwordMaskedPlaceholder}
               autoComplete="current-password"
             />
           </Form.Item>
@@ -71,7 +71,7 @@ export default function SettingsSecurity() {
           >
             <Input.Password
               prefix={<Lock size={18} />}
-              placeholder="••••••••"
+              placeholder={t.settings.passwordMaskedPlaceholder}
               autoComplete="new-password"
             />
           </Form.Item>
@@ -89,7 +89,10 @@ export default function SettingsSecurity() {
               }),
             ]}
           >
-            <Input.Password prefix={<Lock size={18} />} placeholder="••••••••" />
+            <Input.Password
+              prefix={<Lock size={18} />}
+              placeholder={t.settings.passwordMaskedPlaceholder}
+            />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Button type="primary" htmlType="submit" className={styles.settingsSubmit} block>

@@ -15,6 +15,7 @@ import {
 } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { EmptyState } from "@/components/EmptyState";
 
 type Client = {
   id: string;
@@ -74,7 +75,7 @@ export default function Clients() {
         }))
       );
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
       setClients([]);
     } finally {
       setLoading(false);
@@ -119,7 +120,7 @@ export default function Clients() {
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}
-            placeholder={t.products.search}
+            placeholder={t.clients.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
@@ -138,31 +139,24 @@ export default function Clients() {
       </header>
       <Card variant="borderless" className={`${styles.card} contentCard`}>
         {clients.length === 0 ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Users size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              Aucun client
-            </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
-            >
-              Ajoutez vos clients pour suivre les crédits, les paiements et l'historique des achats.
-            </Typography.Text>
-            {!clientsAtLimit && matrixCan("CLIENTS_CREATE", "clients") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<UserPlus size={16} />}
-                onClick={() => setAddClientOpen(true)}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                Ajouter mon premier client
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Users}
+            title={t.clients.emptyTitle}
+            description={t.clients.emptyDesc}
+            action={
+              !clientsAtLimit && matrixCan("CLIENTS_CREATE", "clients") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<UserPlus size={16} />}
+                  onClick={() => setAddClientOpen(true)}
+                  style={{ height: 48 }}
+                >
+                  {t.clients.emptyCta}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -257,11 +251,13 @@ export default function Clients() {
                             if (window.confirm(t.common.delete + " ?")) {
                               deleteClient(r.id)
                                 .then(() => {
-                                  message.success("Client supprimé");
+                                  message.success(t.clients.msgDeleted);
                                   fetchClients();
                                 })
                                 .catch((e) =>
-                                  message.error(e instanceof Error ? e.message : "Erreur")
+                                  message.error(
+                                    e instanceof Error ? e.message : t.common.errorGeneric
+                                  )
                                 );
                             }
                           }}
@@ -289,11 +285,11 @@ export default function Clients() {
               amount: paymentAmount,
               paymentMethod: "cash",
             });
-            message.success("Paiement enregistré");
+            message.success(t.common.paymentRecorded);
             setPaymentModal(null);
             fetchClients();
           } catch (e) {
-            message.error(e instanceof Error ? e.message : "Erreur");
+            message.error(e instanceof Error ? e.message : t.common.errorGeneric);
           }
         }}
         okText={t.products.save}
@@ -338,12 +334,12 @@ export default function Clients() {
                 email: values.email || undefined,
                 address: values.address || undefined,
               });
-              message.success("Client ajouté");
+              message.success(t.clients.msgAdded);
               setAddClientOpen(false);
               addForm.resetFields();
               fetchClients();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -359,7 +355,7 @@ export default function Clients() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du client" />
+            <Input placeholder={t.clients.placeholderClientName} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -371,7 +367,7 @@ export default function Clients() {
               },
             ]}
           >
-            <Input placeholder="77 123 45 67" />
+            <Input placeholder={t.clients.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -381,7 +377,7 @@ export default function Clients() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="address" label={t.common.address}>
-            <Input placeholder="Adresse du client" />
+            <Input placeholder={t.clients.placeholderAddress} />
           </Form.Item>
         </Form>
       </Modal>
@@ -399,12 +395,12 @@ export default function Clients() {
                 email: values.email || undefined,
                 address: values.address || undefined,
               });
-              message.success("Client mis à jour");
+              message.success(t.clients.msgUpdated);
               setEditOpen(null);
               editForm.resetFields();
               fetchClients();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -420,7 +416,7 @@ export default function Clients() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du client" />
+            <Input placeholder={t.clients.placeholderClientName} />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -432,7 +428,7 @@ export default function Clients() {
               },
             ]}
           >
-            <Input placeholder="77 123 45 67" />
+            <Input placeholder={t.clients.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -442,7 +438,7 @@ export default function Clients() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="address" label={t.common.address}>
-            <Input placeholder="Adresse du client" />
+            <Input placeholder={t.clients.placeholderAddress} />
           </Form.Item>
         </Form>
       </Modal>

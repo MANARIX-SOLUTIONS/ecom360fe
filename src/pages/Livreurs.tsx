@@ -28,6 +28,7 @@ import {
 } from "@/api";
 import type { CourierResponse, CourierStatsResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { EmptyState } from "@/components/EmptyState";
 
 function getInitials(name: string) {
   return name
@@ -70,7 +71,7 @@ export default function Livreurs() {
       });
       setStatsMap(map);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
       setCouriers([]);
       setStatsMap({});
     } finally {
@@ -115,7 +116,7 @@ export default function Livreurs() {
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}
-            placeholder={t.products.search}
+            placeholder={t.livreurs.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
@@ -151,31 +152,24 @@ export default function Livreurs() {
       </header>
       <Card variant="borderless" className={`${styles.card} contentCard`}>
         {couriers.length === 0 ? (
-          <div className={styles.emptyHero}>
-            <div className={styles.emptyIconWrap}>
-              <Bike size={36} strokeWidth={1.5} />
-            </div>
-            <Typography.Title level={4} style={{ marginBottom: 8 }}>
-              {t.livreurs.emptyTitle}
-            </Typography.Title>
-            <Typography.Text
-              type="secondary"
-              style={{ maxWidth: 340, textAlign: "center", lineHeight: 1.6 }}
-            >
-              {t.livreurs.emptyDesc}
-            </Typography.Text>
-            {matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") && (
-              <Button
-                type="primary"
-                size="large"
-                icon={<Bike size={16} />}
-                onClick={() => setAddOpen(true)}
-                style={{ marginTop: 20, height: 48 }}
-              >
-                {t.livreurs.addCourier}
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={Bike}
+            title={t.livreurs.emptyTitle}
+            description={t.livreurs.emptyDesc}
+            action={
+              matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") ? (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Bike size={16} />}
+                  onClick={() => setAddOpen(true)}
+                  style={{ height: 48 }}
+                >
+                  {t.livreurs.addCourier}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -282,11 +276,13 @@ export default function Livreurs() {
                             if (window.confirm(`${t.common.delete} "${r.name}" ?`)) {
                               deleteCourier(r.id)
                                 .then(() => {
-                                  message.success("Livreur supprimé");
+                                  message.success(t.livreurs.msgDeleted);
                                   fetchCouriers();
                                 })
                                 .catch((err) =>
-                                  message.error(err instanceof Error ? err.message : "Erreur")
+                                  message.error(
+                                    err instanceof Error ? err.message : t.common.errorGeneric
+                                  )
                                 );
                             }
                           }}
@@ -314,12 +310,12 @@ export default function Livreurs() {
                 email: values.email || undefined,
                 isActive: values.isActive !== false,
               });
-              message.success("Livreur ajouté");
+              message.success(t.livreurs.msgAdded);
               setAddOpen(false);
               addForm.resetFields();
               fetchCouriers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -335,10 +331,10 @@ export default function Livreurs() {
             label={t.livreurs.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du livreur" />
+            <Input placeholder={t.livreurs.placeholderCourierName} />
           </Form.Item>
           <Form.Item name="phone" label={t.livreurs.phone}>
-            <Input placeholder="77 123 45 67" />
+            <Input placeholder={t.livreurs.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -371,12 +367,12 @@ export default function Livreurs() {
                 email: values.email || undefined,
                 isActive: values.isActive,
               });
-              message.success("Livreur mis à jour");
+              message.success(t.livreurs.msgUpdated);
               setEditOpen(null);
               editForm.resetFields();
               fetchCouriers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -392,10 +388,10 @@ export default function Livreurs() {
             label={t.livreurs.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du livreur" />
+            <Input placeholder={t.livreurs.placeholderCourierName} />
           </Form.Item>
           <Form.Item name="phone" label={t.livreurs.phone}>
-            <Input placeholder="77 123 45 67" />
+            <Input placeholder={t.livreurs.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -427,7 +423,7 @@ export default function Livreurs() {
               deliveryForm.resetFields();
               fetchCouriers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : "Erreur");
+              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
             }
           });
         }}
@@ -444,7 +440,7 @@ export default function Livreurs() {
             rules={[{ required: true, message: t.validation.requiredField }]}
           >
             <Select
-              placeholder="Choisir le livreur"
+              placeholder={t.livreurs.placeholderSelectCourier}
               showSearch
               optionFilterProp="label"
               options={couriers.map((c) => ({ value: c.id, label: c.name }))}
@@ -472,7 +468,7 @@ export default function Livreurs() {
             <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="notes" label="Note">
-            <Input.TextArea rows={2} placeholder="Optionnel" />
+            <Input.TextArea rows={2} placeholder={t.livreurs.optionalNotePlaceholder} />
           </Form.Item>
         </Form>
       </Modal>

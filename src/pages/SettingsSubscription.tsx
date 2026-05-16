@@ -16,52 +16,56 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
 
-const comparisonRows: { label: string; key: string }[] = [
-  { label: "Utilisateurs", key: "users" },
-  { label: "Boutiques", key: "stores" },
-  { label: "Ventes", key: "sales" },
-  { label: "Produits", key: "products" },
-  { label: "Clients", key: "clients" },
-  { label: "Fournisseurs", key: "suppliers" },
-  { label: "Point de vente (POS)", key: "pos" },
-  { label: "Gestion de stock", key: "stock" },
-  { label: "Reçus de vente", key: "receipts" },
-  { label: "Suivi des dépenses", key: "expenses" },
-  { label: "Gestion des livreurs (livraison)", key: "deliveryCouriers" },
-  { label: "Vue globale (toutes les boutiques)", key: "globalView" },
-  { label: "Rapports de base", key: "reports" },
-  { label: "Rapports avancés", key: "advancedReports" },
-  { label: "Paiement multi-méthodes", key: "multiPayment" },
-  { label: "Export PDF", key: "exportPdf" },
-  { label: "Export Excel", key: "exportExcel" },
-  { label: "Crédits clients", key: "clientCredits" },
-  { label: "Suivi fournisseurs", key: "supplierTracking" },
-  { label: "Gestion des rôles", key: "roleManagement" },
-  { label: "API & intégrations", key: "api" },
-  { label: "Support prioritaire", key: "prioritySupport" },
-  { label: "Account manager dédié", key: "accountManager" },
-  { label: "Personnalisation (logo)", key: "customBranding" },
-  { label: "Alertes stock bas", key: "stockAlerts" },
-  { label: "Historique des données", key: "dataRetention" },
-];
+function getPlanComparisonRows(): { label: string; key: string }[] {
+  return [
+    { label: t.settings.planRowUsers, key: "users" },
+    { label: t.settings.planRowStores, key: "stores" },
+    { label: t.settings.planRowSales, key: "sales" },
+    { label: t.settings.planRowProducts, key: "products" },
+    { label: t.settings.planRowClients, key: "clients" },
+    { label: t.settings.planRowSuppliers, key: "suppliers" },
+    { label: t.settings.planRowPos, key: "pos" },
+    { label: t.settings.planRowStock, key: "stock" },
+    { label: t.settings.planRowReceipts, key: "receipts" },
+    { label: t.settings.planRowExpenses, key: "expenses" },
+    { label: t.settings.planRowDeliveryCouriers, key: "deliveryCouriers" },
+    { label: t.settings.planRowGlobalView, key: "globalView" },
+    { label: t.settings.planRowReports, key: "reports" },
+    { label: t.settings.planRowAdvancedReports, key: "advancedReports" },
+    { label: t.settings.planRowMultiPayment, key: "multiPayment" },
+    { label: t.settings.planRowExportPdf, key: "exportPdf" },
+    { label: t.settings.planRowExportExcel, key: "exportExcel" },
+    { label: t.settings.planRowClientCredits, key: "clientCredits" },
+    { label: t.settings.planRowSupplierTracking, key: "supplierTracking" },
+    { label: t.settings.planRowRoleManagement, key: "roleManagement" },
+    { label: t.settings.planRowApi, key: "api" },
+    { label: t.settings.planRowPrioritySupport, key: "prioritySupport" },
+    { label: t.settings.planRowAccountManager, key: "accountManager" },
+    { label: t.settings.planRowCustomBranding, key: "customBranding" },
+    { label: t.settings.planRowStockAlerts, key: "stockAlerts" },
+    { label: t.settings.planRowDataRetention, key: "dataRetention" },
+  ];
+}
 
 function formatFCFA(n: number): string {
-  if (n === 0) return "Illimité";
+  if (n === 0) return t.common.unlimited;
   return new Intl.NumberFormat("fr-FR").format(n) + " F";
 }
 
 function formatDataRetention(months: number): string {
-  if (months === 0) return "Illimité";
-  return `${months} mois`;
+  if (months === 0) return t.common.unlimited;
+  return t.settings.dataRetentionMonthsTpl.replace("{n}", String(months));
 }
 
 function planToDisplay(p: PlanResponse) {
-  const users = p.maxUsers === 0 ? "Illimité" : String(p.maxUsers);
-  const stores = p.maxStores === 0 ? "Illimité" : String(p.maxStores);
-  const sales = p.maxSalesPerMonth === 0 ? "Illimité" : p.maxSalesPerMonth + "/mois";
-  const products = p.maxProducts === 0 ? "Illimité" : String(p.maxProducts);
-  const clients = p.maxClients === 0 ? "Illimité" : String(p.maxClients);
-  const suppliers = p.maxSuppliers === 0 ? "Illimité" : String(p.maxSuppliers);
+  const unlimited = t.common.unlimited;
+  const users = p.maxUsers === 0 ? unlimited : String(p.maxUsers);
+  const stores = p.maxStores === 0 ? unlimited : String(p.maxStores);
+  const sales =
+    p.maxSalesPerMonth === 0 ? unlimited : String(p.maxSalesPerMonth) + t.subscription.perMonth;
+  const products = p.maxProducts === 0 ? unlimited : String(p.maxProducts);
+  const clients = p.maxClients === 0 ? unlimited : String(p.maxClients);
+  const suppliers = p.maxSuppliers === 0 ? unlimited : String(p.maxSuppliers);
   const dataRetention = formatDataRetention(p.dataRetentionMonths ?? 0);
   return {
     key: p.slug,
@@ -69,26 +73,26 @@ function planToDisplay(p: PlanResponse) {
     price: formatFCFA(p.priceMonthly),
     priceYear: formatFCFA(p.priceYearly),
     features: [
-      `${users} utilisateur(s)`,
-      `${stores} boutique(s)`,
-      `Ventes: ${sales}`,
-      `Produits: ${products}`,
-      p.featureExpenses && "Suivi des dépenses",
-      p.featureDeliveryCouriers && "Gestion des livreurs (livraison)",
-      p.featureGlobalView && "Vue globale (toutes les boutiques)",
-      p.featureReports && "Rapports & analytics",
-      p.featureMultiPayment && "Paiement multi-méthodes",
-      p.featureExportPdf && "Export PDF",
-      p.featureExportExcel && "Export Excel",
-      p.featureClientCredits && "Crédits clients",
-      p.featureSupplierTracking && "Suivi fournisseurs",
-      p.featureStockAlerts && "Alertes stock bas",
-      `Historique : ${dataRetention}`,
-      p.featureRoleManagement && "Gestion des rôles",
-      p.featureApi && "API & intégrations",
-      p.featurePrioritySupport && "Support prioritaire",
-      p.featureAccountManager && "Account manager dédié",
-      p.featureCustomBranding && "Personnalisation (logo)",
+      t.settings.planLimitUsersTpl.replace("{n}", users),
+      t.settings.planLimitStoresTpl.replace("{n}", stores),
+      t.settings.planLimitSalesTpl.replace("{sales}", sales),
+      t.settings.planLimitProductsTpl.replace("{n}", products),
+      p.featureExpenses && t.settings.planFeatExpenses,
+      p.featureDeliveryCouriers && t.settings.planFeatDeliveryCouriers,
+      p.featureGlobalView && t.settings.planFeatGlobalView,
+      p.featureReports && t.settings.planFeatReports,
+      p.featureMultiPayment && t.settings.planFeatMultiPayment,
+      p.featureExportPdf && t.settings.planFeatExportPdf,
+      p.featureExportExcel && t.settings.planFeatExportExcel,
+      p.featureClientCredits && t.settings.planFeatClientCredits,
+      p.featureSupplierTracking && t.settings.planFeatSupplierTracking,
+      p.featureStockAlerts && t.settings.planFeatStockAlerts,
+      t.settings.planHistoryRetentionTpl.replace("{period}", dataRetention),
+      p.featureRoleManagement && t.settings.planFeatRoleManagement,
+      p.featureApi && t.settings.planFeatApi,
+      p.featurePrioritySupport && t.settings.planFeatPrioritySupport,
+      p.featureAccountManager && t.settings.planFeatAccountManager,
+      p.featureCustomBranding && t.settings.planFeatCustomBranding,
     ].filter(Boolean) as string[],
     limits: {
       users,
@@ -123,7 +127,8 @@ function planToDisplay(p: PlanResponse) {
 }
 
 function formatUsage(count: number, limit: number): string {
-  if (limit === 0) return `${count} (illimité)`;
+  if (limit === 0)
+    return t.settings.subscriptionUsageUnlimitedCount.replace("{count}", String(count));
   return `${count} / ${limit}`;
 }
 
@@ -140,6 +145,8 @@ export default function SettingsSubscription() {
   const [changing, setChanging] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+
+  const comparisonRows = getPlanComparisonRows();
 
   const currentPlanSlug = subscription?.planSlug ?? null;
   const isExpired =
@@ -162,29 +169,31 @@ export default function SettingsSubscription() {
         setSubscription(sub ?? null);
         setUsage(usageRes);
       })
-      .catch(() => message.error("Impossible de charger les plans"))
+      .catch(() => message.error(t.settings.plansLoadError))
       .finally(() => setLoading(false));
   }, []);
 
   const handleChoose = (plan: ReturnType<typeof planToDisplay>) => {
     if (plan.key === currentPlanSlug) return;
     Modal.confirm({
-      title: `Passer au plan ${plan.name} ?`,
-      content: `Vous serez facturé ${yearlyBilling ? plan.priceYear + "/an" : plan.price + "/mois"}. Le changement est immédiat.`,
-      okText: "Confirmer",
-      cancelText: "Annuler",
+      title: t.settings.planChangeModalTitle.replace("{plan}", plan.name),
+      content: t.settings.planChangeModalContent
+        .replace("{amount}", yearlyBilling ? plan.priceYear : plan.price)
+        .replace("{period}", yearlyBilling ? t.settings.periodPerYear : t.subscription.perMonth),
+      okText: t.common.confirm,
+      cancelText: t.common.cancel,
       onOk: () => {
         setChanging(plan.key);
         return changePlan(plan.key, yearlyBilling ? "yearly" : "monthly")
           .then((sub) => {
-            message.success(`Plan mis à jour vers ${plan.name} !`);
+            message.success(t.settings.planUpdatedToast.replace("{plan}", plan.name));
             setSubscription(sub);
             if (sub?.planSlug) localStorage.setItem("ecom360_plan_slug", sub.planSlug);
             window.dispatchEvent(new Event("ecom360:plan-updated"));
             refreshSubscription();
           })
           .catch((e) => {
-            message.error(e instanceof Error ? e.message : "Erreur lors du changement de plan");
+            message.error(e instanceof Error ? e.message : t.settings.planChangeError);
             return Promise.reject(e);
           })
           .finally(() => setChanging(null));
@@ -220,10 +229,10 @@ export default function SettingsSubscription() {
           }}
         >
           <Typography.Text strong style={{ color: "var(--color-warning)" }}>
-            Votre période d&apos;essai est terminée
+            {t.settings.subscriptionExpiredBannerTitle}
           </Typography.Text>
           <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-            Souscrivez à un plan pour continuer à utiliser Ecom360.
+            {t.settings.subscriptionExpiredBannerDesc}
           </Typography.Text>
         </Card>
       )}
@@ -233,7 +242,7 @@ export default function SettingsSubscription() {
           {t.settings.subscription}
         </Typography.Title>
         <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          Choisissez le plan qui correspond à votre activité
+          {t.settings.subscriptionPageSubtitle}
         </Typography.Text>
       </header>
 
@@ -246,27 +255,43 @@ export default function SettingsSubscription() {
           usage.suppliersLimit > 0 ||
           usage.salesLimit > 0) && (
           <Card size="small" style={{ marginBottom: 24 }}>
-            <Typography.Text strong>Votre utilisation</Typography.Text>
+            <Typography.Text strong>{t.settings.subscriptionUsageTitle}</Typography.Text>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 8, fontSize: 13 }}>
               {usage.usersLimit > 0 && (
-                <span>Utilisateurs : {formatUsage(usage.usersCount, usage.usersLimit)}</span>
+                <span>
+                  {t.settings.subscriptionUsageUsers}{" "}
+                  {formatUsage(usage.usersCount, usage.usersLimit)}
+                </span>
               )}
               {usage.storesLimit > 0 && (
-                <span>Boutiques : {formatUsage(usage.storesCount, usage.storesLimit)}</span>
+                <span>
+                  {t.settings.subscriptionUsageStores}{" "}
+                  {formatUsage(usage.storesCount, usage.storesLimit)}
+                </span>
               )}
               {usage.productsLimit > 0 && (
-                <span>Produits : {formatUsage(usage.productsCount, usage.productsLimit)}</span>
+                <span>
+                  {t.settings.subscriptionUsageProducts}{" "}
+                  {formatUsage(usage.productsCount, usage.productsLimit)}
+                </span>
               )}
               {usage.clientsLimit > 0 && (
-                <span>Clients : {formatUsage(usage.clientsCount, usage.clientsLimit)}</span>
+                <span>
+                  {t.settings.subscriptionUsageClients}{" "}
+                  {formatUsage(usage.clientsCount, usage.clientsLimit)}
+                </span>
               )}
               {usage.suppliersLimit > 0 && (
                 <span>
-                  Fournisseurs : {formatUsage(usage.suppliersCount, usage.suppliersLimit)}
+                  {t.settings.subscriptionUsageSuppliers}{" "}
+                  {formatUsage(usage.suppliersCount, usage.suppliersLimit)}
                 </span>
               )}
               {usage.salesLimit > 0 && (
-                <span>Ventes ce mois : {formatUsage(usage.salesThisMonth, usage.salesLimit)}</span>
+                <span>
+                  {t.settings.subscriptionUsageSalesMonth}{" "}
+                  {formatUsage(usage.salesThisMonth, usage.salesLimit)}
+                </span>
               )}
             </div>
           </Card>
@@ -279,19 +304,19 @@ export default function SettingsSubscription() {
           className={`${styles.billingBtn} ${!yearlyBilling ? styles.billingBtnActive : ""}`}
           onClick={() => setYearlyBilling(false)}
         >
-          Mensuel
+          {t.settings.billingMonthly}
         </button>
         <button
           type="button"
           className={`${styles.billingBtn} ${yearlyBilling ? styles.billingBtnActive : ""}`}
           onClick={() => setYearlyBilling(true)}
         >
-          Annuel
+          {t.settings.billingAnnual}
           <Tag
             color="success"
             style={{ margin: 0, marginLeft: 6, fontSize: 10, lineHeight: "16px", padding: "0 6px" }}
           >
-            -17%
+            {t.settings.billingAnnualDiscountTag}
           </Tag>
         </button>
       </div>
@@ -322,7 +347,7 @@ export default function SettingsSubscription() {
                       style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
                       <Star size={12} />
-                      Recommandé
+                      {t.settings.planRecommendedTag}
                     </Tag>
                   )}
                 </div>
@@ -331,7 +356,9 @@ export default function SettingsSubscription() {
                 <span className={styles.planCardPrice}>
                   {yearlyBilling ? plan.priceYear : plan.price}
                 </span>
-                <span className={styles.planCardPeriod}>{yearlyBilling ? "/an" : "/mois"}</span>
+                <span className={styles.planCardPeriod}>
+                  {yearlyBilling ? t.settings.periodPerYear : t.subscription.perMonth}
+                </span>
               </div>
               {isCurrent ? (
                 <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -344,17 +371,17 @@ export default function SettingsSubscription() {
                   </span>
                   {isTrialing && (
                     <Tag color="blue" style={{ alignSelf: "flex-start" }}>
-                      Essai gratuit
+                      {t.settings.trialFreeTag}
                     </Tag>
                   )}
                   {daysRemaining != null && daysRemaining >= 0 && (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      Jours restants : {daysRemaining}
+                      {t.settings.daysRemainingLabel} {daysRemaining}
                     </Typography.Text>
                   )}
                   {cancelAtPeriodEnd && (
                     <Tag color="orange" style={{ alignSelf: "flex-start" }}>
-                      Annulé à la fin de la période
+                      {t.settings.cancelAtPeriodEndTag}
                     </Tag>
                   )}
                 </div>
@@ -373,7 +400,7 @@ export default function SettingsSubscription() {
                   className={styles.planCardBadge}
                   style={{ display: "inline-block", marginBottom: 16 }}
                 >
-                  Lecture seule
+                  {t.settings.planReadOnlyBadge}
                 </span>
               )}
               <ul className={styles.planFeatures}>
@@ -392,7 +419,7 @@ export default function SettingsSubscription() {
       {/* Feature comparison table */}
       <div style={{ marginTop: 40 }}>
         <Typography.Title level={5} style={{ marginBottom: 16 }}>
-          Comparaison détaillée des plans
+          {t.settings.planComparisonTitle}
         </Typography.Title>
         <Card
           variant="borderless"
@@ -403,7 +430,7 @@ export default function SettingsSubscription() {
             <table>
               <thead>
                 <tr>
-                  <th>Fonctionnalité</th>
+                  <th>{t.settings.planComparisonFeatureColumn}</th>
                   {displayPlans.map((p) => (
                     <th
                       key={p.key}
@@ -457,7 +484,7 @@ export default function SettingsSubscription() {
             {cancelAtPeriodEnd ? (
               <>
                 <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                  Votre abonnement est annulé et prendra fin à la fin de la période en cours.
+                  {t.settings.subscriptionCancelPendingHint}
                 </Typography.Text>
                 <Button
                   type="primary"
@@ -466,24 +493,23 @@ export default function SettingsSubscription() {
                     setReactivating(true);
                     reactivateSubscription()
                       .then((sub) => {
-                        message.success("Abonnement réactivé");
+                        message.success(t.settings.subscriptionReactivated);
                         setSubscription(sub);
                         refreshSubscription();
                       })
                       .catch((e) => {
-                        message.error(e instanceof Error ? e.message : "Erreur");
+                        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
                       })
                       .finally(() => setReactivating(false));
                   }}
                 >
-                  Réactiver l&apos;abonnement
+                  {t.settings.subscriptionReactivateButton}
                 </Button>
               </>
             ) : (
               <>
                 <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-                  Annuler votre abonnement ? Choisissez de conserver l&apos;accès jusqu&apos;à la
-                  fin de la période ou d&apos;arrêter immédiatement.
+                  {t.settings.subscriptionCancelIntro}
                 </Typography.Text>
                 <Button
                   type="text"
@@ -491,20 +517,21 @@ export default function SettingsSubscription() {
                   loading={cancelling}
                   onClick={() => {
                     const { destroy } = Modal.confirm({
-                      title: "Annuler l'abonnement ?",
+                      title: t.settings.subscriptionCancelModalTitle,
                       content: (
                         <div style={{ marginTop: 8 }}>
                           <p style={{ marginBottom: 12 }}>
-                            <strong>À la fin de la période :</strong> Vous conserverez l&apos;accès
-                            jusqu&apos;à la fin de la période payée.
+                            <strong>{t.settings.subscriptionCancelEndPeriodTitle}</strong>{" "}
+                            {t.settings.subscriptionCancelEndPeriodDesc}
                           </p>
                           <p>
-                            <strong>Immédiatement :</strong> L&apos;accès sera coupé tout de suite.
+                            <strong>{t.settings.subscriptionCancelImmediateTitle}</strong>{" "}
+                            {t.settings.subscriptionCancelImmediateDesc}
                           </p>
                         </div>
                       ),
-                      okText: "À la fin de la période",
-                      cancelText: "Garder mon abonnement",
+                      okText: t.settings.subscriptionCancelOkEndPeriod,
+                      cancelText: t.settings.subscriptionCancelKeepSubscription,
                       footer: (_, { OkBtn, CancelBtn }) => (
                         <>
                           <CancelBtn />
@@ -515,17 +542,19 @@ export default function SettingsSubscription() {
                               setCancelling(true);
                               try {
                                 await cancelSubscription(false);
-                                message.success("Abonnement annulé immédiatement");
+                                message.success(t.settings.subscriptionCancelledNow);
                                 destroy();
                                 refreshSubscription();
                               } catch (e) {
-                                message.error(e instanceof Error ? e.message : "Erreur");
+                                message.error(
+                                  e instanceof Error ? e.message : t.common.errorGeneric
+                                );
                               } finally {
                                 setCancelling(false);
                               }
                             }}
                           >
-                            Immédiatement
+                            {t.settings.subscriptionCancelImmediateButton}
                           </Button>
                           <OkBtn />
                         </>
@@ -534,10 +563,10 @@ export default function SettingsSubscription() {
                         setCancelling(true);
                         try {
                           await cancelSubscription(true);
-                          message.success("Abonnement annulé à la fin de la période");
+                          message.success(t.settings.subscriptionCancelledEndPeriod);
                           refreshSubscription();
                         } catch (e) {
-                          message.error(e instanceof Error ? e.message : "Erreur");
+                          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
                           throw e;
                         } finally {
                           setCancelling(false);
@@ -546,7 +575,7 @@ export default function SettingsSubscription() {
                     });
                   }}
                 >
-                  Annuler l&apos;abonnement
+                  {t.settings.subscriptionCancelMainButton}
                 </Button>
               </>
             )}

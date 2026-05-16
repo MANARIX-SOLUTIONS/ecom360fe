@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, Typography, Table, Select, Space, Button, message, Tag } from "antd";
 import { RefreshCw, Download } from "lucide-react";
 import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
+import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
 const ENTITY_TYPES = [
@@ -51,7 +52,7 @@ export default function BackofficeAudit() {
       setAuditLogs(res.content);
       setTotal(res.totalElements);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement journal d'audit");
+      message.error(e instanceof Error ? e.message : t.backoffice.auditLogLoadError);
     } finally {
       setLoading(false);
     }
@@ -84,9 +85,9 @@ export default function BackofficeAudit() {
       a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      message.success("Journal d'audit exporté");
+      message.success(t.backoffice.auditExportSuccess);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur export");
+      message.error(e instanceof Error ? e.message : t.backoffice.auditExportError);
     }
   }, [entityFilter, businessFilter]);
 

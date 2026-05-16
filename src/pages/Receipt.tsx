@@ -60,14 +60,14 @@ function handleShare(
     navigator
       .share({ title: "Ticket de vente", text })
       .then(() => {
-        message.success("Partagé avec succès");
+        message.success(t.receipt.shareSuccess);
       })
       .catch(() => {});
   } else {
     navigator.clipboard
       ?.writeText(text)
       .then(() => {
-        message.success("Copié dans le presse-papiers");
+        message.success(t.receipt.copySuccess);
       })
       .catch(() => {});
   }
@@ -133,7 +133,7 @@ export default function Receipt() {
           if (e instanceof ApiError && e.status === 404) {
             setSaleNotFound(true);
           } else {
-            message.error(e instanceof Error ? e.message : "Erreur chargement du reçu");
+            message.error(e instanceof Error ? e.message : t.receipt.msgLoadError);
             navigate("/dashboard", { replace: true });
           }
         })

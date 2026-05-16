@@ -66,7 +66,7 @@ export default function SettingsProfile() {
           email: data.email,
         });
       })
-      .catch(() => message.error("Impossible de charger le profil"))
+      .catch(() => message.error(t.settings.companyProfileLoadError))
       .finally(() => setLoading(false));
   }, [form]);
 
@@ -84,7 +84,7 @@ export default function SettingsProfile() {
         phone: values.phone || undefined,
         address: values.address || undefined,
       });
-      message.success("Profil entreprise mis à jour");
+      message.success(t.settings.companyProfileUpdated);
       setProfile((prev) =>
         prev
           ? {
@@ -98,7 +98,7 @@ export default function SettingsProfile() {
       );
       void refreshBusinessProfile();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+      message.error(e instanceof Error ? e.message : t.settings.companyProfileUpdateError);
     } finally {
       setSaving(false);
     }
@@ -144,7 +144,7 @@ export default function SettingsProfile() {
               label={t.common.name}
               rules={[{ required: true, message: t.validation.nameRequired }]}
             >
-              <Input placeholder="Nom de l'entreprise" />
+              <Input placeholder={t.settings.companyNamePlaceholder} />
             </Form.Item>
             <Form.Item name="address" label={t.settings.addressLabel}>
               <Input placeholder={t.stores.address} />
@@ -154,7 +154,7 @@ export default function SettingsProfile() {
               label={t.common.phone}
               rules={[{ pattern: /^[\d\s+()-]{0,20}$/, message: t.validation.phoneInvalid }]}
             >
-              <Input placeholder="33 123 45 67" />
+              <Input placeholder={t.settings.companyPhonePlaceholder} />
             </Form.Item>
             <Form.Item
               name="email"
@@ -244,7 +244,7 @@ export default function SettingsProfile() {
                       message.success(t.settings.logoUploadSuccess);
                       void refreshBusinessProfile();
                     } catch (e) {
-                      message.error(e instanceof Error ? e.message : "Erreur");
+                      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
                     } finally {
                       setSavingLogo(false);
                     }
@@ -293,7 +293,7 @@ export default function SettingsProfile() {
                     message.success(trimmed ? t.settings.logoSaved : t.settings.logoRemoved);
                     void refreshBusinessProfile();
                   } catch (e) {
-                    message.error(e instanceof Error ? e.message : "Erreur");
+                    message.error(e instanceof Error ? e.message : t.common.errorGeneric);
                   } finally {
                     setSavingLogo(false);
                   }
@@ -314,7 +314,7 @@ export default function SettingsProfile() {
                     message.success(t.settings.logoRemoved);
                     void refreshBusinessProfile();
                   } catch (e) {
-                    message.error(e instanceof Error ? e.message : "Erreur");
+                    message.error(e instanceof Error ? e.message : t.common.errorGeneric);
                   } finally {
                     setSavingLogo(false);
                   }

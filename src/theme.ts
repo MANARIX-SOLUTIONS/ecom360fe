@@ -1,23 +1,30 @@
 /**
- * 360 PME Commerce – Design tokens
- * Primary: Vibrant Navy #1B4D7A | Accent: Teal #0891B2
- * Success: #10B981 | Warning: #F59E0B | Danger: #EF4444
- * Background: #F8FAFC | Text: #1E293B
+ * 360 PME Commerce — Design tokens V2 (ecom360V2)
+ * Primary navy profond | Accent cyan | Sémantique calibrée premium
  */
 export const tokens = {
   color: {
-    primary: "#1B4D7A",
-    accent: "#0891B2",
-    success: "#10B981",
-    warning: "#F59E0B",
-    danger: "#EF4444",
-    background: "#F8FAFC",
-    text: "#1E293B",
-    textSecondary: "#64748B",
+    primary: "#0f3460",
+    primaryHover: "#143d72",
+    accent: "#0ea5e9",
+    success: "#059669",
+    warning: "#d97706",
+    danger: "#dc2626",
+    background: "#f1f5f9",
+    text: "#0f172a",
+    textSecondary: "#475569",
+    textMuted: "#94a3b8",
+    borderSubtle: "rgba(15, 23, 42, 0.06)",
+    borderStrong: "rgba(15, 23, 42, 0.12)",
   },
   spacing: 8,
-  borderRadius: 12,
-  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+  borderRadius: 14,
+  borderRadiusSM: 10,
+  borderRadiusLG: 20,
+  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+  fontFamilyDisplay: '"Plus Jakarta Sans", "Inter", sans-serif',
+  shadowSm: "0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06)",
+  shadowMd: "0 4px 8px rgba(15, 23, 42, 0.04), 0 24px 48px rgba(15, 23, 42, 0.08)",
 } as const;
 
 export const antdTheme = {
@@ -31,41 +38,54 @@ export const antdTheme = {
     fontFamily: tokens.fontFamily,
     colorText: tokens.color.text,
     colorTextSecondary: tokens.color.textSecondary,
-    colorBgContainer: "#FFFFFF",
+    colorTextTertiary: tokens.color.textMuted,
+    colorBgContainer: "#ffffff",
     colorBgLayout: tokens.color.background,
+    colorBorder: tokens.color.borderStrong,
+    colorBorderSecondary: tokens.color.borderSubtle,
     controlHeight: 44,
     fontSize: 14,
     lineHeight: 1.6,
-    // Modern shadows
-    boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)",
-    boxShadowSecondary: "0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05)",
+    boxShadow: tokens.shadowSm,
+    boxShadowSecondary: tokens.shadowMd,
+    motionEaseOut: "cubic-bezier(0.22, 1, 0.36, 1)",
+    motionDurationMid: "0.24s",
+    motionDurationFast: "0.16s",
   },
   components: {
     Button: {
       controlHeight: 44,
       fontWeight: 500,
-      borderRadius: 10,
+      borderRadius: tokens.borderRadiusSM,
+      primaryShadow: "0 1px 3px rgba(15, 52, 96, 0.28)",
     },
     Input: {
       controlHeight: 44,
-      borderRadius: 10,
+      borderRadius: tokens.borderRadiusSM,
+      activeShadow: "0 0 0 3px rgba(15, 52, 96, 0.08)",
     },
     Select: {
       controlHeight: 44,
-      borderRadius: 10,
+      borderRadius: tokens.borderRadiusSM,
     },
     Card: {
-      borderRadiusLG: 14,
+      borderRadiusLG: tokens.borderRadiusLG,
+      headerFontSize: 16,
+      headerFontSizeSM: 15,
     },
     Modal: {
-      borderRadiusLG: 16,
+      borderRadiusLG: tokens.borderRadiusLG,
+    },
+    Drawer: {
+      borderRadiusLG: tokens.borderRadiusLG,
     },
     Table: {
-      borderRadiusLG: 12,
-      headerBg: "#F8FAFC",
-      headerColor: "#475569",
-      rowHoverBg: "rgba(27, 77, 122, 0.03)",
-      borderColor: "#E2E8F0",
+      borderRadiusLG: tokens.borderRadius,
+      headerBg: tokens.color.background,
+      headerColor: tokens.color.textSecondary,
+      headerSplitColor: tokens.color.borderSubtle,
+      rowHoverBg: "rgba(15, 52, 96, 0.06)",
+      borderColor: tokens.color.borderSubtle,
       cellPaddingBlock: 11,
       cellPaddingInline: 12,
       cellPaddingBlockMD: 10,
@@ -76,9 +96,15 @@ export const antdTheme = {
     Tabs: {
       itemActiveColor: tokens.color.primary,
       itemSelectedColor: tokens.color.primary,
+      inkBarColor: tokens.color.primary,
     },
     Tag: {
-      borderRadiusSM: 6,
+      borderRadiusSM: 8,
+    },
+    Menu: {
+      itemBorderRadius: tokens.borderRadiusSM,
+      itemSelectedBg: "rgba(15, 52, 96, 0.08)",
+      itemHoverBg: "rgba(15, 52, 96, 0.05)",
     },
   },
 };

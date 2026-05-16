@@ -44,6 +44,50 @@
   text-transform: capitalize;
 }
 
+.cashSummaryCard {
+  margin-bottom: var(--section-gap);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.cashSummaryHead {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cashSummaryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cashSummaryRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cashSummaryAmount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cashSummaryPct {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
 /* ========== KPI Row ========== */
 .kpiRow {
   margin-bottom: var(--section-gap);
@@ -86,6 +130,26 @@
   font-size: 12px;
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+.kpiTrend {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 11px;
+  max-width: 100%;
+}
+
+.kpiTrendCaption {
+  font-weight: 400;
+  opacity: 0.88;
+}
+
+.chartFullWidth {
+  grid-column: 1 / -1;
 }
 
 /* ========== Charts ========== */

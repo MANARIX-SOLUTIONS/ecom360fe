@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getAdminStats } from "@/api/backoffice";
+import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
 const planColors: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function Backoffice() {
       const data = await getAdminStats();
       setStats(data);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement statistiques");
+      message.error(e instanceof Error ? e.message : t.backoffice.statsLoadError);
     } finally {
       setLoading(false);
     }

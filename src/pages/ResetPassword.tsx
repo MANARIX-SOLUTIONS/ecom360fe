@@ -16,7 +16,7 @@ export default function ResetPassword() {
 
   const onFinish = async (values: { newPassword: string }) => {
     if (!token) {
-      setError("Lien invalide ou expiré. Demandez un nouveau lien.");
+      setError(t.auth.resetPasswordInvalidLinkError);
       return;
     }
     setError(null);
@@ -24,9 +24,9 @@ export default function ResetPassword() {
     try {
       await resetPassword(token, values.newPassword);
       setSuccess(true);
-      message.success("Mot de passe réinitialisé");
+      message.success(t.auth.resetPasswordSuccessToast);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la réinitialisation");
+      setError(e instanceof Error ? e.message : t.auth.resetPasswordGenericError);
     } finally {
       setLoading(false);
     }
@@ -37,14 +37,14 @@ export default function ResetPassword() {
       <div className={styles.wrapper}>
         <Card className={styles.card} variant="borderless">
           <Alert
-            message="Lien invalide"
-            description="Ce lien de réinitialisation est invalide ou a expiré. Demandez un nouveau lien depuis la page Mot de passe oublié."
+            message={t.auth.resetPasswordInvalidLinkAlertTitle}
+            description={t.auth.resetPasswordInvalidLinkAlertDesc}
             type="warning"
             showIcon
           />
           <Link to="/forgot-password">
             <Button type="primary" block size="large" style={{ marginTop: 24, height: 48 }}>
-              Demander un nouveau lien
+              {t.auth.resetPasswordRequestNewLink}
             </Button>
           </Link>
         </Card>
@@ -58,10 +58,10 @@ export default function ResetPassword() {
         <Card className={styles.card} variant="borderless">
           <div className={styles.successBlock}>
             <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
-              Mot de passe réinitialisé
+              {t.auth.resetPasswordSuccessTitle}
             </Typography.Title>
             <Typography.Text type="secondary">
-              Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
+              {t.auth.resetPasswordSuccessSubtitle}
             </Typography.Text>
           </div>
           <Button
@@ -83,11 +83,9 @@ export default function ResetPassword() {
       <Card className={styles.card} variant="borderless">
         <div className={styles.logoBlock}>
           <Typography.Title level={4} style={{ color: "var(--color-primary)", marginBottom: 8 }}>
-            Nouveau mot de passe
+            {t.auth.resetPasswordPageTitle}
           </Typography.Title>
-          <Typography.Text type="secondary">
-            Choisissez un mot de passe sécurisé (minimum 8 caractères).
-          </Typography.Text>
+          <Typography.Text type="secondary">{t.auth.resetPasswordPageSubtitle}</Typography.Text>
         </div>
         {error && (
           <Alert
@@ -108,10 +106,10 @@ export default function ResetPassword() {
         >
           <Form.Item
             name="newPassword"
-            label="Nouveau mot de passe"
+            label={t.auth.resetPasswordNewPasswordLabel}
             rules={[
               { required: true, message: t.validation.requiredField },
-              { min: 8, message: "Minimum 8 caractères" },
+              { min: 8, message: t.auth.resetPasswordMinCharsRule },
             ]}
           >
             <Input.Password
@@ -122,14 +120,14 @@ export default function ResetPassword() {
           </Form.Item>
           <Form.Item
             name="confirmPassword"
-            label="Confirmer le mot de passe"
+            label={t.auth.resetPasswordConfirmLabel}
             dependencies={["newPassword"]}
             rules={[
               { required: true, message: t.validation.requiredField },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue("newPassword") === value) return Promise.resolve();
-                  return Promise.reject(new Error("Les mots de passe ne correspondent pas"));
+                  return Promise.reject(new Error(t.settings.passwordMismatch));
                 },
               }),
             ]}
@@ -138,7 +136,7 @@ export default function ResetPassword() {
           </Form.Item>
           <Form.Item style={{ marginBottom: 8 }}>
             <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 48 }}>
-              Réinitialiser le mot de passe
+              {t.auth.resetPasswordSubmit}
             </Button>
           </Form.Item>
           <Link to="/login">

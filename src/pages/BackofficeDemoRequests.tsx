@@ -22,6 +22,7 @@ import {
   rejectAdminDemoRequest,
   type AdminDemoRequest,
 } from "@/api/backoffice";
+import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -59,7 +60,7 @@ export default function BackofficeDemoRequests() {
       setRows(res.content ?? []);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement");
+      message.error(e instanceof Error ? e.message : t.backoffice.demoRequestsLoadError);
       setRows([]);
       setTotal(0);
     } finally {
@@ -81,11 +82,11 @@ export default function BackofficeDemoRequests() {
         setActionLoading(r.id);
         try {
           await approveAdminDemoRequest(r.id);
-          message.success("Compte créé — le demandeur peut se connecter.");
+          message.success(t.backoffice.demoAccountCreated);
           setDetail(null);
           load();
         } catch (e) {
-          message.error(e instanceof Error ? e.message : "Erreur");
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
         } finally {
           setActionLoading(null);
         }
@@ -99,13 +100,13 @@ export default function BackofficeDemoRequests() {
     setActionLoading(rejectModal.id);
     try {
       await rejectAdminDemoRequest(rejectModal.id, reason || undefined);
-      message.success("Demande refusée");
+      message.success(t.backoffice.demoRequestRejected);
       setRejectModal(null);
       setDetail(null);
       rejectForm.resetFields();
       load();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setActionLoading(null);
     }

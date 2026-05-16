@@ -178,7 +178,7 @@ export default function BackofficeBusinesses() {
       setBusinesses(mapped);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur chargement entreprises");
+      message.error(e instanceof Error ? e.message : t.backoffice.businessesLoadError);
     } finally {
       setLoading(false);
     }
@@ -219,10 +219,12 @@ export default function BackofficeBusinesses() {
             if (detail?.id === biz.id)
               setDetail((prev) => (prev ? { ...prev, status: nextStatus } : null));
             message.success(
-              `"${biz.name}" ${nextStatus === "suspended" ? "suspendue" : "réactivée"}`
+              nextStatus === "suspended"
+                ? t.backoffice.businessSuspendedSuccess.replace("{name}", biz.name)
+                : t.backoffice.businessReactivatedSuccess.replace("{name}", biz.name)
             );
           } catch (e) {
-            message.error(e instanceof Error ? e.message : "Erreur");
+            message.error(e instanceof Error ? e.message : t.common.errorGeneric);
           }
         },
       });
@@ -279,7 +281,7 @@ export default function BackofficeBusinesses() {
     } catch {
       setAdminStores([]);
       setStoreUsage(null);
-      message.error("Impossible de charger les boutiques");
+      message.error(t.backoffice.storesLoadError);
     } finally {
       setStoresLoading(false);
     }
@@ -319,11 +321,9 @@ export default function BackofficeBusinesses() {
       try {
         const updated = await updateAdminBusinessMemberRole(detail.id, businessUserId, roleCode);
         setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-        message.success(
-          "Rôle mis à jour. L'utilisateur peut devoir se reconnecter pour voir les changements."
-        );
+        message.success(t.backoffice.memberRoleUpdatedSuccess);
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Impossible de mettre à jour le rôle");
+        message.error(e instanceof Error ? e.message : t.backoffice.memberRoleUpdateError);
       } finally {
         setUpdatingMemberId(null);
       }
@@ -371,7 +371,7 @@ export default function BackofficeBusinesses() {
       setRolePermModalOpen(false);
       setEditingRole(null);
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setRolePermSaving(false);
     }
@@ -394,7 +394,7 @@ export default function BackofficeBusinesses() {
         address: values.address || undefined,
         planSlug: values.planSlug && values.planSlug !== "trial" ? values.planSlug : undefined,
       });
-      message.success("Entreprise créée");
+      message.success(t.backoffice.businessCreated);
       setCreateModalOpen(false);
       createForm.resetFields();
       setDetail({
@@ -405,7 +405,7 @@ export default function BackofficeBusinesses() {
       loadBusinesses();
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors de la création");
+      message.error(e instanceof Error ? e.message : t.backoffice.businessCreateError);
     } finally {
       setCreateLoading(false);
     }
@@ -433,7 +433,7 @@ export default function BackofficeBusinesses() {
         phone: values.phone || undefined,
         address: values.address || undefined,
       });
-      message.success("Entreprise mise à jour");
+      message.success(t.backoffice.businessUpdated);
       setEditModalOpen(false);
       setDetail({
         ...updated,
@@ -447,7 +447,7 @@ export default function BackofficeBusinesses() {
       );
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+      message.error(e instanceof Error ? e.message : t.backoffice.businessUpdateError);
     } finally {
       setEditLoading(false);
     }
@@ -469,13 +469,13 @@ export default function BackofficeBusinesses() {
         planSlug: values.planSlug,
         billingCycle: values.billingCycle || "monthly",
       });
-      message.success("Plan mis à jour");
+      message.success(t.backoffice.adminPlanUpdated);
       setAssignPlanModalOpen(false);
       await refreshDetail(detail.id);
       await loadStoresForBusiness(detail.id);
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors du changement de plan");
+      message.error(e instanceof Error ? e.message : t.backoffice.adminPlanChangeError);
     } finally {
       setAssignPlanLoading(false);
     }
@@ -493,7 +493,7 @@ export default function BackofficeBusinesses() {
       });
       setRenewModalOpen(true);
     } catch {
-      message.error("Impossible de charger les plans");
+      message.error(t.settings.plansLoadError);
     }
   }, [detail, renewForm]);
 
@@ -506,13 +506,13 @@ export default function BackofficeBusinesses() {
         planSlug: values.planSlug as string | undefined,
         billingCycle: (values.billingCycle as string) || "monthly",
       });
-      message.success("Abonnement renouvelé");
+      message.success(t.backoffice.subscriptionRenewed);
       setRenewModalOpen(false);
       await refreshDetail(detail.id);
       await loadStoresForBusiness(detail.id);
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors du renouvellement");
+      message.error(e instanceof Error ? e.message : t.backoffice.subscriptionRenewError);
     } finally {
       setRenewLoading(false);
     }
@@ -557,10 +557,10 @@ export default function BackofficeBusinesses() {
       };
       if (editingStoreId) {
         await updateAdminBusinessStore(detail.id, editingStoreId, payload);
-        message.success("Boutique mise à jour");
+        message.success(t.backoffice.storeUpdated);
       } else {
         await createAdminBusinessStore(detail.id, payload);
-        message.success("Boutique créée");
+        message.success(t.backoffice.storeCreated);
       }
       setStoreModalOpen(false);
       storeForm.resetFields();
@@ -568,7 +568,7 @@ export default function BackofficeBusinesses() {
       await refreshDetail(detail.id);
     } catch (e) {
       if (e && typeof e === "object" && "errorFields" in e) return;
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     } finally {
       setStoreSaving(false);
     }
@@ -586,11 +586,11 @@ export default function BackofficeBusinesses() {
         onOk: async () => {
           try {
             await deleteAdminBusinessStore(detail.id, store.id);
-            message.success("Boutique supprimée");
+            message.success(t.backoffice.storeDeleted);
             await loadStoresForBusiness(detail.id);
             await refreshDetail(detail.id);
           } catch (e) {
-            message.error(e instanceof Error ? e.message : "Erreur");
+            message.error(e instanceof Error ? e.message : t.common.errorGeneric);
           }
         },
       });

@@ -52,7 +52,7 @@ export default function SettingsUsers() {
   useEffect(() => {
     listBusinessUsers()
       .then(setUsers)
-      .catch(() => message.error("Impossible de charger les utilisateurs"))
+      .catch(() => message.error(t.settings.usersLoadError))
       .finally(() => setLoading(false));
   }, []);
 
@@ -71,7 +71,7 @@ export default function SettingsUsers() {
       setStores(storesList);
       assignForm.setFieldsValue({ storeIds: assigned.map((s) => s.id) });
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Impossible de charger les boutiques");
+      message.error(e instanceof Error ? e.message : t.settings.storesLoadForAssignmentError);
       setAssignModalOpen(false);
       setAssignUser(null);
     } finally {
@@ -85,13 +85,13 @@ export default function SettingsUsers() {
       const values = assignForm.getFieldsValue();
       const storeIds = (values.storeIds ?? []) as string[];
       await assignStores(assignUser.id, storeIds);
-      message.success("Boutiques mises à jour");
+      message.success(t.settings.storesAssignmentUpdated);
       setAssignModalOpen(false);
       setAssignUser(null);
       assignForm.resetFields();
     } catch (e) {
       if (e instanceof Error && e.message?.includes("required")) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
+      message.error(e instanceof Error ? e.message : t.settings.storesAssignmentUpdateError);
     }
   };
 
@@ -103,11 +103,11 @@ export default function SettingsUsers() {
       await inviteBusinessUser({ email: values.email, role: values.role });
       setInviteOpen(false);
       form.resetFields();
-      message.success("Invitation envoyée");
+      message.success(t.settings.invitationSentSuccess);
       listBusinessUsers().then(setUsers);
     } catch (e) {
       if (e instanceof Error && e.message?.includes("required")) return;
-      message.error(e instanceof Error ? e.message : "Erreur lors de l'invitation");
+      message.error(e instanceof Error ? e.message : t.settings.invitationSendError);
     } finally {
       setInviting(false);
     }

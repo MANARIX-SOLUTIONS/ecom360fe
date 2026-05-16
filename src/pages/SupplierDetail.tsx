@@ -2,7 +2,8 @@ import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Typography, Table, Tag, Modal, Form, Input, message, Skeleton } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
-import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2, Wallet } from "lucide-react";
 import { t } from "@/i18n";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import styles from "./Clients.module.css";
@@ -55,7 +56,7 @@ export default function SupplierDetail() {
       if (e instanceof ApiError && e.status === 404) {
         setNotFound(true);
       } else {
-        message.error(e instanceof Error ? e.message : "Erreur chargement");
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setSupplier(null);
       }
     } finally {
@@ -105,9 +106,9 @@ export default function SupplierDetail() {
   if (notFound)
     return (
       <ResourceNotFound
-        resource="Fournisseur"
+        resource={t.suppliers.resourceLabel}
         backPath="/suppliers"
-        backLabel="Retour aux fournisseurs"
+        backLabel={t.suppliers.notFoundBack}
       />
     );
   if (!supplier) return <Navigate to="/suppliers" replace />;
@@ -128,11 +129,11 @@ export default function SupplierDetail() {
           email: values.email || undefined,
           zone: values.zone || undefined,
         });
-        message.success("Fournisseur mis à jour");
+        message.success(t.suppliers.msgUpdated);
         setEditOpen(false);
         fetchSupplier();
       } catch (e) {
-        message.error(e instanceof Error ? e.message : "Erreur");
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
   };
@@ -141,10 +142,10 @@ export default function SupplierDetail() {
     if (!window.confirm(t.common.delete + " ?")) return;
     deleteSupplier(id)
       .then(() => {
-        message.success("Fournisseur supprimé");
+        message.success(t.suppliers.msgDeleted);
         navigate("/suppliers");
       })
-      .catch((e) => message.error(e instanceof Error ? e.message : "Erreur"));
+      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
   };
 
   const handlePayment = async () => {
@@ -157,13 +158,13 @@ export default function SupplierDetail() {
         amount: paymentAmount,
         paymentMethod: "cash",
       });
-      message.success("Paiement enregistré");
+      message.success(t.common.paymentRecorded);
       setPaymentOpen(false);
       setPaymentAmount(Math.abs(supplier.balance));
       fetchSupplier();
       fetchPayments();
     } catch (e) {
-      message.error(e instanceof Error ? e.message : "Erreur");
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
   };
 
@@ -243,7 +244,12 @@ export default function SupplierDetail() {
         className={`${styles.card} contentCard`}
       >
         {payments.length === 0 ? (
-          <Typography.Text type="secondary">Aucun paiement enregistré</Typography.Text>
+          <EmptyState
+            compact
+            icon={Wallet}
+            title={t.suppliers.emptyPaymentHistoryTitle}
+            description={t.suppliers.emptyPaymentHistoryDesc}
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -278,14 +284,14 @@ export default function SupplierDetail() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder="Nom du fournisseur" />
+            <Input placeholder={t.suppliers.placeholderSupplierName} />
           </Form.Item>
           <Form.Item
             name="phone"
             label={t.common.phone}
             rules={[{ pattern: /^[\d\s+()-]{0,20}$/, message: t.validation.phoneInvalid }]}
           >
-            <Input placeholder="33 123 45 67" />
+            <Input placeholder={t.suppliers.placeholderPhoneExample} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -295,7 +301,7 @@ export default function SupplierDetail() {
             <Input placeholder={t.validation.emailPlaceholder} />
           </Form.Item>
           <Form.Item name="zone" label={t.common.zone}>
-            <Input placeholder="ex. Zone 4, Dakar" />
+            <Input placeholder={t.suppliers.placeholderZoneExample} />
           </Form.Item>
         </Form>
       </Modal>
