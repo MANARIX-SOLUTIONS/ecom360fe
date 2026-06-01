@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
+import dayjs from "dayjs";
 import {
   buildPaymentRowsFromSales,
   buildReportExportSnapshot,
   filterSalesInPeriod,
+  getReportPeriodLabel,
   reportExportBaseFilename,
   slugifyExportFilenamePart,
 } from "./reportExport";
@@ -102,6 +104,16 @@ describe("reportExport", () => {
     expect(snap.margin?.products).toHaveLength(1);
     expect(snap.sales).toHaveLength(2);
     expect(snap.salesIsExcerpt).toBe(true);
+  });
+
+  it("getReportPeriodLabel formats quarter and year", () => {
+    const anchors = {
+      selectedMonth: dayjs("2026-03-01"),
+      selectedQuarter: dayjs("2026-04-01"),
+      selectedYear: dayjs("2025-01-01"),
+    };
+    expect(getReportPeriodLabel("quarter", anchors)).toBe("T2 2026");
+    expect(getReportPeriodLabel("year", anchors)).toBe("2025");
   });
 
   it("slugifyExportFilenamePart normalizes store names", () => {

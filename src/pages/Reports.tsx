@@ -48,14 +48,14 @@ import {
 import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
+import { formatRangeSummaryFr, isYmdInInclusiveRange, ymdFromIsoLocal } from "@/utils/dateLocal";
+import { buildSalesChartData } from "@/utils/reportChartData";
 import {
-  formatRangeSummaryFr,
-  isYmdInInclusiveRange,
-  rangeFullCalendarMonth,
-  rangeRollingWeekWithinCurrentMonth,
-  rangeTodayLocal,
-  toLocalYmd,
-} from "@/utils/dateLocal";
+  type ReportsPeriodKey,
+  isCalendarQuarterAfterCurrent,
+  isCalendarYearAfterCurrent,
+  resolveReportsPeriodRange,
+} from "@/utils/periodRanges";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -69,9 +69,7 @@ import {
   REPORT_PAYMENT_LABELS,
 } from "@/utils/reportExport";
 
-type TabKey = "today" | "week" | "month" | "customMonth";
-
-type ChartPoint = { name: string; ventes: number; dépenses: number };
+type TabKey = ReportsPeriodKey;
 
 type ReportKpiCard = {
   key: string;
@@ -98,19 +96,6 @@ function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
 }
 
-function getPeriodRange(tab: TabKey, selectedMonth: Dayjs): { start: string; end: string } {
-  const now = new Date();
-  if (tab === "today") return rangeTodayLocal();
-  if (tab === "week") return rangeRollingWeekWithinCurrentMonth();
-  if (tab === "customMonth") {
-    return rangeFullCalendarMonth(selectedMonth.year(), selectedMonth.month());
-  }
-  return {
-    start: toLocalYmd(new Date(now.getFullYear(), now.getMonth(), 1)),
-    end: toLocalYmd(now),
-  };
-}
-
 function formatTime(iso: string) {
   try {
     return new Date(iso).toLocaleTimeString("fr-FR", {
@@ -134,22 +119,41 @@ export default function Reports() {
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("week");
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
+  const [selectedQuarter, setSelectedQuarter] = useState<Dayjs>(() => dayjs());
+  const [selectedYear, setSelectedYear] = useState<Dayjs>(() => dayjs());
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const dashboardFetchIdRef = useRef(0);
 
-  const periodRange = useMemo(
-    () => getPeriodRange(activeTab, selectedMonth),
-    [activeTab, selectedMonth]
+  const periodAnchors = useMemo(
+    () => ({
+      selectedMonth,
+      selectedQuarter,
+      selectedYear,
+    }),
+    [selectedMonth, selectedQuarter, selectedYear]
   );
+
+  const periodRange = useMemo(
+    () => resolveReportsPeriodRange(activeTab, periodAnchors),
+    [activeTab, periodAnchors]
+  );
+
+  /** Plage effective renvoyée par l’API (rétention plan, etc.). */
+  const effectivePeriodRange = useMemo(() => {
+    if (data?.periodStart && data?.periodEnd) {
+      return { start: data.periodStart, end: data.periodEnd };
+    }
+    return periodRange;
+  }, [data?.periodStart, data?.periodEnd, periodRange]);
 
   const loadData = useCallback(() => {
     if (!localStorage.getItem("ecom360_access_token")) {
       setLoading(false);
       return;
     }
-    const { start, end } = getPeriodRange(activeTab, selectedMonth);
+    const { start, end } = resolveReportsPeriodRange(activeTab, periodAnchors);
     const fetchId = ++dashboardFetchIdRef.current;
     setLoading(true);
     getDashboard({ periodStart: start, periodEnd: end })
@@ -166,7 +170,7 @@ export default function Reports() {
         if (fetchId !== dashboardFetchIdRef.current) return;
         setLoading(false);
       });
-  }, [activeTab, selectedMonth]);
+  }, [activeTab, periodAnchors]);
 
   useEffect(() => {
     loadData();
@@ -202,24 +206,16 @@ export default function Reports() {
 
   const salesInPeriod = useMemo(() => {
     if (!data?.recentSales?.length) return [];
-    const { start, end } = periodRange;
+    const { start, end } = effectivePeriodRange;
     return data.recentSales.filter((s) =>
-      isYmdInInclusiveRange(s.createdAt.slice(0, 10), start, end)
+      isYmdInInclusiveRange(ymdFromIsoLocal(s.createdAt), start, end)
     );
-  }, [data, periodRange.start, periodRange.end]);
+  }, [data, effectivePeriodRange.start, effectivePeriodRange.end]);
 
-  const chartData = useMemo((): ChartPoint[] => {
-    if (!salesInPeriod.length) return [];
-    const byPeriod: Record<string, { ventes: number; dépenses: number }> = {};
-    for (const s of salesInPeriod) {
-      const key = s.createdAt.slice(0, 10);
-      if (!byPeriod[key]) byPeriod[key] = { ventes: 0, dépenses: 0 };
-      byPeriod[key].ventes += s.total;
-    }
-    return Object.entries(byPeriod)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([name, v]) => ({ name: name.slice(5) || name, ...v }));
-  }, [salesInPeriod]);
+  const chartData = useMemo(
+    () => buildSalesChartData(salesInPeriod, effectivePeriodRange.start, effectivePeriodRange.end),
+    [salesInPeriod, effectivePeriodRange.start, effectivePeriodRange.end]
+  );
 
   const paymentData = useMemo(() => {
     if (!salesInPeriod.length) return [];
@@ -321,8 +317,8 @@ export default function Reports() {
     if (!data) return null;
     return buildReportExportSnapshot({
       data,
-      periodRange,
-      periodLabel: getReportPeriodLabel(activeTab, selectedMonth),
+      periodRange: effectivePeriodRange,
+      periodLabel: getReportPeriodLabel(activeTab, periodAnchors),
       business: {
         name: profile?.name ?? t.reports.exportProductBrand,
         address: profile?.address,
@@ -340,7 +336,7 @@ export default function Reports() {
       },
       includeGrossMargin: data.periodGrossMargin != null,
     });
-  }, [data, periodRange, activeTab, selectedMonth, profile, activeStore?.name]);
+  }, [data, effectivePeriodRange, activeTab, periodAnchors, profile, activeStore?.name]);
 
   const handleExportPdf = useCallback(async () => {
     const snapshot = buildExportSnapshot();
@@ -486,6 +482,8 @@ export default function Reports() {
           { key: "week", label: t.reports.thisWeek },
           { key: "month", label: t.reports.thisMonth },
           { key: "customMonth", label: t.reports.pickMonth },
+          { key: "quarter", label: t.reports.pickQuarter },
+          { key: "year", label: t.reports.pickYear },
         ]}
         className={styles.tabsWrap}
       />
@@ -510,8 +508,48 @@ export default function Reports() {
         </div>
       )}
 
+      {activeTab === "quarter" && (
+        <div className={styles.monthPickerWrap}>
+          <label htmlFor="reports-quarter" className={styles.monthPickerLabel}>
+            {t.reports.quarterPickerLabel}
+          </label>
+          <DatePicker
+            id="reports-quarter"
+            picker="quarter"
+            value={selectedQuarter}
+            onChange={(d) => {
+              if (d) setSelectedQuarter(d);
+            }}
+            format="[T]Q YYYY"
+            allowClear={false}
+            disabledDate={(current) => (current ? isCalendarQuarterAfterCurrent(current) : false)}
+            className={styles.monthPicker}
+          />
+        </div>
+      )}
+
+      {activeTab === "year" && (
+        <div className={styles.monthPickerWrap}>
+          <label htmlFor="reports-year" className={styles.monthPickerLabel}>
+            {t.reports.yearPickerLabel}
+          </label>
+          <DatePicker
+            id="reports-year"
+            picker="year"
+            value={selectedYear}
+            onChange={(d) => {
+              if (d) setSelectedYear(d);
+            }}
+            format="YYYY"
+            allowClear={false}
+            disabledDate={(current) => (current ? isCalendarYearAfterCurrent(current) : false)}
+            className={styles.monthPicker}
+          />
+        </div>
+      )}
+
       <Typography.Text type="secondary" className={styles.periodSummary}>
-        {formatRangeSummaryFr(periodRange.start, periodRange.end)}
+        {formatRangeSummaryFr(effectivePeriodRange.start, effectivePeriodRange.end)}
       </Typography.Text>
 
       {paymentAmountRows.length > 0 ? (

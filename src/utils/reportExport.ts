@@ -3,8 +3,14 @@
  */
 
 import type { DashboardResponse } from "@/api/dashboard";
-import { formatRangeSummaryFr, isYmdInInclusiveRange } from "@/utils/dateLocal";
+import { formatRangeSummaryFr, isYmdInInclusiveRange, ymdFromIsoLocal } from "@/utils/dateLocal";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
+import {
+  formatQuarterLabelFr,
+  formatYearLabelFr,
+  type PeriodRangeAnchors,
+  type ReportsPeriodKey,
+} from "@/utils/periodRanges";
 
 export const REPORT_PAYMENT_LABELS: Record<string, string> = {
   cash: "Espèces",
@@ -109,7 +115,7 @@ export function filterSalesInPeriod(
 ): DashboardResponse["recentSales"] {
   if (!recentSales?.length) return [];
   return recentSales.filter((s) =>
-    isYmdInInclusiveRange(s.createdAt.slice(0, 10), periodStart, periodEnd)
+    isYmdInInclusiveRange(ymdFromIsoLocal(s.createdAt), periodStart, periodEnd)
   );
 }
 
@@ -208,17 +214,19 @@ export function buildReportExportSnapshot(params: {
   };
 }
 
-export function getReportPeriodLabel(
-  tab: "today" | "week" | "month" | "customMonth",
-  selectedMonth: { year: () => number; month: () => number }
-): string {
+export function getReportPeriodLabel(tab: ReportsPeriodKey, anchors: PeriodRangeAnchors): string {
   if (tab === "today") return "Aujourd'hui";
   if (tab === "week") return "Cette semaine";
   if (tab === "month") return "Ce mois";
-  return new Date(selectedMonth.year(), selectedMonth.month(), 1).toLocaleDateString("fr-FR", {
-    month: "long",
-    year: "numeric",
-  });
+  if (tab === "customMonth") {
+    return new Date(
+      anchors.selectedMonth.year(),
+      anchors.selectedMonth.month(),
+      1
+    ).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+  if (tab === "quarter") return formatQuarterLabelFr(anchors.selectedQuarter);
+  return formatYearLabelFr(anchors.selectedYear);
 }
 
 export function slugifyExportFilenamePart(value: string): string {
