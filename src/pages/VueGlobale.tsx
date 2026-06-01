@@ -22,38 +22,18 @@ import { getGlobalView } from "@/api/dashboard";
 import type { GlobalViewResponse } from "@/api/dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
+import { formatRangeSummaryFr } from "@/utils/dateLocal";
 import {
-  formatRangeSummaryFr,
-  rangeFullCalendarMonth,
-  rangeRollingWeekWithinCurrentMonth,
-  rangeTodayLocal,
-  toLocalYmd,
-} from "@/utils/dateLocal";
+  type GlobalViewPeriodKey,
+  isCalendarQuarterAfterCurrent,
+  isCalendarYearAfterCurrent,
+  resolveGlobalViewPeriodRange,
+} from "@/utils/periodRanges";
 import styles from "./VueGlobale.module.css";
 
-type PeriodKey = "today" | "last7" | "thisMonth" | "month";
+type PeriodKey = GlobalViewPeriodKey;
 
-function getPeriodRange(
-  key: PeriodKey,
-  selectedMonth?: Dayjs | null
-): { start: string; end: string } {
-  if (key === "month") {
-    const m = selectedMonth ?? dayjs();
-    return rangeFullCalendarMonth(m.year(), m.month());
-  }
-  const now = new Date();
-  if (key === "today") {
-    return rangeTodayLocal();
-  }
-  if (key === "last7") {
-    return rangeRollingWeekWithinCurrentMonth();
-  }
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  return {
-    start: toLocalYmd(from),
-    end: toLocalYmd(now),
-  };
-}
+const PERIOD_TAB_KEYS: PeriodKey[] = ["today", "last7", "thisMonth", "month", "quarter", "year"];
 
 const frInteger = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
@@ -211,6 +191,8 @@ export default function VueGlobale() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodKey>("thisMonth");
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
+  const [selectedQuarter, setSelectedQuarter] = useState<Dayjs>(() => dayjs());
+  const [selectedYear, setSelectedYear] = useState<Dayjs>(() => dayjs());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GlobalViewResponse | null>(null);
@@ -220,7 +202,18 @@ export default function VueGlobale() {
     last7: t.globalView.periodLast7,
     thisMonth: t.globalView.periodThisMonth,
     month: t.globalView.periodPickMonth,
+    quarter: t.globalView.periodQuarter,
+    year: t.globalView.periodYear,
   };
+
+  const periodAnchors = useMemo(
+    () => ({
+      selectedMonth,
+      selectedQuarter,
+      selectedYear,
+    }),
+    [selectedMonth, selectedQuarter, selectedYear]
+  );
 
   const load = useCallback(async () => {
     if (!localStorage.getItem("ecom360_access_token")) {
@@ -230,7 +223,7 @@ export default function VueGlobale() {
     setLoading(true);
     setError(null);
     try {
-      const { start, end } = getPeriodRange(period, selectedMonth);
+      const { start, end } = resolveGlobalViewPeriodRange(period, periodAnchors);
       const res = await getGlobalView({ periodStart: start, periodEnd: end });
       setData(res);
     } catch (e) {
@@ -239,7 +232,7 @@ export default function VueGlobale() {
     } finally {
       setLoading(false);
     }
-  }, [period, selectedMonth]);
+  }, [period, periodAnchors]);
 
   useEffect(() => {
     load();
@@ -263,8 +256,8 @@ export default function VueGlobale() {
             <Skeleton.Input active style={{ width: 200, height: 32 }} />
             <Skeleton.Input active style={{ width: 280, height: 20, marginTop: 12 }} />
             <div className={styles.periodTabs}>
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton.Button key={i} active style={{ width: 120 }} />
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton.Button key={i} active style={{ width: 100 }} />
               ))}
             </div>
           </div>
@@ -303,7 +296,7 @@ export default function VueGlobale() {
             role="tablist"
             aria-label={t.globalView.periodTabsAria}
           >
-            {(["today", "last7", "thisMonth", "month"] as const).map((key) => (
+            {PERIOD_TAB_KEYS.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -334,6 +327,46 @@ export default function VueGlobale() {
                 disabledDate={(current) =>
                   current ? current.isAfter(dayjs().endOf("month")) : false
                 }
+                className={styles.monthPicker}
+              />
+            </div>
+          )}
+          {period === "quarter" && (
+            <div className={styles.monthPickerWrap}>
+              <label htmlFor="vue-globale-quarter" className={styles.monthPickerLabel}>
+                {t.globalView.quarterDisplayedLabel}
+              </label>
+              <DatePicker
+                id="vue-globale-quarter"
+                picker="quarter"
+                value={selectedQuarter}
+                onChange={(d) => {
+                  if (d) setSelectedQuarter(d);
+                }}
+                format="[T]Q YYYY"
+                allowClear={false}
+                disabledDate={(current) =>
+                  current ? isCalendarQuarterAfterCurrent(current) : false
+                }
+                className={styles.monthPicker}
+              />
+            </div>
+          )}
+          {period === "year" && (
+            <div className={styles.monthPickerWrap}>
+              <label htmlFor="vue-globale-year" className={styles.monthPickerLabel}>
+                {t.globalView.yearDisplayedLabel}
+              </label>
+              <DatePicker
+                id="vue-globale-year"
+                picker="year"
+                value={selectedYear}
+                onChange={(d) => {
+                  if (d) setSelectedYear(d);
+                }}
+                format="YYYY"
+                allowClear={false}
+                disabledDate={(current) => (current ? isCalendarYearAfterCurrent(current) : false)}
                 className={styles.monthPicker}
               />
             </div>

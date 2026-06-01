@@ -81,7 +81,57 @@ export function rangeFullCalendarMonth(
   return { start: toLocalYmd(start), end: toLocalYmd(end) };
 }
 
+/** Jour civil local à partir d’un instant ISO (évite le décalage UTC de slice(0, 10)). */
+export function ymdFromIsoLocal(iso: string): string {
+  try {
+    return toLocalYmd(new Date(iso));
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 /** Compare deux dates YYYY-MM-DD (chaînes triables). */
 export function isYmdInInclusiveRange(ymd: string, start: string, end: string): boolean {
   return ymd >= start && ymd <= end;
+}
+
+export type CalendarQuarter = 1 | 2 | 3 | 4;
+
+/** Trimestre civil (T1 = jan–mar, …), 1er → dernier jour du trimestre. */
+export function rangeFullCalendarQuarter(
+  year: number,
+  quarter: CalendarQuarter
+): { start: string; end: string } {
+  const startMonth = (quarter - 1) * 3;
+  const start = new Date(year, startMonth, 1);
+  const end = new Date(year, startMonth + 3, 0);
+  return { start: toLocalYmd(start), end: toLocalYmd(end) };
+}
+
+/** Année civile (1er jan → 31 déc). */
+export function rangeFullCalendarYear(year: number): { start: string; end: string } {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
+  return { start: toLocalYmd(start), end: toLocalYmd(end) };
+}
+
+/** Plafonne `end` à aujourd'hui si la plage dépasse la date du jour. */
+export function capRangeEndToToday(range: { start: string; end: string }): {
+  start: string;
+  end: string;
+} {
+  const today = toLocalYmd(new Date());
+  if (range.end <= today) {
+    return range;
+  }
+  const end = today < range.start ? range.start : today;
+  return { start: range.start, end };
+}
+
+/** Nombre de jours calendaires inclus entre deux YYYY-MM-DD. */
+export function inclusiveDaysBetween(startYmd: string, endYmd: string): number {
+  const start = parseYmdLocal(startYmd);
+  const end = parseYmdLocal(endYmd);
+  const ms = end.getTime() - start.getTime();
+  return Math.floor(ms / 86_400_000) + 1;
 }
