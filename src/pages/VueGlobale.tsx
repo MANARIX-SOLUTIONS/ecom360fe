@@ -247,6 +247,11 @@ export default function VueGlobale() {
     return [...data.salesByStore].sort((a, b) => b.revenue - a.revenue);
   }, [data?.salesByStore]);
 
+  const hasStoreActivity =
+    (data?.salesByStore.length ?? 0) > 0 ||
+    (data?.totalSalesCount ?? 0) > 0 ||
+    (data?.totalExpenses ?? 0) > 0;
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -474,19 +479,31 @@ export default function VueGlobale() {
                   <BarChart3 size={22} className={styles.sectionTitleIcon} aria-hidden />
                   {t.globalView.sectionStoresTitle}
                 </h2>
-                {data.totalSalesCount > 0 && (
-                  <button
-                    type="button"
-                    className={styles.sectionLink}
-                    onClick={() => navigate("/sales")}
-                  >
-                    {t.globalView.linkSeeSales}
-                    <ChevronRight size={16} aria-hidden />
-                  </button>
-                )}
+                <div className={styles.sectionLinks}>
+                  {data.totalSalesCount > 0 && (
+                    <button
+                      type="button"
+                      className={styles.sectionLink}
+                      onClick={() => navigate("/sales")}
+                    >
+                      {t.globalView.linkSeeSales}
+                      <ChevronRight size={16} aria-hidden />
+                    </button>
+                  )}
+                  {data.totalExpenses > 0 && (
+                    <button
+                      type="button"
+                      className={styles.sectionLink}
+                      onClick={() => navigate("/expenses")}
+                    >
+                      {t.globalView.linkSeeExpenses}
+                      <ChevronRight size={16} aria-hidden />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className={styles.panel}>
-                {data.salesByStore.length === 0 ? (
+                {!hasStoreActivity ? (
                   <EmptyState
                     compact
                     icon={Store}
@@ -495,31 +512,69 @@ export default function VueGlobale() {
                   />
                 ) : (
                   <div className={styles.storeBars}>
-                    {rankedStores.map((store, index) => (
-                      <div key={store.storeId} className={styles.storeBarRow}>
-                        <div className={styles.storeBarHead}>
-                          <span className={styles.storeRank} aria-hidden>
-                            {index + 1}
+                    {rankedStores.map((store, index) => {
+                      const displayName =
+                        store.storeId == null ? t.globalView.storeUnassignedName : store.storeName;
+                      return (
+                        <div key={store.storeId ?? "unassigned"} className={styles.storeBarRow}>
+                          <div className={styles.storeBarHead}>
+                            <span className={styles.storeRank} aria-hidden>
+                              {index + 1}
+                            </span>
+                            <span className={styles.storeBarName}>{displayName}</span>
+                          </div>
+                          <span className={styles.storeBarStats}>
+                            <span className={styles.storeBarAmount}>
+                              {formatFCFA(store.revenue)}
+                            </span>
+                            {" · "}
+                            {store.salesCount} {t.globalView.storeSalesSuffix}
+                            {store.revenue > 0 && (
+                              <>
+                                {" · "}
+                                <span className={styles.storeShare}>{store.sharePercent}% CA</span>
+                              </>
+                            )}
                           </span>
-                          <span className={styles.storeBarName}>{store.storeName}</span>
+                          <div className={styles.storeBarMetrics}>
+                            <span>
+                              {t.globalView.storeExpensesLabel}{" "}
+                              <strong className={styles.storeMetricExpense}>
+                                {formatFCFA(store.expenses)}
+                              </strong>
+                              {store.expenses > 0 && data.totalExpenses > 0 && (
+                                <span className={styles.storeMetricMuted}>
+                                  {" "}
+                                  ({store.expenseSharePercent}%)
+                                </span>
+                              )}
+                            </span>
+                            <span>
+                              {t.globalView.storeProfitLabel}{" "}
+                              <strong
+                                className={
+                                  store.profit >= 0
+                                    ? styles.storeMetricProfit
+                                    : styles.storeMetricLoss
+                                }
+                              >
+                                {formatFCFA(store.profit)}
+                              </strong>
+                            </span>
+                          </div>
+                          {store.revenue > 0 && (
+                            <div className={styles.storeBarBg} role="presentation">
+                              <div
+                                className={styles.storeBarFill}
+                                style={{
+                                  width: `${Math.max((100 * store.revenue) / maxRevenue, 4)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
-                        <span className={styles.storeBarStats}>
-                          <span className={styles.storeBarAmount}>{formatFCFA(store.revenue)}</span>
-                          {" · "}
-                          {store.salesCount} {t.globalView.storeSalesSuffix}
-                          {" · "}
-                          <span className={styles.storeShare}>{store.sharePercent}%</span>
-                        </span>
-                        <div className={styles.storeBarBg} role="presentation">
-                          <div
-                            className={styles.storeBarFill}
-                            style={{
-                              width: `${Math.max((100 * store.revenue) / maxRevenue, 4)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

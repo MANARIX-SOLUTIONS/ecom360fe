@@ -119,11 +119,14 @@ export async function getDashboardLowStockSlice(params: {
 
 /** Vue globale : agrégation toutes boutiques + répartition par store */
 export type StoreStats = {
-  storeId: string;
+  storeId: string | null;
   storeName: string;
   revenue: number;
   salesCount: number;
   sharePercent: number;
+  expenses: number;
+  profit: number;
+  expenseSharePercent: number;
 };
 
 export type GlobalViewResponse = {
