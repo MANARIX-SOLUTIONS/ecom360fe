@@ -639,6 +639,13 @@
   border-color: rgba(27, 77, 122, 0.28);
 }
 
+.sectionLinks {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .sectionTitleIcon {
   color: var(--color-primary);
 }
@@ -733,6 +740,33 @@
   font-weight: 700;
   color: var(--color-text);
   white-space: nowrap;
+}
+
+.storeBarMetrics {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: -4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.storeMetricExpense {
+  color: var(--color-warning, #d97706);
+}
+
+.storeMetricProfit {
+  color: var(--color-success, #059669);
+}
+
+.storeMetricLoss {
+  color: var(--color-error);
+}
+
+.storeMetricMuted {
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .topProductsTable {
