@@ -13,16 +13,26 @@ import {
   Select,
   message,
   Skeleton,
+  Upload,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Package, Pencil, Trash2, Layers, History } from "lucide-react";
+import {
+  ArrowLeft,
+  Package,
+  Pencil,
+  Trash2,
+  Layers,
+  History,
+  Upload as UploadIcon,
+} from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import {
   getProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImageFile,
   listCategoriesWithDefaults,
   ApiError,
 } from "@/api";
@@ -33,6 +43,7 @@ import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
+import type { UploadFile } from "antd/es/upload/interface";
 
 function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
   if (stock <= 0) return "critical";
@@ -68,6 +79,35 @@ export default function ProductDetail() {
   const [stockOpen, setStockOpen] = useState(false);
   const [editForm] = Form.useForm();
   const [stockForm] = Form.useForm();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
+
+  const resetImageState = () => {
+    setImageFile(null);
+    setImageRemoved(false);
+    setImageFileList([]);
+  };
+
+  const openEditModal = () => {
+    if (!product) return;
+    setImageFile(null);
+    setImageRemoved(false);
+    const src = sanitizeExternalImageUrl(product.imageUrl);
+    if (src) {
+      setImageFileList([
+        {
+          uid: "-existing",
+          name: "image",
+          status: "done",
+          url: src,
+        },
+      ]);
+    } else {
+      setImageFileList([]);
+    }
+    setEditOpen(true);
+  };
 
   const fetchProduct = useCallback(async () => {
     if (!id || !localStorage.getItem("ecom360_access_token")) return;
@@ -190,18 +230,26 @@ export default function ProductDetail() {
           message.warning(t.products.msgSelectOwnerStore);
           return;
         }
-        await updateProduct(id, {
+        const imageUrlForUpdate: string | null = imageRemoved ? null : (product.imageUrl ?? null);
+        await updateProduct(id!, {
           name: values.name,
           categoryId: values.categoryId || null,
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
           storeId: values.storeId,
-          // Preserve image — BE applyFields always overwrites imageUrl
-          imageUrl: product.imageUrl,
+          imageUrl: imageUrlForUpdate,
           isActive: product.isActive,
         });
+        if (imageFile) {
+          try {
+            await uploadProductImageFile(id!, imageFile);
+          } catch (e) {
+            message.error(e instanceof Error ? e.message : t.products.imageUploadError);
+          }
+        }
         message.success(t.products.msgUpdated);
         setEditOpen(false);
+        resetImageState();
         fetchProduct();
       } catch (e) {
         message.error(e instanceof Error ? e.message : t.common.errorGeneric);
@@ -329,7 +377,7 @@ export default function ProductDetail() {
               </Button>
             )}
             {matrixCan("PRODUCTS_UPDATE", "products") && (
-              <Button icon={<Pencil size={18} />} onClick={() => setEditOpen(true)}>
+              <Button icon={<Pencil size={18} />} onClick={openEditModal}>
                 {t.common.edit}
               </Button>
             )}
@@ -497,11 +545,66 @@ export default function ProductDetail() {
         title={t.products.editProduct}
         open={editOpen}
         onOk={handleEdit}
-        onCancel={() => setEditOpen(false)}
+        onCancel={() => {
+          setEditOpen(false);
+          resetImageState();
+        }}
         okText={t.products.save}
         width={440}
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label={t.products.imageLabel}>
+            <Upload
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              listType="picture-card"
+              maxCount={1}
+              fileList={imageFileList}
+              beforeUpload={(file) => {
+                const isAllowed =
+                  file.type === "image/png" ||
+                  file.type === "image/jpeg" ||
+                  file.type === "image/webp" ||
+                  file.type === "image/gif";
+                if (!isAllowed) {
+                  message.error(t.products.imageFormats);
+                  return Upload.LIST_IGNORE;
+                }
+                if (file.size > 8 * 1024 * 1024) {
+                  message.error(t.products.imageFormats);
+                  return Upload.LIST_IGNORE;
+                }
+                const preview = URL.createObjectURL(file);
+                setImageFile(file);
+                setImageRemoved(false);
+                setImageFileList([
+                  {
+                    uid: "-1",
+                    name: file.name,
+                    status: "done",
+                    url: preview,
+                  },
+                ]);
+                return false;
+              }}
+              onRemove={() => {
+                setImageFile(null);
+                setImageFileList([]);
+                setImageRemoved(true);
+                return true;
+              }}
+            >
+              {imageFileList.length >= 1 ? null : (
+                <div>
+                  <UploadIcon size={18} />
+                  <div style={{ marginTop: 8 }}>{t.products.imageUpload}</div>
+                </div>
+              )}
+            </Upload>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t.products.imageFormats}
+            </Typography.Text>
+          </Form.Item>
           <Form.Item
             name="name"
             label={t.common.name}
