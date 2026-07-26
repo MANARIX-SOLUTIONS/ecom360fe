@@ -40,7 +40,11 @@ export default function Clients() {
   const { activeStore } = useStore();
   const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [paymentModal, setPaymentModal] = useState<Client | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [addClientOpen, setAddClientOpen] = useState(false);
@@ -51,48 +55,64 @@ export default function Clients() {
   const [clientsAtLimit, setClientsAtLimit] = useState(false);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
     getSubscriptionUsage()
       .then((u) => setClientsAtLimit(u.clientsLimit > 0 && u.clientsCount >= u.clientsLimit))
       .catch(() => setClientsAtLimit(false));
   }, [clients.length]);
 
-  const fetchClients = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await listClients({ page: 0, size: 200 });
-      setClients(
-        res.content.map((c) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone || "",
-          email: c.email || "",
-          address: c.address || "",
-          balance: c.creditBalance ?? 0,
-        }))
-      );
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
-      setClients([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchClients = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!isCancelled?.()) setLoading(false);
+        return;
+      }
+      if (!isCancelled?.()) setLoading(true);
+      try {
+        const res = await listClients({
+          page,
+          size: pageSize,
+          search: debouncedSearch || undefined,
+        });
+        if (isCancelled?.()) return;
+        setClients(
+          res.content.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone || "",
+            email: c.email || "",
+            address: c.address || "",
+            balance: c.creditBalance ?? 0,
+          }))
+        );
+        setTotal(res.totalElements ?? 0);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
+        setClients([]);
+        setTotal(0);
+      } finally {
+        if (!isCancelled?.()) setLoading(false);
+      }
+    },
+    [page, pageSize, debouncedSearch]
+  );
 
   useEffect(() => {
-    fetchClients();
+    let cancelled = false;
+    void fetchClients(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchClients]);
-
-  const filtered = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.phone && c.phone.includes(search)) ||
-      (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
-      (c.address && c.address.toLowerCase().includes(search.toLowerCase()))
-  );
 
   if (loading) {
     return (
@@ -160,9 +180,19 @@ export default function Clients() {
         ) : (
           <div className="tableResponsive">
             <Table
-              dataSource={filtered}
+              dataSource={clients}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "50"],
+                onChange: (p, size) => {
+                  setPage(p - 1);
+                  setPageSize(size);
+                },
+              }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
                 role: "button",

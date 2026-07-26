@@ -69,52 +69,72 @@ export default function Expenses() {
   const [editingCategory, setEditingCategory] = useState<ExpenseCategoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
+  const [summaryExpenses, setSummaryExpenses] = useState<ExpenseResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [categories, setCategories] = useState<ExpenseCategoryResponse[]>([]);
 
-  const fetchData = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [expRes, catRes] = await Promise.all([
-        listExpenses({
-          page: 0,
-          size: 500,
-          storeId: activeStore?.id,
-          month: filterMonth,
-          year: filterYear,
-          categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
-        }),
-        listExpenseCategoriesWithDefaults(),
-      ]);
-      setExpenses(expRes.content);
-      setCategories(catRes);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
-      setExpenses([]);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    setPage(0);
   }, [activeStore?.id, filterMonth, filterYear, categoryFilter]);
 
+  const fetchData = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!isCancelled?.()) setLoading(false);
+        return;
+      }
+      if (!isCancelled?.()) setLoading(true);
+      const filters = {
+        storeId: activeStore?.id,
+        month: filterMonth,
+        year: filterYear,
+        categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
+      };
+      try {
+        const [expRes, summaryRes, catRes] = await Promise.all([
+          listExpenses({ ...filters, page, size: pageSize }),
+          listExpenses({ ...filters, page: 0, size: 100 }),
+          listExpenseCategoriesWithDefaults(),
+        ]);
+        if (isCancelled?.()) return;
+        setExpenses(expRes.content);
+        setTotal(expRes.totalElements ?? 0);
+        setSummaryExpenses(summaryRes.content);
+        setCategories(catRes);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
+        setExpenses([]);
+        setSummaryExpenses([]);
+        setTotal(0);
+      } finally {
+        if (!isCancelled?.()) setLoading(false);
+      }
+    },
+    [activeStore?.id, filterMonth, filterYear, categoryFilter, page, pageSize]
+  );
+
   useEffect(() => {
-    fetchData();
+    let cancelled = false;
+    void fetchData(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchData]);
 
-  const filtered =
-    categoryFilter === "all" ? expenses : expenses.filter((e) => e.categoryId === categoryFilter);
+  const filtered = expenses;
 
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
   const categoryColorMap: Record<string, string> = Object.fromEntries(
     categories.map((c) => [c.id, c.color || "default"])
   );
 
-  const monthTotal = expenses.reduce((s, e) => s + (e.amount ?? 0), 0);
+  const monthTotal = summaryExpenses.reduce((s, e) => s + (e.amount ?? 0), 0);
 
-  const topCategory = expenses.length
-    ? [...expenses].reduce(
+  const topCategory = summaryExpenses.length
+    ? [...summaryExpenses].reduce(
         (acc, e) => {
           const cat = categoryById[e.categoryId];
           const name = cat?.name ?? "Autre";
@@ -143,7 +163,7 @@ export default function Expenses() {
     },
     {
       label: "Nb dépenses",
-      value: String(expenses.length),
+      value: String(total),
       icon: BarChart3,
       color: "var(--color-success)",
       bg: "rgba(46,204,113,0.08)",
@@ -384,7 +404,17 @@ export default function Expenses() {
               dataSource={filtered}
               className="dataTable"
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "50", "100"],
+                onChange: (p, size) => {
+                  setPage(p - 1);
+                  setPageSize(size);
+                },
+              }}
               locale={{ emptyText: "Aucune dépense trouvée" }}
               columns={[
                 { title: t.common.date, dataIndex: "expenseDate", width: 120 },

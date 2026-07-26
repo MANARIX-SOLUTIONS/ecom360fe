@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, memo } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import {
   Card,
@@ -113,7 +113,7 @@ function categoryInitial(category: string): string {
   return category.charAt(0).toUpperCase();
 }
 
-function ProductCardVisual({
+const ProductCardVisual = memo(function ProductCardVisual({
   imageUrl,
   category,
   catColor,
@@ -127,7 +127,16 @@ function ProductCardVisual({
 
   if (src && !imgFailed) {
     return (
-      <img src={src} alt="" className={styles.productImage} onError={() => setImgFailed(true)} />
+      <img
+        src={src}
+        alt=""
+        width={80}
+        height={80}
+        loading="lazy"
+        decoding="async"
+        className={styles.productImage}
+        onError={() => setImgFailed(true)}
+      />
     );
   }
 
@@ -136,7 +145,58 @@ function ProductCardVisual({
       {categoryInitial(category)}
     </span>
   );
-}
+});
+
+type PosProductCardProps = {
+  product: ProductForPOS;
+  cartQty: number;
+  maxStock: number;
+  onAdd: (product: ProductForPOS) => void;
+};
+
+const PosProductCard = memo(function PosProductCard({
+  product,
+  cartQty,
+  maxStock,
+  onAdd,
+}: PosProductCardProps) {
+  const availableStock = maxStock - cartQty;
+  const level = stockLevel(availableStock, product.minStock);
+  const outOfStock = availableStock <= 0;
+  const catColor = CATEGORY_COLORS[product.category] || "#999";
+  const priceLabel = `${product.price.toLocaleString("fr-FR")} F`;
+
+  return (
+    <button
+      type="button"
+      className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartQty > 0 ? styles.productCardInCart : ""}`}
+      onClick={() => onAdd(product)}
+      disabled={outOfStock}
+      aria-disabled={outOfStock}
+      aria-label={`${product.name}, ${priceLabel}`}
+    >
+      <div className={styles.productMedia}>
+        <ProductCardVisual
+          imageUrl={product.imageUrl}
+          category={product.category}
+          catColor={catColor}
+        />
+      </div>
+      {cartQty > 0 && <span className={styles.cartQtyBadge}>{cartQty}</span>}
+      <div className={styles.productOverlay}>
+        <span className={styles.productName}>{product.name}</span>
+        <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
+        <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+          {outOfStock
+            ? t.pos.outOfStock
+            : level === "low"
+              ? `Stock: ${availableStock} ⚠`
+              : `Stock: ${availableStock}`}
+        </span>
+      </div>
+    </button>
+  );
+});
 
 const CATEGORY_COLORS: Record<string, string> = {
   Alimentation: "#2ecc71",
@@ -144,6 +204,284 @@ const CATEGORY_COLORS: Record<string, string> = {
   Hygiène: "#9b59b6",
   Divers: "#95a5a6",
 };
+
+type PosCartPanelProps = {
+  cart: CartLine[];
+  itemCount: number;
+  onUpdateQty: (id: string, delta: number) => void;
+  onRemoveLine: (id: string) => void;
+  onClear: () => void;
+};
+
+const PosCartPanel = memo(function PosCartPanel({
+  cart,
+  itemCount,
+  onUpdateQty,
+  onRemoveLine,
+  onClear,
+}: PosCartPanelProps) {
+  return (
+    <Card className={styles.cartCard} variant="borderless">
+      <div className={styles.cartHeader}>
+        <ShoppingBag size={18} />
+        <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
+          {t.pos.cartTitle}
+        </Typography.Text>
+        {itemCount > 0 && (
+          <>
+            <Badge count={itemCount} style={{ backgroundColor: "var(--color-primary)" }} />
+            <button
+              type="button"
+              className={styles.clearCartBtn}
+              onClick={onClear}
+              aria-label={t.pos.clearCartAria}
+            >
+              {t.pos.clearCart}
+            </button>
+          </>
+        )}
+      </div>
+      {cart.length === 0 ? (
+        <div className={styles.cartEmpty}>
+          <EmptyState
+            compact
+            icon={ShoppingBag}
+            title={t.pos.cartEmptyTitle}
+            description={t.pos.cartEmptyHint}
+          />
+        </div>
+      ) : (
+        <div className={styles.cartList}>
+          {cart.map((l) => (
+            <div key={l.id} className={styles.cartLine}>
+              <div className={styles.cartLineInfo}>
+                <span className={styles.cartLineName}>{l.name}</span>
+                <span className={styles.cartLineMeta}>
+                  {l.price.toLocaleString("fr-FR")} F × {l.qty}
+                </span>
+              </div>
+              <div className={styles.cartLineActions}>
+                <button
+                  type="button"
+                  className={styles.qtyBtn}
+                  onClick={() => onUpdateQty(l.id, -1)}
+                  aria-label="Diminuer"
+                >
+                  <Minus size={14} />
+                </button>
+                <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
+                <button
+                  type="button"
+                  className={styles.qtyBtn}
+                  onClick={() => onUpdateQty(l.id, 1)}
+                  aria-label="Augmenter"
+                >
+                  <Plus size={14} />
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
+                  onClick={() => onRemoveLine(l.id)}
+                  aria-label="Supprimer"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <span className={`amount ${styles.lineTotal}`}>
+                {(l.price * l.qty).toLocaleString("fr-FR")} F
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+});
+
+type PosCheckoutPanelProps = {
+  paymentMethods: Array<(typeof PAYMENT_METHODS)[number]>;
+  paymentMethod: PaymentMethod;
+  onPaymentMethodChange: (method: PaymentMethod) => void;
+  clients: ClientForPOS[];
+  selectedClientId: string | null;
+  onClientChange: (id: string) => void;
+  onQuickAddClient: () => void;
+  selectedClient: ClientForPOS | null;
+  discount: number;
+  onDiscountChange: (value: number) => void;
+  total: number;
+  editSaleId?: string;
+  salesAtLimit: boolean;
+  loading: boolean;
+  editHydrated: boolean;
+  cartEmpty: boolean;
+  onValidate: () => void;
+};
+
+const PosCheckoutPanel = memo(function PosCheckoutPanel({
+  paymentMethods,
+  paymentMethod,
+  onPaymentMethodChange,
+  clients,
+  selectedClientId,
+  onClientChange,
+  onQuickAddClient,
+  selectedClient,
+  discount,
+  onDiscountChange,
+  total,
+  editSaleId,
+  salesAtLimit,
+  loading,
+  editHydrated,
+  cartEmpty,
+  onValidate,
+}: PosCheckoutPanelProps) {
+  return (
+    <div className={styles.right}>
+      <Card className={styles.totalCard} variant="borderless">
+        <div className={styles.paymentSection}>
+          <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
+            Mode de paiement
+          </Typography.Text>
+          <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
+            {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={paymentMethod === key}
+                className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
+                onClick={() => onPaymentMethodChange(key)}
+                style={
+                  paymentMethod === key
+                    ? {
+                        borderColor: color,
+                        background: bg,
+                      }
+                    : undefined
+                }
+              >
+                <span className={styles.payMethodVisual} aria-hidden>
+                  <img
+                    src={image}
+                    alt=""
+                    className={
+                      key === "wave" || key === "orange_money"
+                        ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
+                        : styles.payMethodImg
+                    }
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </span>
+                <span className={styles.payMethodLabel}>{label}</span>
+                <span className={styles.payMethodHint}>{hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.clientRow}>
+          <div className={styles.clientRowHeader}>
+            <Typography.Text type="secondary">
+              {paymentMethod === "credit" ? t.pos.clientCreditLabelShort : t.pos.clientLabelShort}
+            </Typography.Text>
+            <Button
+              type="link"
+              size="small"
+              className={styles.quickAddClientBtn}
+              icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
+              onClick={onQuickAddClient}
+            >
+              {t.pos.quickAddClient}
+            </Button>
+          </div>
+          <Typography.Text type="secondary" className={styles.clientCreditHint}>
+            {t.pos.quickAddClientHint}
+          </Typography.Text>
+          <Select
+            placeholder={t.pos.placeholderSelectClient}
+            value={selectedClientId}
+            onChange={onClientChange}
+            options={clients.map((c) => ({
+              value: c.id,
+              label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
+            }))}
+            style={{ width: "100%" }}
+            size="large"
+            showSearch
+            optionFilterProp="label"
+            notFoundContent={
+              <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
+            }
+          />
+          {paymentMethod === "credit" && selectedClientId && (
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: 8, fontSize: 13 }}
+            >
+              {t.pos.currentDebtLabel} :{" "}
+              {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
+              {t.pos.afterThisSaleLabel}{" "}
+              <strong>
+                {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
+              </strong>
+            </Typography.Text>
+          )}
+        </div>
+
+        <div className={styles.totalDivider} />
+
+        <div className={styles.discountRow}>
+          <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
+          <CurrencyInput
+            min={0}
+            value={discount}
+            onChange={(v) => onDiscountChange(Number(v) || 0)}
+            style={{ width: 140 }}
+          />
+        </div>
+
+        <div className={styles.totalRow}>
+          <Typography.Text type="secondary">{t.common.total}</Typography.Text>
+          <Typography.Title level={2} className={styles.totalAmount}>
+            {total.toLocaleString("fr-FR")} F
+          </Typography.Title>
+        </div>
+
+        {!editSaleId && salesAtLimit && (
+          <div
+            style={{
+              padding: 12,
+              marginBottom: 12,
+              background: "rgba(239,68,68,0.08)",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--color-danger)",
+            }}
+          >
+            {t.pos.monthlySalesLimitReached}{" "}
+            <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
+              {t.pos.upgradePlanLink}
+            </Link>
+          </div>
+        )}
+        <Button
+          type="primary"
+          size="large"
+          block
+          className={styles.validateBtn}
+          onClick={onValidate}
+          loading={loading}
+          disabled={cartEmpty || (!!editSaleId && !editHydrated) || (!editSaleId && salesAtLimit)}
+        >
+          {editSaleId ? t.pos.updateSale : t.pos.validateSale}
+        </Button>
+      </Card>
+    </div>
+  );
+});
 
 /** Colonnes visibles environ × lignes sans scroll excessif avant « Voir plus » */
 const PRODUCTS_PAGE_SIZE = {
@@ -203,6 +541,7 @@ export default function POS() {
 
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("Tous");
 
   const posBreakpoint = usePosBreakpoint();
@@ -210,6 +549,11 @@ export default function POS() {
   const [productVisibleLimit, setProductVisibleLimit] = useState<number>(
     () => PRODUCTS_PAGE_SIZE[getPosBreakpoint()]
   );
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     setProductVisibleLimit(productPageSize);
@@ -318,14 +662,21 @@ export default function POS() {
       setClients([]);
       return;
     }
+    let cancelled = false;
     const load = async () => {
       try {
-        const [stockList, catsRes, clientsRes] = await Promise.all([
-          getStockByStore(activeStore.id),
+        const [stockRes, catsRes, clientsRes] = await Promise.all([
+          getStockByStore(activeStore.id, {
+            page: 0,
+            size: 100,
+            search: debouncedSearch.trim() || undefined,
+          }),
           listCategories(),
-          listClients({ page: 0, size: 200 }),
+          listClients({ page: 0, size: 100 }),
         ]);
+        if (cancelled) return;
 
+        const stockList = Array.isArray(stockRes) ? stockRes : stockRes.content;
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({
@@ -338,6 +689,7 @@ export default function POS() {
         if (!walkIn) {
           try {
             const created = await createClient({ name: WALK_IN_CLIENT_NAME });
+            if (cancelled) return;
             walkIn = {
               id: created.id,
               name: created.name,
@@ -374,13 +726,17 @@ export default function POS() {
           }))
         );
       } catch (e) {
+        if (cancelled) return;
         message.error(e instanceof Error ? e.message : t.pos.msgProductsLoadError);
         setProducts([]);
         setClients([]);
       }
     };
     load();
-  }, [activeStore?.id, editSaleId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeStore?.id, editSaleId, debouncedSearch]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement)?.tagName;
@@ -437,34 +793,42 @@ export default function POS() {
     [products, editSaleId, saleToEdit, originalQtyByProduct]
   );
 
-  const addToCart = (p: (typeof products)[0]) => {
-    const maxStock = maxQtyForProduct(p.id);
-    if (maxStock <= 0) return;
-    setCart((prev) => {
-      const existing = prev.find((l) => l.id === p.id);
-      if (existing) {
-        if (existing.qty >= maxStock) return prev;
-        return prev.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l));
-      }
-      return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
-    });
-  };
+  const addToCart = useCallback(
+    (p: ProductForPOS) => {
+      const maxStock = maxQtyForProduct(p.id);
+      if (maxStock <= 0) return;
+      setCart((prev) => {
+        const existing = prev.find((l) => l.id === p.id);
+        if (existing) {
+          if (existing.qty >= maxStock) return prev;
+          return prev.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l));
+        }
+        return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
+      });
+    },
+    [maxQtyForProduct]
+  );
 
-  const updateQty = (id: string, delta: number) => {
-    setCart((prev) => {
-      const line = prev.find((l) => l.id === id);
-      if (!line) return prev;
-      const maxStock = maxQtyForProduct(id);
-      let newQty = line.qty + delta;
-      if (newQty > maxStock) newQty = maxStock;
-      if (newQty <= 0) return prev.filter((l) => l.id !== id);
-      return prev.map((l) => (l.id === id ? { ...l, qty: newQty } : l));
-    });
-  };
+  const updateQty = useCallback(
+    (id: string, delta: number) => {
+      setCart((prev) => {
+        const line = prev.find((l) => l.id === id);
+        if (!line) return prev;
+        const maxStock = maxQtyForProduct(id);
+        let newQty = line.qty + delta;
+        if (newQty > maxStock) newQty = maxStock;
+        if (newQty <= 0) return prev.filter((l) => l.id !== id);
+        return prev.map((l) => (l.id === id ? { ...l, qty: newQty } : l));
+      });
+    },
+    [maxQtyForProduct]
+  );
 
-  const removeLine = (id: string) => {
+  const removeLine = useCallback((id: string) => {
     setCart((prev) => prev.filter((l) => l.id !== id));
-  };
+  }, []);
+
+  const clearCart = useCallback(() => setCart([]), []);
 
   const handleQuickClientCreate = () =>
     quickClientForm.validateFields().then(async (values) => {
@@ -495,7 +859,7 @@ export default function POS() {
       }
     });
 
-  const validateSale = async () => {
+  const validateSale = useCallback(async () => {
     if (cart.length === 0) {
       message.warning(t.pos.addAtLeastOne);
       return;
@@ -576,7 +940,22 @@ export default function POS() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    cart,
+    activeStore?.id,
+    selectedClientId,
+    paymentMethod,
+    selectedClient?.isWalkIn,
+    editSaleId,
+    saleToEdit,
+    products,
+    discount,
+    clients,
+    navigate,
+  ]);
+
+  const openQuickClient = useCallback(() => setQuickClientOpen(true), []);
+  const onDiscountChange = useCallback((value: number) => setDiscount(value), []);
 
   const editSaleLoading = Boolean(editSaleId && !editLoadError && (!saleToEdit || !editHydrated));
 
@@ -656,42 +1035,14 @@ export default function POS() {
             <div className={styles.productGrid}>
               {displayedProducts.map((p) => {
                 const cartItem = cart.find((l) => l.id === p.id);
-                const maxStock = maxQtyForProduct(p.id);
-                const availableStock = maxStock - (cartItem?.qty ?? 0);
-                const level = stockLevel(availableStock, p.minStock);
-                const outOfStock = availableStock <= 0;
-                const catColor = CATEGORY_COLORS[p.category] || "#999";
-                const priceLabel = `${p.price.toLocaleString("fr-FR")} F`;
                 return (
-                  <button
-                    type="button"
+                  <PosProductCard
                     key={p.id}
-                    className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartItem ? styles.productCardInCart : ""}`}
-                    onClick={() => addToCart(p)}
-                    disabled={outOfStock}
-                    aria-disabled={outOfStock}
-                    aria-label={`${p.name}, ${priceLabel}`}
-                  >
-                    <div className={styles.productMedia}>
-                      <ProductCardVisual
-                        imageUrl={p.imageUrl}
-                        category={p.category}
-                        catColor={catColor}
-                      />
-                    </div>
-                    {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
-                    <div className={styles.productOverlay}>
-                      <span className={styles.productName}>{p.name}</span>
-                      <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
-                      <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-                        {outOfStock
-                          ? t.pos.outOfStock
-                          : level === "low"
-                            ? `Stock: ${availableStock} ⚠`
-                            : `Stock: ${availableStock}`}
-                      </span>
-                    </div>
-                  </button>
+                    product={p}
+                    cartQty={cartItem?.qty ?? 0}
+                    maxStock={maxQtyForProduct(p.id)}
+                    onAdd={addToCart}
+                  />
                 );
               })}
             </div>
@@ -708,237 +1059,33 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Center: cart */}
-        <Card className={styles.cartCard} variant="borderless">
-          <div className={styles.cartHeader}>
-            <ShoppingBag size={18} />
-            <Typography.Text strong style={{ fontSize: 15, flex: 1 }}>
-              {t.pos.cartTitle}
-            </Typography.Text>
-            {itemCount > 0 && (
-              <>
-                <Badge count={itemCount} style={{ backgroundColor: "var(--color-primary)" }} />
-                <button
-                  type="button"
-                  className={styles.clearCartBtn}
-                  onClick={() => setCart([])}
-                  aria-label={t.pos.clearCartAria}
-                >
-                  {t.pos.clearCart}
-                </button>
-              </>
-            )}
-          </div>
-          {cart.length === 0 ? (
-            <div className={styles.cartEmpty}>
-              <EmptyState
-                compact
-                icon={ShoppingBag}
-                title={t.pos.cartEmptyTitle}
-                description={t.pos.cartEmptyHint}
-              />
-            </div>
-          ) : (
-            <div className={styles.cartList}>
-              {cart.map((l) => (
-                <div key={l.id} className={styles.cartLine}>
-                  <div className={styles.cartLineInfo}>
-                    <span className={styles.cartLineName}>{l.name}</span>
-                    <span className={styles.cartLineMeta}>
-                      {l.price.toLocaleString("fr-FR")} F × {l.qty}
-                    </span>
-                  </div>
-                  <div className={styles.cartLineActions}>
-                    <button
-                      type="button"
-                      className={styles.qtyBtn}
-                      onClick={() => updateQty(l.id, -1)}
-                      aria-label="Diminuer"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
-                    <button
-                      type="button"
-                      className={styles.qtyBtn}
-                      onClick={() => updateQty(l.id, 1)}
-                      aria-label="Augmenter"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
-                      onClick={() => removeLine(l.id)}
-                      aria-label="Supprimer"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                  <span className={`amount ${styles.lineTotal}`}>
-                    {(l.price * l.qty).toLocaleString("fr-FR")} F
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        <PosCartPanel
+          cart={cart}
+          itemCount={itemCount}
+          onUpdateQty={updateQty}
+          onRemoveLine={removeLine}
+          onClear={clearCart}
+        />
 
-        {/* Right: payment method selection + total + CTA */}
-        <div className={styles.right}>
-          <Card className={styles.totalCard} variant="borderless">
-            {/* Payment method selection */}
-            <div className={styles.paymentSection}>
-              <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
-                Mode de paiement
-              </Typography.Text>
-              <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
-                {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    role="radio"
-                    aria-checked={paymentMethod === key}
-                    className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
-                    onClick={() => {
-                      setPaymentMethod(key);
-                    }}
-                    style={
-                      paymentMethod === key
-                        ? {
-                            borderColor: color,
-                            background: bg,
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className={styles.payMethodVisual} aria-hidden>
-                      <img
-                        src={image}
-                        alt=""
-                        className={
-                          key === "wave" || key === "orange_money"
-                            ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
-                            : styles.payMethodImg
-                        }
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </span>
-                    <span className={styles.payMethodLabel}>{label}</span>
-                    <span className={styles.payMethodHint}>{hint}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.clientRow}>
-              <div className={styles.clientRowHeader}>
-                <Typography.Text type="secondary">
-                  {paymentMethod === "credit"
-                    ? t.pos.clientCreditLabelShort
-                    : t.pos.clientLabelShort}
-                </Typography.Text>
-                <Button
-                  type="link"
-                  size="small"
-                  className={styles.quickAddClientBtn}
-                  icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
-                  onClick={() => setQuickClientOpen(true)}
-                >
-                  {t.pos.quickAddClient}
-                </Button>
-              </div>
-              <Typography.Text type="secondary" className={styles.clientCreditHint}>
-                {t.pos.quickAddClientHint}
-              </Typography.Text>
-              <Select
-                placeholder={t.pos.placeholderSelectClient}
-                value={selectedClientId}
-                onChange={setSelectedClientId}
-                options={clients.map((c) => ({
-                  value: c.id,
-                  label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
-                }))}
-                style={{ width: "100%" }}
-                size="large"
-                showSearch
-                optionFilterProp="label"
-                notFoundContent={
-                  <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
-                }
-              />
-              {paymentMethod === "credit" && selectedClientId && (
-                <Typography.Text
-                  type="secondary"
-                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
-                >
-                  {t.pos.currentDebtLabel} :{" "}
-                  {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
-                  {t.pos.afterThisSaleLabel}{" "}
-                  <strong>
-                    {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
-                  </strong>
-                </Typography.Text>
-              )}
-            </div>
-
-            <div className={styles.totalDivider} />
-
-            {/* Discount */}
-            <div className={styles.discountRow}>
-              <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
-              <CurrencyInput
-                min={0}
-                value={discount}
-                onChange={(v) => setDiscount(Number(v) || 0)}
-                style={{ width: 140 }}
-              />
-            </div>
-
-            {/* Total */}
-            <div className={styles.totalRow}>
-              <Typography.Text type="secondary">{t.common.total}</Typography.Text>
-              <Typography.Title level={2} className={styles.totalAmount}>
-                {total.toLocaleString("fr-FR")} F
-              </Typography.Title>
-            </div>
-
-            {!editSaleId && salesAtLimit && (
-              <div
-                style={{
-                  padding: 12,
-                  marginBottom: 12,
-                  background: "rgba(239,68,68,0.08)",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  color: "var(--color-danger)",
-                }}
-              >
-                {t.pos.monthlySalesLimitReached}{" "}
-                <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
-                  {t.pos.upgradePlanLink}
-                </Link>
-              </div>
-            )}
-            {/* Single validate CTA */}
-            <Button
-              type="primary"
-              size="large"
-              block
-              className={styles.validateBtn}
-              onClick={validateSale}
-              loading={loading}
-              disabled={
-                cart.length === 0 ||
-                (!!editSaleId && !editHydrated) ||
-                (!editSaleId && salesAtLimit)
-              }
-            >
-              {editSaleId ? t.pos.updateSale : t.pos.validateSale}
-            </Button>
-          </Card>
-        </div>
+        <PosCheckoutPanel
+          paymentMethods={paymentMethods}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={setPaymentMethod}
+          clients={clients}
+          selectedClientId={selectedClientId}
+          onClientChange={setSelectedClientId}
+          onQuickAddClient={openQuickClient}
+          selectedClient={selectedClient}
+          discount={discount}
+          onDiscountChange={onDiscountChange}
+          total={total}
+          editSaleId={editSaleId}
+          salesAtLimit={salesAtLimit}
+          loading={loading}
+          editHydrated={editHydrated}
+          cartEmpty={cart.length === 0}
+          onValidate={validateSale}
+        />
       </div>
 
       <Modal

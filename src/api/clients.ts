@@ -49,10 +49,12 @@ export type ClientPaymentResponse = {
 export async function listClients(params?: {
   page?: number;
   size?: number;
+  search?: string;
 }): Promise<PageResponse<ClientResponse>> {
   const search = new URLSearchParams();
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.size != null) search.set("size", String(params.size));
+  if (params?.search) search.set("search", params.search);
   const qs = search.toString();
   return api.get<PageResponse<ClientResponse>>(`/clients${qs ? `?${qs}` : ""}`);
 }

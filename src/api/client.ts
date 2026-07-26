@@ -101,7 +101,22 @@ function parseErrorMessage(body: unknown, res: Response): string {
   return res.statusText || `Erreur ${res.status}`;
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+/**
+ * Single-flight guard: concurrent 401s must share one /auth/refresh call.
+ * With rotating refresh tokens, parallel refreshes would each present the same
+ * token, invalidating it and logging the user out spuriously.
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
+function refreshAccessToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = performTokenRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function performTokenRefresh(): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
   try {

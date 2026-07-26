@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, ReactNode } from "react";
+import { useCallback, useState, useEffect, useMemo, ReactNode } from "react";
 import { listStores, createStore, updateStore as apiUpdateStore, deleteStore } from "@/api";
 import type { StoreResponse } from "@/api";
 import { StoreContext, type Store, type StoreContextValue } from "./store-context";
@@ -117,18 +117,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [hasAuth, activeId, stores, setActiveStoreId]
   );
 
-  const value: StoreContextValue = {
-    stores,
-    activeStore,
-    setActiveStoreId,
-    addStore,
-    updateStore,
-    removeStore,
-    hasStores: stores.length > 0,
-    loading,
-    error,
-    refetch: fetchStores,
-  };
+  const value = useMemo<StoreContextValue>(
+    () => ({
+      stores,
+      activeStore,
+      setActiveStoreId,
+      addStore,
+      updateStore,
+      removeStore,
+      hasStores: stores.length > 0,
+      loading,
+      error,
+      refetch: fetchStores,
+    }),
+    [
+      stores,
+      activeStore,
+      setActiveStoreId,
+      addStore,
+      updateStore,
+      removeStore,
+      loading,
+      error,
+      fetchStores,
+    ]
+  );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

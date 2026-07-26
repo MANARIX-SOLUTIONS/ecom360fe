@@ -31,7 +31,6 @@ import {
   deleteProduct,
   uploadProductImageFile,
   adjustStock,
-  getStockByStore,
   listCategoriesWithDefaults,
   listCategories,
   createCategory,
@@ -39,6 +38,7 @@ import {
   deleteCategory,
   initStock,
   getSubscriptionUsage,
+  getStockForProducts,
 } from "@/api";
 import type { StockLevelResponse, CategoryResponse } from "@/api";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
@@ -88,6 +88,9 @@ export default function Products() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [productsAtLimit, setProductsAtLimit] = useState(false);
   const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
@@ -108,10 +111,15 @@ export default function Products() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset "initial load" when store changes so we show loading again
+  // Reset page + "initial load" when store / search changes
   useEffect(() => {
     hasLoadedOnce.current = false;
+    setPage(0);
   }, [activeStore?.id]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     getSubscriptionUsage()
@@ -128,33 +136,40 @@ export default function Products() {
   }, []);
 
   const fetchData = useCallback(
-    async (silent = false, searchOverride?: string) => {
+    async (silent = false, searchOverride?: string, isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!silent) setLoading(false);
+        if (!silent && !isCancelled?.()) setLoading(false);
         return;
       }
       const isInitialLoad = !hasLoadedOnce.current;
-      if (!silent && isInitialLoad) setLoading(true);
+      if (!silent && isInitialLoad && !isCancelled?.()) setLoading(true);
       const searchToUse = searchOverride !== undefined ? searchOverride : debouncedSearch;
       try {
-        const [productsRes, categoriesRes, stockList] = await Promise.all([
+        const [productsRes, categoriesRes] = await Promise.all([
           listProducts({
-            page: 0,
-            size: 200,
+            page,
+            size: pageSize,
             search: searchToUse || undefined,
             storeId: activeStore?.id,
           }),
           fetchCategories(),
-          activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
         ]);
+        if (isCancelled?.()) return;
         setCategories(categoriesRes);
         const catById = Object.fromEntries(
           categoriesRes.map((c) => [c.id, { name: c.name, color: c.color }])
         );
+        const productIds = productsRes.content.map((p) => p.id);
+        const stockList =
+          activeStore?.id && productIds.length > 0
+            ? await getStockForProducts(activeStore.id, productIds)
+            : [];
+        if (isCancelled?.()) return;
         const stockByProduct: Record<string, StockLevelResponse> = {};
         for (const s of stockList) {
           stockByProduct[s.productId] = s;
         }
+        setTotal(productsRes.totalElements ?? 0);
         setProducts(
           productsRes.content.map((p) => {
             const s = stockByProduct[p.id];
@@ -176,27 +191,32 @@ export default function Products() {
         );
         hasLoadedOnce.current = true;
       } catch (e) {
+        if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setProducts([]);
+        setTotal(0);
       } finally {
-        if (!silent && isInitialLoad) setLoading(false);
+        if (!silent && isInitialLoad && !isCancelled?.()) setLoading(false);
       }
     },
-    [debouncedSearch, activeStore?.id, fetchCategories]
+    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize]
   );
 
   useEffect(() => {
-    fetchData();
+    let cancelled = false;
+    void fetchData(false, undefined, () => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchData]);
 
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const status = stockStatus(p.stock, p.minStock);
-    const matchStock =
+    return (
       filterStock === "all" ||
       (filterStock === "low" && (status === "low" || status === "critical")) ||
-      (filterStock === "ok" && status === "ok");
-    return matchSearch && matchStock;
+      (filterStock === "ok" && status === "ok")
+    );
   });
 
   const resetImageState = () => {
@@ -487,7 +507,17 @@ export default function Products() {
             <Table
               dataSource={filtered}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "50"],
+                onChange: (p, size) => {
+                  setPage(p - 1);
+                  setPageSize(size);
+                },
+              }}
               scroll={{ x: "max-content" }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
@@ -511,7 +541,15 @@ export default function Products() {
                   render: (_: unknown, r: Product) => {
                     const src = sanitizeExternalImageUrl(r.imageUrl);
                     return src ? (
-                      <img src={src} alt="" className={styles.tableThumb} />
+                      <img
+                        src={src}
+                        alt=""
+                        width={40}
+                        height={40}
+                        loading="lazy"
+                        decoding="async"
+                        className={styles.tableThumb}
+                      />
                     ) : (
                       <span className={styles.tableThumbFallback}>
                         <Package size={16} />
