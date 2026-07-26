@@ -1,43 +1,68 @@
-import { useState, useEffect, useCallback } from "react";
+import { useSyncExternalStore, useCallback, useEffect } from "react";
 import { listNotifications, markNotificationRead } from "@/api";
 import type { NotificationResponse } from "@/api";
+import { createSharedStore } from "@/hooks/createSharedStore";
 
-export function useNotifications() {
-  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+type NotificationsState = {
+  notifications: NotificationResponse[];
+  unreadCount: number;
+  loading: boolean;
+};
 
-  const fetchNotifications = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setNotifications([]);
-      setUnreadCount(0);
-      return;
-    }
-    setLoading(true);
+const notificationsStore = createSharedStore<NotificationsState>({
+  notifications: [],
+  unreadCount: 0,
+  loading: false,
+});
+
+async function fetchNotifications(): Promise<void> {
+  if (!localStorage.getItem("ecom360_access_token")) {
+    notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
+    return;
+  }
+  notificationsStore.setState((s) => (s.loading ? s : { ...s, loading: true }));
+  return notificationsStore.run(async () => {
     try {
       const [all, unread] = await Promise.all([
         listNotifications({ page: 0, size: 10 }),
         listNotifications({ unreadOnly: true, page: 0, size: 1 }),
       ]);
-      setNotifications(all.content);
-      setUnreadCount(unread.totalElements);
+      notificationsStore.setState({
+        notifications: all.content,
+        unreadCount: unread.totalElements,
+        loading: false,
+      });
     } catch {
-      setNotifications([]);
-      setUnreadCount(0);
-    } finally {
-      setLoading(false);
+      notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
     }
-  }, []);
+  });
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("ecom360:auth-expired", () => {
+    notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
+  });
+}
+
+export function useNotifications() {
+  const { notifications, unreadCount, loading } = useSyncExternalStore(
+    notificationsStore.subscribe,
+    notificationsStore.getSnapshot,
+    notificationsStore.getSnapshot
+  );
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    void fetchNotifications();
+  }, []);
 
   const markRead = useCallback(async (id: string) => {
     try {
       await markNotificationRead(id);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-      setUnreadCount((c) => Math.max(0, c - 1));
+      notificationsStore.setState((s) => ({
+        ...s,
+        notifications: s.notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+        unreadCount: Math.max(0, s.unreadCount - 1),
+      }));
     } catch {
       /* ignore */
     }

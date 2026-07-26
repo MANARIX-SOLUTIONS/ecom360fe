@@ -1,8 +1,5 @@
-/**
- * Stock / Inventory API
- */
-
 import { api } from "./client";
+import type { PageResponse } from "./products";
 
 export type StockLevelResponse = {
   id: string;
@@ -35,8 +32,33 @@ export type StockAdjustmentRequest = {
   note?: string;
 };
 
-export async function getStockByStore(storeId: string): Promise<StockLevelResponse[]> {
-  return api.get<StockLevelResponse[]>(`/stock/store/${storeId}`);
+export async function getStockByStore(
+  storeId: string,
+  params?: { page?: number; size?: number; search?: string; productIds?: string[] }
+): Promise<PageResponse<StockLevelResponse> | StockLevelResponse[]> {
+  const search = new URLSearchParams();
+  if (params?.productIds?.length) {
+    for (const id of params.productIds) search.append("productIds", id);
+    const qs = search.toString();
+    return api.get<StockLevelResponse[]>(`/stock/store/${storeId}?${qs}`);
+  }
+  if (params?.page != null) search.set("page", String(params.page));
+  if (params?.size != null) search.set("size", String(params.size));
+  if (params?.search) search.set("search", params.search);
+  const qs = search.toString();
+  return api.get<PageResponse<StockLevelResponse>>(
+    `/stock/store/${storeId}${qs ? `?${qs}` : "?page=0&size=40"}`
+  );
+}
+
+/** Stock for specific products in a store (products list page). */
+export async function getStockForProducts(
+  storeId: string,
+  productIds: string[]
+): Promise<StockLevelResponse[]> {
+  if (productIds.length === 0) return [];
+  const res = await getStockByStore(storeId, { productIds });
+  return Array.isArray(res) ? res : res.content;
 }
 
 export async function getStockLevel(

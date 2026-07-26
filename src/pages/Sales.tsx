@@ -87,35 +87,44 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
-  const fetchSales = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [start, end] = dateRange ?? [null, null];
-      const res = await listSales({
-        storeId: storeFilter || undefined,
-        periodStart: start?.format("YYYY-MM-DD"),
-        periodEnd: end?.format("YYYY-MM-DD"),
-        status: statusFilter || undefined,
-        page,
-        size: pageSize,
-      });
-      setSales(res.content ?? []);
-      setTotal(res.totalElements ?? 0);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.sales.msgLoadError);
-      setSales([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [storeFilter, statusFilter, dateRange, page, pageSize]);
+  const fetchSales = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!isCancelled?.()) setLoading(false);
+        return;
+      }
+      if (!isCancelled?.()) setLoading(true);
+      try {
+        const [start, end] = dateRange ?? [null, null];
+        const res = await listSales({
+          storeId: storeFilter || undefined,
+          periodStart: start?.format("YYYY-MM-DD"),
+          periodEnd: end?.format("YYYY-MM-DD"),
+          status: statusFilter || undefined,
+          page,
+          size: pageSize,
+        });
+        if (isCancelled?.()) return;
+        setSales(res.content ?? []);
+        setTotal(res.totalElements ?? 0);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.sales.msgLoadError);
+        setSales([]);
+        setTotal(0);
+      } finally {
+        if (!isCancelled?.()) setLoading(false);
+      }
+    },
+    [storeFilter, statusFilter, dateRange, page, pageSize]
+  );
 
   useEffect(() => {
-    fetchSales();
+    let cancelled = false;
+    void fetchSales(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchSales]);
 
   const handleVoid = useCallback(

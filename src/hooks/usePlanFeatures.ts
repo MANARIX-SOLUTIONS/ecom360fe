@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useSyncExternalStore, useEffect } from "react";
 import { getSubscription, listPlans } from "@/api";
 import type { PlanResponse } from "@/api";
+import { createSharedStore } from "@/hooks/createSharedStore";
 
 /**
  * Plan-based feature gating.
@@ -60,40 +61,64 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
   };
 }
 
-export function usePlanFeatures() {
-  const [planSlug, setPlanSlug] = useState<string | null>(() =>
-    typeof window !== "undefined" ? localStorage.getItem("ecom360_plan_slug") : null
-  );
-  const [features, setFeatures] = useState<FeatureFlags>(DEFAULT_FEATURES);
+type PlanState = {
+  planSlug: string | null;
+  features: FeatureFlags;
+};
 
-  const fetchPlanFeatures = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setFeatures(DEFAULT_FEATURES);
-      return;
-    }
+const planStore = createSharedStore<PlanState>({
+  planSlug: typeof window !== "undefined" ? localStorage.getItem("ecom360_plan_slug") : null,
+  features: DEFAULT_FEATURES,
+});
+
+/** Chargé une fois par session ; l'évènement plan-updated force un refetch. */
+let planLoaded = false;
+
+async function fetchPlanFeatures(force = false): Promise<void> {
+  if (!localStorage.getItem("ecom360_access_token")) {
+    planLoaded = false;
+    planStore.setState((s) => ({ ...s, features: DEFAULT_FEATURES }));
+    return;
+  }
+  if (!force && planLoaded) return;
+  return planStore.run(async () => {
     try {
       const [sub, plans] = await Promise.all([getSubscription(), listPlans()]);
       const slug = sub?.planSlug ?? localStorage.getItem("ecom360_plan_slug");
-      setPlanSlug(slug);
       const plan = plans.find((p) => p.slug.toLowerCase() === (slug ?? "").toLowerCase());
-      setFeatures(plan ? planToFeatures(plan) : DEFAULT_FEATURES);
+      planLoaded = true;
+      planStore.setState({
+        planSlug: slug ?? null,
+        features: plan ? planToFeatures(plan) : DEFAULT_FEATURES,
+      });
     } catch {
-      setFeatures(DEFAULT_FEATURES);
+      planStore.setState((s) => ({ ...s, features: DEFAULT_FEATURES }));
     }
+  });
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("ecom360:plan-updated", () => {
+    void fetchPlanFeatures(true);
+  });
+  window.addEventListener("ecom360:auth-set", () => {
+    void fetchPlanFeatures(true);
+  });
+  window.addEventListener("ecom360:auth-expired", () => {
+    void fetchPlanFeatures();
+  });
+}
+
+export function usePlanFeatures() {
+  const { planSlug, features } = useSyncExternalStore(
+    planStore.subscribe,
+    planStore.getSnapshot,
+    planStore.getSnapshot
+  );
+
+  useEffect(() => {
+    void fetchPlanFeatures();
   }, []);
-
-  useEffect(() => {
-    fetchPlanFeatures();
-  }, [fetchPlanFeatures]);
-
-  useEffect(() => {
-    const onUpdate = () => {
-      setPlanSlug(localStorage.getItem("ecom360_plan_slug"));
-      fetchPlanFeatures();
-    };
-    window.addEventListener("ecom360:plan-updated", onUpdate);
-    return () => window.removeEventListener("ecom360:plan-updated", onUpdate);
-  }, [fetchPlanFeatures]);
 
   return {
     planSlug,

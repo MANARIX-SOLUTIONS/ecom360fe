@@ -36,13 +36,26 @@ export default function Suppliers() {
   const navigate = useNavigate();
   const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<Supplier | null>(null);
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [suppliersAtLimit, setSuppliersAtLimit] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     getSubscriptionUsage()
@@ -52,43 +65,50 @@ export default function Suppliers() {
       .catch(() => setSuppliersAtLimit(false));
   }, [suppliers.length]);
 
-  const fetchSuppliers = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await listSuppliers({ page: 0, size: 200 });
-      setSuppliers(
-        res.content.map((c) => ({
-          id: c.id,
-          name: c.name,
-          phone: c.phone || "",
-          email: c.email || "",
-          zone: c.zone || "",
-          balance: c.balance ?? 0,
-        }))
-      );
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
-      setSuppliers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchSuppliers = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!isCancelled?.()) setLoading(false);
+        return;
+      }
+      if (!isCancelled?.()) setLoading(true);
+      try {
+        const res = await listSuppliers({
+          page,
+          size: pageSize,
+          search: debouncedSearch || undefined,
+        });
+        if (isCancelled?.()) return;
+        setSuppliers(
+          res.content.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone || "",
+            email: c.email || "",
+            zone: c.zone || "",
+            balance: c.balance ?? 0,
+          }))
+        );
+        setTotal(res.totalElements ?? 0);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
+        setSuppliers([]);
+        setTotal(0);
+      } finally {
+        if (!isCancelled?.()) setLoading(false);
+      }
+    },
+    [page, pageSize, debouncedSearch]
+  );
 
   useEffect(() => {
-    fetchSuppliers();
+    let cancelled = false;
+    void fetchSuppliers(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchSuppliers]);
-
-  const filtered = suppliers.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.phone && s.phone.includes(search)) ||
-      (s.email && s.email.toLowerCase().includes(search.toLowerCase())) ||
-      (s.zone && s.zone.toLowerCase().includes(search.toLowerCase()))
-  );
 
   if (loading) {
     return (
@@ -156,9 +176,19 @@ export default function Suppliers() {
         ) : (
           <div className="tableResponsive">
             <Table
-              dataSource={filtered}
+              dataSource={suppliers}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "50"],
+                onChange: (p, size) => {
+                  setPage(p - 1);
+                  setPageSize(size);
+                },
+              }}
               onRow={(r) => ({
                 style: { cursor: "pointer" },
                 role: "button",

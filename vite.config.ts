@@ -28,7 +28,7 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 1400,
+    chunkSizeWarningLimit: 600,
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

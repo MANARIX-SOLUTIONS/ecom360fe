@@ -307,7 +307,15 @@ export default function ProductDetail() {
       <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
           {productImageSrc ? (
-            <img src={productImageSrc} alt={product.name} className={styles.heroImage} />
+            <img
+              src={productImageSrc}
+              alt={product.name}
+              width={120}
+              height={120}
+              loading="lazy"
+              decoding="async"
+              className={styles.heroImage}
+            />
           ) : (
             <div className={styles.emptyIconWrap} style={{ width: 56, height: 56 }}>
               <Package size={28} />

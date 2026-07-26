@@ -12,9 +12,9 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MainLayout from "./layouts/MainLayout";
 import { BusinessProfileProvider } from "./contexts/BusinessProfileContext";
-import BackofficeLayout from "./layouts/BackofficeLayout";
 import NotFound from "./pages/NotFound";
 
+const BackofficeLayout = lazy(() => import("./layouts/BackofficeLayout"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const VueGlobale = lazy(() => import("./pages/VueGlobale"));
 const Backoffice = lazy(() => import("./pages/Backoffice"));
@@ -376,7 +376,9 @@ export default function App() {
           path="backoffice"
           element={
             <RequirePermission permission="backoffice">
-              <BackofficeLayout />
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeLayout />
+              </Suspense>
             </RequirePermission>
           }
         >

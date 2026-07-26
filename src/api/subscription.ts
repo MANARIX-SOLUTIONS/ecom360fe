@@ -87,6 +87,33 @@ export type SubscriptionUsageResponse = {
   salesLimit: number;
 };
 
+const USAGE_TTL_MS = 10_000;
+let usageCache: { at: number; data: SubscriptionUsageResponse } | null = null;
+let usageInFlight: Promise<SubscriptionUsageResponse> | null = null;
+
+export function invalidateSubscriptionUsageCache(): void {
+  usageCache = null;
+}
+
+/** Deduped + short-TTL cache so concurrent page mounts share one GET /subscription/usage. */
 export async function getSubscriptionUsage(): Promise<SubscriptionUsageResponse> {
-  return api.get<SubscriptionUsageResponse>("/subscription/usage");
+  if (usageCache && Date.now() - usageCache.at < USAGE_TTL_MS) {
+    return usageCache.data;
+  }
+  if (usageInFlight) return usageInFlight;
+  usageInFlight = api
+    .get<SubscriptionUsageResponse>("/subscription/usage")
+    .then((data) => {
+      usageCache = { at: Date.now(), data };
+      return data;
+    })
+    .finally(() => {
+      usageInFlight = null;
+    });
+  return usageInFlight;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("ecom360:plan-updated", invalidateSubscriptionUsageCache);
+  window.addEventListener("ecom360:auth-expired", invalidateSubscriptionUsageCache);
 }

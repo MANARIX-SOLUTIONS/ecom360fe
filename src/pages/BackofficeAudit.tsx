@@ -40,26 +40,35 @@ export default function BackofficeAudit() {
   const [entityFilter, setEntityFilter] = useState<string | undefined>();
   const [businessFilter] = useState<string | undefined>();
 
-  const loadLogs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await listAdminAuditLogs({
-        page,
-        size,
-        entityType: entityFilter,
-        businessId: businessFilter,
-      });
-      setAuditLogs(res.content);
-      setTotal(res.totalElements);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.backoffice.auditLogLoadError);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, size, entityFilter, businessFilter]);
+  const loadLogs = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!isCancelled?.()) setLoading(true);
+      try {
+        const res = await listAdminAuditLogs({
+          page,
+          size,
+          entityType: entityFilter,
+          businessId: businessFilter,
+        });
+        if (isCancelled?.()) return;
+        setAuditLogs(res.content);
+        setTotal(res.totalElements);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.backoffice.auditLogLoadError);
+      } finally {
+        if (!isCancelled?.()) setLoading(false);
+      }
+    },
+    [page, size, entityFilter, businessFilter]
+  );
 
   useEffect(() => {
-    loadLogs();
+    let cancelled = false;
+    void loadLogs(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [loadLogs]);
 
   const handleExport = useCallback(async () => {
@@ -120,7 +129,11 @@ export default function BackofficeAudit() {
               onChange={setEntityFilter}
               options={ENTITY_TYPES.map((t) => ({ label: t, value: t }))}
             />
-            <Button icon={<RefreshCw size={16} />} onClick={loadLogs} loading={loading}>
+            <Button
+              icon={<RefreshCw size={16} />}
+              onClick={() => void loadLogs()}
+              loading={loading}
+            >
               Actualiser
             </Button>
             <Button icon={<Download size={16} />} onClick={handleExport}>

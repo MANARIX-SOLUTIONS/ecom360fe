@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   Card,
   Row,
@@ -118,6 +118,74 @@ function isSetupChecklistAutoHidden(businessCreatedAt: string | null | undefined
   return Date.now() - t >= SETUP_CHECKLIST_MAX_MS;
 }
 
+const DashboardKpiCard = memo(function DashboardKpiCard({
+  label,
+  value,
+  variant,
+  icon: Icon,
+  tooltip,
+  hint,
+  trendPct,
+  showTrend,
+}: {
+  label: string;
+  value: string;
+  variant: DashboardStatCard["variant"];
+  icon: LucideIcon;
+  tooltip?: string;
+  hint?: string;
+  trendPct?: number | null;
+  showTrend?: boolean;
+}) {
+  return (
+    <Card variant="borderless" className={`${styles.statCard} ${styles[variant]}`}>
+      <div className={styles.statCardInner}>
+        <div className={styles.statLabelRow}>
+          <span className={styles.statIconWrap}>
+            <Icon size={20} className={styles.statIcon} aria-hidden />
+          </span>
+          <Typography.Text className={styles.statLabel}>{label}</Typography.Text>
+          {tooltip ? (
+            <Tooltip title={tooltip}>
+              <span className={styles.statTooltipHit} aria-label={tooltip}>
+                <Info size={14} aria-hidden />
+              </span>
+            </Tooltip>
+          ) : null}
+        </div>
+        {showTrend ? (
+          <div className={styles.statCol}>
+            <span className={`amount ${styles.statValue}`}>{value}</span>
+            {hint ? (
+              <Typography.Text type="secondary" className={styles.statHint}>
+                {hint}
+              </Typography.Text>
+            ) : null}
+            {trendPct != null ? (
+              <Tag color={trendPct >= 0 ? "success" : "warning"} className={styles.trend}>
+                {trendPct >= 0 ? (
+                  <TrendingUp size={12} aria-hidden />
+                ) : (
+                  <TrendingDown size={12} aria-hidden />
+                )}
+                <span>
+                  {trendPct > 0 ? "+" : ""}
+                  {trendPct}%
+                </span>
+                <span className={styles.trendCaption}>{t.dashboard.vsPrevPeriod}</span>
+              </Tag>
+            ) : null}
+          </div>
+        ) : (
+          <div className={styles.statRow}>
+            <span className={`amount ${styles.statValue}`}>{value}</span>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+});
+
 export default function Dashboard() {
   const { activeStore } = useStore();
   const { displayName } = useUserProfile();
@@ -144,31 +212,40 @@ export default function Dashboard() {
   const [topSliceHasNext, setTopSliceHasNext] = useState(false);
   const [lowSliceHasNext, setLowSliceHasNext] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { periodStart, periodEnd } = getDashboardPeriodBounds();
-      const res = await getDashboard({
-        periodStart,
-        periodEnd,
-        storeId: activeStore?.id ?? undefined,
-      });
-      setData(res);
-      setApiError(null);
-    } catch (e) {
-      setApiError(e instanceof Error ? e.message : t.dashboard.loadError);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeStore?.id]);
+  const loadData = useCallback(
+    async (signal?: { cancelled: boolean }) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const { periodStart, periodEnd } = getDashboardPeriodBounds();
+        const res = await getDashboard({
+          periodStart,
+          periodEnd,
+          storeId: activeStore?.id ?? undefined,
+        });
+        if (signal?.cancelled) return;
+        setData(res);
+        setApiError(null);
+      } catch (e) {
+        if (signal?.cancelled) return;
+        setApiError(e instanceof Error ? e.message : t.dashboard.loadError);
+        setData(null);
+      } finally {
+        if (!signal?.cancelled) setLoading(false);
+      }
+    },
+    [activeStore?.id]
+  );
 
   useEffect(() => {
-    loadData();
+    const signal = { cancelled: false };
+    void loadData(signal);
+    return () => {
+      signal.cancelled = true;
+    };
   }, [loadData]);
 
   useEffect(() => {
@@ -636,7 +713,7 @@ export default function Dashboard() {
           closable
           onClose={() => setApiError(null)}
           action={
-            <Button size="small" onClick={loadData}>
+            <Button size="small" onClick={() => void loadData()}>
               {t.dashboard.retryLoad}
             </Button>
           }
@@ -772,28 +849,15 @@ export default function Dashboard() {
           {t.dashboard.sectionToday}
         </Typography.Title>
         <Row gutter={[16, 16]}>
-          {todayCards.map(({ key, label, value, variant, icon: Icon, tooltip }) => (
+          {todayCards.map(({ key, label, value, variant, icon, tooltip }) => (
             <Col xs={24} sm={12} lg={8} key={key}>
-              <Card variant="borderless" className={`${styles.statCard} ${styles[variant]}`}>
-                <div className={styles.statCardInner}>
-                  <div className={styles.statLabelRow}>
-                    <span className={styles.statIconWrap}>
-                      <Icon size={20} className={styles.statIcon} aria-hidden />
-                    </span>
-                    <Typography.Text className={styles.statLabel}>{label}</Typography.Text>
-                    {tooltip ? (
-                      <Tooltip title={tooltip}>
-                        <span className={styles.statTooltipHit} aria-label={tooltip}>
-                          <Info size={14} aria-hidden />
-                        </span>
-                      </Tooltip>
-                    ) : null}
-                  </div>
-                  <div className={styles.statRow}>
-                    <span className={`amount ${styles.statValue}`}>{value}</span>
-                  </div>
-                </div>
-              </Card>
+              <DashboardKpiCard
+                label={label}
+                value={value}
+                variant={variant}
+                icon={icon}
+                tooltip={tooltip}
+              />
             </Col>
           ))}
         </Row>
@@ -879,57 +943,18 @@ export default function Dashboard() {
               children: (
                 <Row gutter={[16, 16]}>
                   {periodCards.map(
-                    ({ key, label, value, variant, icon: Icon, trendPct, hint, tooltip }) => (
+                    ({ key, label, value, variant, icon, trendPct, hint, tooltip }) => (
                       <Col xs={24} sm={12} lg={8} key={key}>
-                        <Card
-                          variant="borderless"
-                          className={`${styles.statCard} ${styles[variant]}`}
-                        >
-                          <div className={styles.statCardInner}>
-                            <div className={styles.statLabelRow}>
-                              <span className={styles.statIconWrap}>
-                                <Icon size={20} className={styles.statIcon} aria-hidden />
-                              </span>
-                              <Typography.Text className={styles.statLabel}>
-                                {label}
-                              </Typography.Text>
-                              {tooltip ? (
-                                <Tooltip title={tooltip}>
-                                  <span className={styles.statTooltipHit} aria-label={tooltip}>
-                                    <Info size={14} aria-hidden />
-                                  </span>
-                                </Tooltip>
-                              ) : null}
-                            </div>
-                            <div className={styles.statCol}>
-                              <span className={`amount ${styles.statValue}`}>{value}</span>
-                              {hint ? (
-                                <Typography.Text type="secondary" className={styles.statHint}>
-                                  {hint}
-                                </Typography.Text>
-                              ) : null}
-                              {trendPct !== null ? (
-                                <Tag
-                                  color={trendPct >= 0 ? "success" : "warning"}
-                                  className={styles.trend}
-                                >
-                                  {trendPct >= 0 ? (
-                                    <TrendingUp size={12} aria-hidden />
-                                  ) : (
-                                    <TrendingDown size={12} aria-hidden />
-                                  )}
-                                  <span>
-                                    {trendPct > 0 ? "+" : ""}
-                                    {trendPct}%
-                                  </span>
-                                  <span className={styles.trendCaption}>
-                                    {t.dashboard.vsPrevPeriod}
-                                  </span>
-                                </Tag>
-                              ) : null}
-                            </div>
-                          </div>
-                        </Card>
+                        <DashboardKpiCard
+                          label={label}
+                          value={value}
+                          variant={variant}
+                          icon={icon}
+                          tooltip={tooltip}
+                          hint={hint}
+                          trendPct={trendPct}
+                          showTrend
+                        />
                       </Col>
                     )
                   )}
