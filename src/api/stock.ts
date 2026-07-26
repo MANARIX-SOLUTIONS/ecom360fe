@@ -16,6 +16,7 @@ export type StockLevelResponse = {
   updatedAt: string;
   salePrice: number | null;
   categoryId: string | null;
+  imageUrl: string | null;
 };
 
 export type StockInitRequest = {

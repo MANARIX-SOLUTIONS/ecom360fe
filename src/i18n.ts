@@ -171,6 +171,12 @@ export const t = {
     msgAdded: "Produit ajouté",
     warnSelectStoreForProducts: "Sélectionnez une boutique pour gérer les produits",
     placeholderCategoryExamples: "Ex : Boissons, Snacks…",
+    imageLabel: "Image du produit",
+    imageUpload: "Ajouter une image",
+    imageChange: "Changer l'image",
+    imageRemove: "Retirer",
+    imageFormats: "PNG, JPEG, WebP ou GIF — max. 8 Mo",
+    imageUploadError: "Échec de l'upload de l'image",
   },
   dashboard: {
     salesToday: "Ventes du jour",

@@ -38,7 +38,7 @@ export type ProductRequest = {
   costPrice: number;
   salePrice: number;
   unit?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   categoryId?: string | null;
   isActive?: boolean;
   storeId: string;
@@ -76,4 +76,14 @@ export async function updateProduct(
 
 export async function deleteProduct(id: string): Promise<void> {
   return api.delete(`/products/${id}`);
+}
+
+/** Upload a product image; backend stores the file and returns the product with `imageUrl`. */
+export async function uploadProductImageFile(
+  productId: string,
+  file: File
+): Promise<ProductResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post<ProductResponse>(`/products/${productId}/image/upload`, formData);
 }
