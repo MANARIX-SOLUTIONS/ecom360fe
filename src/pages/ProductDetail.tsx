@@ -30,6 +30,7 @@ import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 
@@ -118,6 +119,7 @@ export default function ProductDetail() {
             updatedAt: "",
             salePrice: null,
             categoryId: null,
+            imageUrl: null,
           });
         }
       }
@@ -179,6 +181,7 @@ export default function ProductDetail() {
   const categoryName =
     product.categoryId && categories.find((c) => c.id === product.categoryId)?.name;
   const activeStock = stockLevels.find((s) => s.storeId === activeStore?.id);
+  const productImageSrc = sanitizeExternalImageUrl(product.imageUrl);
 
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
@@ -193,6 +196,9 @@ export default function ProductDetail() {
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
           storeId: values.storeId,
+          // Preserve image — BE applyFields always overwrites imageUrl
+          imageUrl: product.imageUrl,
+          isActive: product.isActive,
         });
         message.success(t.products.msgUpdated);
         setEditOpen(false);
@@ -252,9 +258,13 @@ export default function ProductDetail() {
 
       <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
-          <div className={styles.emptyIconWrap} style={{ width: 56, height: 56 }}>
-            <Package size={28} />
-          </div>
+          {productImageSrc ? (
+            <img src={productImageSrc} alt={product.name} className={styles.heroImage} />
+          ) : (
+            <div className={styles.emptyIconWrap} style={{ width: 56, height: 56 }}>
+              <Package size={28} />
+            </div>
+          )}
           <div className={styles.heroInfo}>
             <Typography.Title level={4} className={styles.heroName}>
               {product.name}

@@ -21,6 +21,7 @@ import styles from "./POS.module.css";
 import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import {
   getStockByStore,
   listClients,
@@ -50,6 +51,7 @@ type ProductForPOS = {
   category: string;
   stock: number;
   minStock: number;
+  imageUrl: string | null;
 };
 
 type ClientForPOS = {
@@ -109,6 +111,31 @@ function stockLevel(stock: number, minStock: number): "ok" | "low" | "out" {
 
 function categoryInitial(category: string): string {
   return category.charAt(0).toUpperCase();
+}
+
+function ProductCardVisual({
+  imageUrl,
+  category,
+  catColor,
+}: {
+  imageUrl: string | null;
+  category: string;
+  catColor: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const src = sanitizeExternalImageUrl(imageUrl);
+
+  if (src && !imgFailed) {
+    return (
+      <img src={src} alt="" className={styles.productImage} onError={() => setImgFailed(true)} />
+    );
+  }
+
+  return (
+    <span className={styles.productAvatar} style={{ background: catColor + "20", color: catColor }}>
+      {categoryInitial(category)}
+    </span>
+  );
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -343,6 +370,7 @@ export default function POS() {
             category: (s.categoryId && byCat[s.categoryId]) || "Divers",
             stock: s.quantity,
             minStock: s.minStock,
+            imageUrl: s.imageUrl ?? null,
           }))
         );
       } catch (e) {
@@ -633,6 +661,7 @@ export default function POS() {
                 const level = stockLevel(availableStock, p.minStock);
                 const outOfStock = availableStock <= 0;
                 const catColor = CATEGORY_COLORS[p.category] || "#999";
+                const priceLabel = `${p.price.toLocaleString("fr-FR")} F`;
                 return (
                   <button
                     type="button"
@@ -641,27 +670,27 @@ export default function POS() {
                     onClick={() => addToCart(p)}
                     disabled={outOfStock}
                     aria-disabled={outOfStock}
+                    aria-label={`${p.name}, ${priceLabel}`}
                   >
-                    <div className={styles.productTop}>
-                      <span
-                        className={styles.productAvatar}
-                        style={{ background: catColor + "20", color: catColor }}
-                      >
-                        {categoryInitial(p.category)}
-                      </span>
-                      {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
+                    <div className={styles.productMedia}>
+                      <ProductCardVisual
+                        imageUrl={p.imageUrl}
+                        category={p.category}
+                        catColor={catColor}
+                      />
                     </div>
-                    <span className={styles.productName}>{p.name}</span>
-                    <span className={`amount ${styles.productPrice}`}>
-                      {p.price.toLocaleString("fr-FR")} F
-                    </span>
-                    <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-                      {outOfStock
-                        ? t.pos.outOfStock
-                        : level === "low"
-                          ? `Stock: ${availableStock} ⚠`
-                          : `Stock: ${availableStock}`}
-                    </span>
+                    {cartItem && <span className={styles.cartQtyBadge}>{cartItem.qty}</span>}
+                    <div className={styles.productOverlay}>
+                      <span className={styles.productName}>{p.name}</span>
+                      <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
+                      <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+                        {outOfStock
+                          ? t.pos.outOfStock
+                          : level === "low"
+                            ? `Stock: ${availableStock} ⚠`
+                            : `Stock: ${availableStock}`}
+                      </span>
+                    </div>
                   </button>
                 );
               })}

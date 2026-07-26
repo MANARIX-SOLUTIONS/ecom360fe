@@ -95,6 +95,15 @@
   flex-wrap: wrap;
 }
 
+.heroImage {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-bg-secondary, #f5f5f5);
+}
+
 .heroInfo {
   flex: 1;
   min-width: 0;
@@ -130,6 +139,26 @@
 
 .sectionCard:last-child {
   margin-bottom: 0;
+}
+
+.tableThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  background: var(--color-bg-secondary, #f5f5f5);
+}
+
+.tableThumbFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary, #f5f5f5);
+  color: var(--color-text-muted, #999);
 }
 
 @media (max-width: 480px) {

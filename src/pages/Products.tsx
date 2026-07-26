@@ -15,10 +15,11 @@ import {
   message,
   Drawer,
   Space,
+  Upload,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { Search, Plus, Pencil, Package, Trash2, Tags } from "lucide-react";
+import { Search, Plus, Pencil, Package, Trash2, Tags, Upload as UploadIcon } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import { useStore } from "@/hooks/useStore";
@@ -28,6 +29,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImageFile,
   adjustStock,
   getStockByStore,
   listCategoriesWithDefaults,
@@ -39,6 +41,8 @@ import {
   getSubscriptionUsage,
 } from "@/api";
 import type { StockLevelResponse, CategoryResponse } from "@/api";
+import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import type { UploadFile } from "antd/es/upload/interface";
 
 const CATEGORY_COLOR_OPTIONS = [
   { value: "blue", label: "Bleu" },
@@ -61,6 +65,7 @@ type Product = {
   minStock: number;
   categoryId: string | null;
   storeId: string;
+  imageUrl: string | null;
 };
 
 function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
@@ -90,6 +95,11 @@ export default function Products() {
   const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null);
   const [categoryForm] = Form.useForm();
   const hasLoadedOnce = useRef(false);
+  /** Pending file chosen in the product modal (upload after create/update). */
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  /** True when user removed the existing image without picking a new file. */
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
 
   // Debounce search to avoid refetch on every keystroke (stops flicker)
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -160,6 +170,7 @@ export default function Products() {
               stock: s?.quantity ?? 0,
               minStock: s?.minStock ?? 0,
               categoryId: p.categoryId,
+              imageUrl: p.imageUrl,
             };
           })
         );
@@ -188,9 +199,16 @@ export default function Products() {
     return matchSearch && matchStock;
   });
 
+  const resetImageState = () => {
+    setImageFile(null);
+    setImageRemoved(false);
+    setImageFileList([]);
+  };
+
   const openAdd = () => {
     setEditing(null);
     form.resetFields();
+    resetImageState();
     setModalOpen(true);
   };
   const openCategoryDrawer = () => {
@@ -269,8 +287,24 @@ export default function Products() {
       initialStock: p.stock,
       minStockAlert: p.minStock,
     });
+    setImageFile(null);
+    setImageRemoved(false);
+    const src = sanitizeExternalImageUrl(p.imageUrl);
+    if (src) {
+      setImageFileList([
+        {
+          uid: "-existing",
+          name: "image",
+          status: "done",
+          url: src,
+        },
+      ]);
+    } else {
+      setImageFileList([]);
+    }
     setModalOpen(true);
   };
+
   const onSave = () => {
     form.validateFields().then(async (values) => {
       try {
@@ -278,7 +312,11 @@ export default function Products() {
           message.warning(t.products.warnSelectStoreForProducts);
           return;
         }
+        let productId: string;
         if (editing) {
+          // Always send imageUrl on update so BE does not clear it.
+          // null = user removed image; keep existing URL otherwise (upload replaces after).
+          const imageUrlForUpdate: string | null = imageRemoved ? null : (editing.imageUrl ?? null);
           await updateProduct(editing.id, {
             name: values.name,
             categoryId: values.categoryId || null,
@@ -286,7 +324,9 @@ export default function Products() {
             salePrice: values.salePrice,
             isActive: true,
             storeId: activeStore.id,
+            imageUrl: imageUrlForUpdate,
           });
+          productId = editing.id;
           message.success(t.products.msgUpdated);
         } else {
           const created = await createProduct({
@@ -297,7 +337,8 @@ export default function Products() {
             isActive: true,
             storeId: activeStore.id,
           });
-          if (activeStore?.id && values.initialStock != null && values.initialStock > 0) {
+          productId = created.id;
+          if (values.initialStock != null && values.initialStock > 0) {
             await initStock({
               productId: created.id,
               storeId: activeStore.id,
@@ -307,8 +348,16 @@ export default function Products() {
           }
           message.success(t.products.msgAdded);
         }
+        if (imageFile) {
+          try {
+            await uploadProductImageFile(productId, imageFile);
+          } catch (e) {
+            message.error(e instanceof Error ? e.message : t.products.imageUploadError);
+          }
+        }
         setModalOpen(false);
         form.resetFields();
+        resetImageState();
         fetchData(true, "");
       } catch (e) {
         message.error(e instanceof Error ? e.message : t.common.errorGeneric);
@@ -455,6 +504,21 @@ export default function Products() {
               className="dataTable"
               locale={{ emptyText: "Aucun produit trouvé" }}
               columns={[
+                {
+                  title: "",
+                  key: "image",
+                  width: 56,
+                  render: (_: unknown, r: Product) => {
+                    const src = sanitizeExternalImageUrl(r.imageUrl);
+                    return src ? (
+                      <img src={src} alt="" className={styles.tableThumb} />
+                    ) : (
+                      <span className={styles.tableThumbFallback}>
+                        <Package size={16} />
+                      </span>
+                    );
+                  },
+                },
                 { title: t.common.name, dataIndex: "name" },
                 {
                   title: t.products.category,
@@ -554,12 +618,66 @@ export default function Products() {
         title={editing ? t.products.editProduct : t.products.addProduct}
         open={modalOpen}
         onOk={onSave}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false);
+          resetImageState();
+        }}
         okText={t.products.save}
         width={440}
         destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label={t.products.imageLabel}>
+            <Upload
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              listType="picture-card"
+              maxCount={1}
+              fileList={imageFileList}
+              beforeUpload={(file) => {
+                const isAllowed =
+                  file.type === "image/png" ||
+                  file.type === "image/jpeg" ||
+                  file.type === "image/webp" ||
+                  file.type === "image/gif";
+                if (!isAllowed) {
+                  message.error(t.products.imageFormats);
+                  return Upload.LIST_IGNORE;
+                }
+                if (file.size > 8 * 1024 * 1024) {
+                  message.error(t.products.imageFormats);
+                  return Upload.LIST_IGNORE;
+                }
+                const preview = URL.createObjectURL(file);
+                setImageFile(file);
+                setImageRemoved(false);
+                setImageFileList([
+                  {
+                    uid: "-1",
+                    name: file.name,
+                    status: "done",
+                    url: preview,
+                  },
+                ]);
+                return false;
+              }}
+              onRemove={() => {
+                setImageFile(null);
+                setImageFileList([]);
+                setImageRemoved(true);
+                return true;
+              }}
+            >
+              {imageFileList.length >= 1 ? null : (
+                <div>
+                  <UploadIcon size={18} />
+                  <div style={{ marginTop: 8 }}>{t.products.imageUpload}</div>
+                </div>
+              )}
+            </Upload>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t.products.imageFormats}
+            </Typography.Text>
+          </Form.Item>
           <Form.Item
             name="name"
             label={t.common.name}
