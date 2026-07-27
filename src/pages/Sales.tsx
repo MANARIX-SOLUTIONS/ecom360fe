@@ -133,8 +133,7 @@ export default function Sales() {
       if (!matrixCan("SALES_DELETE", "pos") || sale.status !== "completed") return;
       Modal.confirm({
         title: t.sales.voidSale,
-        content:
-          "La vente sera annulée : le stock sera recrédité et le crédit client (si applicable) sera déduit. Cette action est irréversible.",
+        content: t.sales.voidSaleConfirm,
         okText: t.sales.voidSale,
         okType: "danger",
         cancelText: t.common.cancel,

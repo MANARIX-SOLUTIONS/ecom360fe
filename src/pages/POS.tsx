@@ -34,13 +34,9 @@ import {
 } from "@/api";
 import type { SaleResponse } from "@/api";
 import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
+import { loadPosCart, savePosCart, clearPosCart, type PosCartLine } from "@/utils/posCartStorage";
 
-type CartLine = {
-  id: string;
-  name: string;
-  price: number;
-  qty: number;
-};
+type CartLine = PosCartLine;
 
 type PaymentMethod = "cash" | "wave" | "orange_money" | "credit";
 
@@ -575,6 +571,7 @@ export default function POS() {
   const [editLoadError, setEditLoadError] = useState<string | null>(null);
   const [editHydrated, setEditHydrated] = useState(false);
   const prevHadEditRoute = useRef(false);
+  const skipNextCartSave = useRef(false);
 
   useEffect(() => {
     if (editSaleId) return;
@@ -586,18 +583,39 @@ export default function POS() {
   useEffect(() => {
     if (editSaleId) {
       prevHadEditRoute.current = true;
+      skipNextCartSave.current = true;
       setCart([]);
       setDiscount(0);
       setPaymentMethod("cash");
       setSelectedClientId(null);
     } else if (prevHadEditRoute.current) {
       prevHadEditRoute.current = false;
-      setCart([]);
       setDiscount(0);
       setPaymentMethod("cash");
       setSelectedClientId(null);
     }
   }, [editSaleId]);
+
+  useEffect(() => {
+    if (editSaleId) return;
+    if (!activeStore?.id) {
+      skipNextCartSave.current = true;
+      setCart([]);
+      return;
+    }
+    skipNextCartSave.current = true;
+    setCart(loadPosCart(activeStore.id));
+  }, [activeStore?.id, editSaleId]);
+
+  useEffect(() => {
+    if (editSaleId) return;
+    if (!activeStore?.id) return;
+    if (skipNextCartSave.current) {
+      skipNextCartSave.current = false;
+      return;
+    }
+    savePosCart(activeStore.id, cart);
+  }, [cart, activeStore?.id, editSaleId]);
 
   useEffect(() => {
     if (!editSaleId) {
@@ -828,7 +846,10 @@ export default function POS() {
     setCart((prev) => prev.filter((l) => l.id !== id));
   }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    if (activeStore?.id && !editSaleId) clearPosCart(activeStore.id);
+  }, [activeStore?.id, editSaleId]);
 
   const handleQuickClientCreate = () =>
     quickClientForm.validateFields().then(async (values) => {
@@ -920,6 +941,9 @@ export default function POS() {
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
       setCart([]);
+      if (!editSaleId) {
+        clearPosCart(activeStore.id);
+      }
       if (editSaleId) {
         setSelectedClientId(null);
       } else {

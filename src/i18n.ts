@@ -269,7 +269,8 @@ export const t = {
       "Valeurs agrégées sur la plage de dates sélectionnée — comparables entre boutiques.",
     execSummaryTitle: "Résumé de la période",
     execSummaryNoActivity:
-      "Aucune vente enregistrée sur cette période — les indicateurs se mettront à jour dès les premières transactions.",
+      "Aucune vente ni dépense sur cette période — les indicateurs se mettront à jour dès l’activité.",
+    execSummaryExpensesOnly: "Aucune vente sur la période · {expenses} de dépenses enregistrées.",
     execSummarySalesLine: "{count} ventes · panier moyen {basket}",
     execSummaryMarginLabel: "Marge nette sur le CA",
     execSummaryLegendMarginNote: "Marge nette",
@@ -286,6 +287,7 @@ export const t = {
     linkSeeSales: "Voir les ventes",
     linkSeeExpenses: "Voir les dépenses",
     storeSalesSuffix: "ventes",
+    storeShareOfCa: "% CA",
     storeExpensesLabel: "Dépenses",
     storeProfitLabel: "Résultat",
     storeUnassignedName: "Communes (non affectées)",
@@ -297,6 +299,8 @@ export const t = {
     emptyProductsDesc: "Aucune vente sur la période.",
     emptyStockTitle: "Rien à signaler",
     emptyStockDesc: "Aucune alerte stock — niveaux OK.",
+    emptyPageTitle: "Impossible d’afficher la vue globale",
+    emptyPageDesc: "Vérifiez votre connexion ou réessayez dans un instant.",
   },
   clients: {
     title: "Clients",
@@ -474,9 +478,14 @@ export const t = {
     glossaryP5:
       "« vs période préc. » : compare avec la fenêtre de même durée juste avant (ex. si vous regardez 7 jours, les 7 jours d’avant).",
     glossaryP6:
-      "Répartition des paiements et tableau ci‑dessous : basés sur les ventes listées pour cette période dans cet écran.",
+      "Répartition des paiements : basée sur le chiffre d’affaires completed de toute la période affichée (tous moyens confondus).",
     glossaryP7:
       "Marge brute (Business) : estimation à partir des données produits — à rapprocher de votre comptabilité.",
+    recentSalesTitle: "Ventes récentes",
+    recentSalesColTime: "Heure",
+    recentSalesColAmount: "Montant",
+    recentSalesColPayment: "Paiement",
+    recentSalesCancel: "Annuler",
     chartEmptyTitle: "Aucune donnée à afficher",
     chartEmptyDesc: "Les ventes enregistrées sur cette période apparaîtront dans les graphiques.",
     chartEmptyCta: "Ouvrir la caisse",
@@ -812,6 +821,8 @@ export const t = {
     msgLoadError: "Erreur lors du chargement des ventes.",
     saleCancelled: "Vente annulée",
     cancelSaleFailed: "Impossible d'annuler la vente.",
+    voidSaleConfirm:
+      "La vente sera annulée : le stock sera recrédité et le crédit client (si applicable) sera déduit. Cette action est irréversible.",
     exportReady: "Export téléchargé",
   },
   receipt: {

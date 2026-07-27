@@ -1,7 +1,16 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography } from "antd";
-import { Users, Truck, Bike, Receipt, Settings, Shield, ChevronRight } from "lucide-react";
+import {
+  Users,
+  Truck,
+  Bike,
+  Receipt,
+  Settings,
+  Shield,
+  ChevronRight,
+  BarChart3,
+} from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -18,6 +27,14 @@ type MenuLink = {
 };
 
 const linkConfig: MenuLink[] = [
+  {
+    path: "/vue-globale",
+    permission: "globalView",
+    icon: BarChart3,
+    label: t.globalView.title,
+    desc: t.globalView.subtitle,
+    group: "commerce",
+  },
   {
     path: "/clients",
     permission: "clients",

@@ -108,6 +108,25 @@ export function buildPaymentRowsFromSales(
     .sort((a, b) => b.amount - a.amount);
 }
 
+/** Agrège la répartition paiements renvoyée par l’API dashboard. */
+export function buildPaymentRowsFromBreakdown(
+  breakdown: { method: string; amount: number }[]
+): ReportExportPaymentRow[] {
+  if (!breakdown?.length) return [];
+  let total = 0;
+  for (const row of breakdown) {
+    total += row.amount;
+  }
+  if (total === 0) return [];
+  return breakdown
+    .map((row) => ({
+      label: REPORT_PAYMENT_LABELS[row.method] || row.method || "—",
+      amount: row.amount,
+      pct: Math.round((row.amount / total) * 100),
+    }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
 export function filterSalesInPeriod(
   recentSales: DashboardResponse["recentSales"],
   periodStart: string,
@@ -169,7 +188,10 @@ export function buildReportExportSnapshot(params: {
     });
   }
 
-  const payments = buildPaymentRowsFromSales(salesFiltered);
+  const payments =
+    data.periodPaymentBreakdown && data.periodPaymentBreakdown.length > 0
+      ? buildPaymentRowsFromBreakdown(data.periodPaymentBreakdown)
+      : buildPaymentRowsFromSales(salesFiltered);
 
   const sales: ReportExportSaleRow[] = salesFiltered.map((s) => ({
     receiptNumber: s.receiptNumber,

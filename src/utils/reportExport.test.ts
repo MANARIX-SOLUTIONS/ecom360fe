@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import dayjs from "dayjs";
 import {
+  buildPaymentRowsFromBreakdown,
   buildPaymentRowsFromSales,
   buildReportExportSnapshot,
   filterSalesInPeriod,
@@ -85,6 +86,40 @@ describe("reportExport", () => {
     expect(cash?.amount).toBe(20000);
     expect(credit?.amount).toBe(15000);
     expect(cash!.pct + credit!.pct).toBe(100);
+  });
+
+  it("buildPaymentRowsFromBreakdown uses period totals from API", () => {
+    const rows = buildPaymentRowsFromBreakdown([
+      { method: "cash", amount: 40000 },
+      { method: "wave", amount: 10000 },
+    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].label).toBe("Espèces");
+    expect(rows[0].amount).toBe(40000);
+    expect(rows[0].pct).toBe(80);
+    expect(rows[1].label).toBe("Wave");
+    expect(rows[1].pct).toBe(20);
+  });
+
+  it("buildReportExportSnapshot prefers periodPaymentBreakdown over recentSales", () => {
+    const snap = buildReportExportSnapshot({
+      data: {
+        ...baseDashboard,
+        periodPaymentBreakdown: [
+          { method: "orange_money", amount: 30000 },
+          { method: "cash", amount: 20000 },
+        ],
+      },
+      periodRange: { start: "2026-05-10", end: "2026-05-15" },
+      periodLabel: "Cette semaine",
+      business: { name: "Boutique Test" },
+      storeName: "Dakar Centre",
+      labels,
+    });
+    expect(snap.payments).toHaveLength(2);
+    expect(snap.payments[0].label).toBe("Orange Money");
+    expect(snap.payments[0].amount).toBe(30000);
+    expect(snap.payments[1].label).toBe("Espèces");
   });
 
   it("buildReportExportSnapshot includes kpis, margin and excerpt flag", () => {

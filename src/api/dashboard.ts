@@ -64,6 +64,12 @@ export type DashboardResponse = {
   previousPeriodProfit?: number;
   debtorClientsCount?: number;
   totalReceivable?: number;
+  /** CA completed par jour (yyyy-MM-dd) sur la période effective. */
+  periodDailySales?: { date: string; amount: number }[];
+  /** Dépenses par jour (yyyy-MM-dd) sur la période effective. */
+  periodDailyExpenses?: { date: string; amount: number }[];
+  /** Répartition CA completed par moyen de paiement sur la période. */
+  periodPaymentBreakdown?: { method: string; amount: number }[];
 };
 
 export type DashboardSliceResponse<T> = {
