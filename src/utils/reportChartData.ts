@@ -7,6 +7,8 @@ import {
 
 export type SalesChartPoint = { name: string; ventes: number; dépenses: number };
 
+export type DailyAmountPoint = { date: string; amount: number };
+
 function mondayWeekStartYmd(ymd: string): string {
   const d = parseYmdLocal(ymd);
   const day = d.getDay();
@@ -50,22 +52,57 @@ function bucketLabel(key: string, mode: BucketMode): string {
   return formatMonthLabel(key);
 }
 
-/** Agrège les ventes pour le graphique barres selon la durée de la période. */
+/**
+ * Agrège CA et dépenses journaliers pour le graphique barres selon la durée
+ * de la période.
+ */
+export function buildPeriodChartData(
+  dailySales: DailyAmountPoint[],
+  dailyExpenses: DailyAmountPoint[],
+  periodStart: string,
+  periodEnd: string
+): SalesChartPoint[] {
+  if (!dailySales.length && !dailyExpenses.length) return [];
+  const mode = bucketModeForRange(periodStart, periodEnd);
+  const byBucket: Record<string, { ventes: number; dépenses: number }> = {};
+
+  const add = (ymd: string, field: "ventes" | "dépenses", amount: number) => {
+    const key = bucketKey(ymd, mode);
+    if (!byBucket[key]) byBucket[key] = { ventes: 0, dépenses: 0 };
+    byBucket[key][field] += amount;
+  };
+
+  for (const s of dailySales) {
+    if (!s.date) continue;
+    add(s.date, "ventes", s.amount);
+  }
+  for (const e of dailyExpenses) {
+    if (!e.date) continue;
+    add(e.date, "dépenses", e.amount);
+  }
+
+  return Object.entries(byBucket)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, v]) => ({ name: bucketLabel(key, mode), ...v }));
+}
+
+/**
+ * @deprecated Prefer {@link buildPeriodChartData} with API daily series.
+ * Kept for callers that still pass raw sales rows (no expenses).
+ */
 export function buildSalesChartData(
   sales: { createdAt: string; total: number }[],
   periodStart: string,
   periodEnd: string
 ): SalesChartPoint[] {
   if (!sales.length) return [];
-  const mode = bucketModeForRange(periodStart, periodEnd);
-  const byBucket: Record<string, { ventes: number; dépenses: number }> = {};
-  for (const s of sales) {
-    const dayYmd = ymdFromIsoLocal(s.createdAt);
-    const key = bucketKey(dayYmd, mode);
-    if (!byBucket[key]) byBucket[key] = { ventes: 0, dépenses: 0 };
-    byBucket[key].ventes += s.total;
-  }
-  return Object.entries(byBucket)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, v]) => ({ name: bucketLabel(key, mode), ...v }));
+  return buildPeriodChartData(
+    sales.map((s) => ({
+      date: ymdFromIsoLocal(s.createdAt),
+      amount: s.total,
+    })),
+    [],
+    periodStart,
+    periodEnd
+  );
 }

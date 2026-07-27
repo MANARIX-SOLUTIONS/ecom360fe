@@ -6,6 +6,7 @@
 
 import { API_BASE } from "./apiBase";
 import { PERMISSIONS_CACHE_KEY } from "@/constants/storageKeys";
+import { clearAllPosCarts } from "@/utils/posCartStorage";
 
 const API_PREFIX = "/api/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -39,6 +40,7 @@ export function clearAuth() {
   localStorage.removeItem("ecom360_plan_slug");
   localStorage.removeItem("ecom360_active_store_id");
   localStorage.removeItem(PERMISSIONS_CACHE_KEY);
+  clearAllPosCarts();
 }
 
 export function setAuth(

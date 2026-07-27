@@ -49,7 +49,7 @@ import { t } from "@/i18n";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
 import { formatRangeSummaryFr, isYmdInInclusiveRange, ymdFromIsoLocal } from "@/utils/dateLocal";
-import { buildSalesChartData } from "@/utils/reportChartData";
+import { buildPeriodChartData } from "@/utils/reportChartData";
 import {
   type ReportsPeriodKey,
   isCalendarQuarterAfterCurrent,
@@ -64,6 +64,7 @@ import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { useStore } from "@/hooks/useStore";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
 import {
+  buildPaymentRowsFromSales,
   buildReportExportSnapshot,
   getReportPeriodLabel,
   REPORT_PAYMENT_LABELS,
@@ -110,7 +111,7 @@ function formatTime(iso: string) {
 export default function Reports() {
   const navigate = useNavigate();
   const { matrixCan } = useMatrixCan();
-  const { canExportPdf, canExportExcel } = usePlanFeatures();
+  const { canExportPdf, canExportExcel, canAdvancedReports } = usePlanFeatures();
   const { canAccess } = usePermissions();
   const { profile } = useBusinessProfile();
   const { activeStore } = useStore();
@@ -156,7 +157,11 @@ export default function Reports() {
     const { start, end } = resolveReportsPeriodRange(activeTab, periodAnchors);
     const fetchId = ++dashboardFetchIdRef.current;
     setLoading(true);
-    getDashboard({ periodStart: start, periodEnd: end })
+    getDashboard({
+      periodStart: start,
+      periodEnd: end,
+      storeId: activeStore?.id,
+    })
       .then((res) => {
         if (fetchId !== dashboardFetchIdRef.current) return;
         setData(res);
@@ -170,21 +175,26 @@ export default function Reports() {
         if (fetchId !== dashboardFetchIdRef.current) return;
         setLoading(false);
       });
-  }, [activeTab, periodAnchors]);
+  }, [activeTab, periodAnchors, activeStore?.id]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!canAdvancedReports && (activeTab === "quarter" || activeTab === "year")) {
+      setActiveTab("month");
+    }
+  }, [canAdvancedReports, activeTab]);
 
   const handleVoidSale = useCallback(
     (saleId: string, e: React.MouseEvent) => {
       e.stopPropagation();
       if (!matrixCan("SALES_DELETE", "reports")) return;
       Modal.confirm({
-        title: "Annuler la vente",
-        content:
-          "La vente sera annulée : le stock sera recrédité et le montant crédit client (si applicable) sera déduit. Cette action est irréversible.",
-        okText: "Annuler la vente",
+        title: t.sales.voidSale,
+        content: t.sales.voidSaleConfirm,
+        okText: t.sales.voidSale,
         okType: "danger",
         cancelText: t.common.cancel,
         onOk: async () => {
@@ -212,47 +222,73 @@ export default function Reports() {
     );
   }, [data, effectivePeriodRange.start, effectivePeriodRange.end]);
 
-  const chartData = useMemo(
-    () => buildSalesChartData(salesInPeriod, effectivePeriodRange.start, effectivePeriodRange.end),
-    [salesInPeriod, effectivePeriodRange.start, effectivePeriodRange.end]
-  );
-
-  const paymentData = useMemo(() => {
-    if (!salesInPeriod.length) return [];
-    const byMethod: Record<string, number> = {};
-    let total = 0;
-    for (const s of salesInPeriod) {
-      const m = s.paymentMethod || "cash";
-      byMethod[m] = (byMethod[m] || 0) + s.total;
-      total += s.total;
+  const chartData = useMemo(() => {
+    const dailySales = data?.periodDailySales ?? [];
+    const dailyExpenses = data?.periodDailyExpenses ?? [];
+    if (dailySales.length || dailyExpenses.length) {
+      return buildPeriodChartData(
+        dailySales,
+        dailyExpenses,
+        effectivePeriodRange.start,
+        effectivePeriodRange.end
+      );
     }
-    if (total === 0) return [];
-    return Object.entries(byMethod).map(([method, amount]) => ({
-      name: LABELS[method] || method,
-      value: Math.round((amount / total) * 100),
-      color: PAYMENT_COLORS[method] || "var(--color-primary)",
-    }));
-  }, [salesInPeriod]);
+    // Fallback API ancienne : ventes récentes seulement (sans dépenses).
+    if (!salesInPeriod.length) return [];
+    return buildPeriodChartData(
+      salesInPeriod.map((s) => ({
+        date: ymdFromIsoLocal(s.createdAt),
+        amount: s.total,
+      })),
+      [],
+      effectivePeriodRange.start,
+      effectivePeriodRange.end
+    );
+  }, [
+    data?.periodDailySales,
+    data?.periodDailyExpenses,
+    salesInPeriod,
+    effectivePeriodRange.start,
+    effectivePeriodRange.end,
+  ]);
 
   const paymentAmountRows = useMemo(() => {
-    if (!salesInPeriod.length) return [];
-    const byMethod: Record<string, number> = {};
-    let total = 0;
-    for (const s of salesInPeriod) {
-      const m = s.paymentMethod || "cash";
-      byMethod[m] = (byMethod[m] || 0) + s.total;
-      total += s.total;
+    if (data?.periodPaymentBreakdown?.length) {
+      const total = data.periodPaymentBreakdown.reduce((sum, r) => sum + r.amount, 0);
+      if (total === 0) return [];
+      return [...data.periodPaymentBreakdown]
+        .map((row) => {
+          const method = row.method || "cash";
+          return {
+            key: method,
+            label: LABELS[method] || method,
+            amount: row.amount,
+            pct: Math.round((row.amount / total) * 100),
+          };
+        })
+        .sort((a, b) => b.amount - a.amount);
     }
-    if (total === 0) return [];
-    return Object.entries(byMethod)
-      .map(([method, amount]) => ({
+    if (!salesInPeriod.length) return [];
+    return buildPaymentRowsFromSales(salesInPeriod).map((row) => {
+      const method = Object.entries(LABELS).find(([, label]) => label === row.label)?.[0] ?? "cash";
+      return {
         key: method,
-        label: LABELS[method] || method,
-        amount,
-        pct: Math.round((amount / total) * 100),
-      }))
-      .sort((a, b) => b.amount - a.amount);
-  }, [salesInPeriod]);
+        label: row.label,
+        amount: row.amount,
+        pct: row.pct,
+      };
+    });
+  }, [data?.periodPaymentBreakdown, salesInPeriod]);
+
+  const paymentData = useMemo(
+    () =>
+      paymentAmountRows.map((row) => ({
+        name: row.label,
+        value: row.pct,
+        color: PAYMENT_COLORS[row.key] || "var(--color-primary)",
+      })),
+    [paymentAmountRows]
+  );
 
   const kpiCards: ReportKpiCard[] = useMemo(() => {
     if (!data) return [];
@@ -295,7 +331,7 @@ export default function Reports() {
         trendPct: pctChangeVsPrevious(data.periodSalesCount, data.previousPeriodSalesCount),
       },
     ];
-    if (data.periodGrossMargin != null) {
+    if (canAdvancedReports && data.periodGrossMargin != null) {
       base.push({
         key: "gm",
         label: t.reports.kpiGrossMargin,
@@ -307,11 +343,11 @@ export default function Reports() {
       });
     }
     return base;
-  }, [data]);
+  }, [data, canAdvancedReports]);
 
   const pieData = paymentData.length
     ? paymentData
-    : [{ name: "Aucune donnée", value: 100, color: "#ccc" }];
+    : [{ name: t.reports.chartEmptyTitle, value: 100, color: "#ccc" }];
 
   const buildExportSnapshot = useCallback(() => {
     if (!data) return null;
@@ -334,9 +370,17 @@ export default function Reports() {
         kpiGrossMargin: t.reports.kpiGrossMargin,
         productBrand: t.reports.exportProductBrand,
       },
-      includeGrossMargin: data.periodGrossMargin != null,
+      includeGrossMargin: canAdvancedReports && data.periodGrossMargin != null,
     });
-  }, [data, effectivePeriodRange, activeTab, periodAnchors, profile, activeStore?.name]);
+  }, [
+    data,
+    effectivePeriodRange,
+    activeTab,
+    periodAnchors,
+    profile,
+    activeStore?.name,
+    canAdvancedReports,
+  ]);
 
   const handleExportPdf = useCallback(async () => {
     const snapshot = buildExportSnapshot();
@@ -482,8 +526,12 @@ export default function Reports() {
           { key: "week", label: t.reports.thisWeek },
           { key: "month", label: t.reports.thisMonth },
           { key: "customMonth", label: t.reports.pickMonth },
-          { key: "quarter", label: t.reports.pickQuarter },
-          { key: "year", label: t.reports.pickYear },
+          ...(canAdvancedReports
+            ? [
+                { key: "quarter", label: t.reports.pickQuarter },
+                { key: "year", label: t.reports.pickYear },
+              ]
+            : []),
         ]}
         className={styles.tabsWrap}
       />
@@ -699,7 +747,7 @@ export default function Reports() {
             )}
           </div>
         </Card>
-        {data != null && data.periodGrossMargin != null && (
+        {canAdvancedReports && data != null && data.periodGrossMargin != null && (
           <Card
             title={t.reports.marginSectionTitle}
             variant="borderless"
@@ -738,7 +786,7 @@ export default function Reports() {
         )}
         {salesInPeriod.length > 0 && (
           <Card
-            title="Ventes récentes"
+            title={t.reports.recentSalesTitle}
             variant="borderless"
             className={`${styles.card} contentCard`}
             style={{ marginTop: 16 }}
@@ -762,18 +810,18 @@ export default function Reports() {
                 })}
                 columns={[
                   {
-                    title: "N° ticket",
+                    title: t.sales.receiptNumber,
                     dataIndex: "receiptNumber",
                     width: 120,
                   },
                   {
-                    title: "Heure",
+                    title: t.reports.recentSalesColTime,
                     dataIndex: "createdAt",
                     width: 80,
                     render: (v: string) => formatTime(v),
                   },
                   {
-                    title: "Montant",
+                    title: t.reports.recentSalesColAmount,
                     dataIndex: "total",
                     width: 100,
                     align: "right",
@@ -782,7 +830,7 @@ export default function Reports() {
                     ),
                   },
                   {
-                    title: "Paiement",
+                    title: t.reports.recentSalesColPayment,
                     dataIndex: "paymentMethod",
                     width: 100,
                     render: (m: string) => (
@@ -802,12 +850,12 @@ export default function Reports() {
                     ),
                   },
                   {
-                    title: "Statut",
+                    title: t.reports.exportColStatus,
                     dataIndex: "status",
                     width: 100,
                     render: (status: string) => (
                       <Tag color={status === "voided" ? "default" : "green"}>
-                        {status === "voided" ? "Annulée" : "Terminée"}
+                        {status === "voided" ? t.sales.statusVoided : t.sales.statusCompleted}
                       </Tag>
                     ),
                   },
@@ -827,7 +875,7 @@ export default function Reports() {
                                 loading={voidingId === r.saleId}
                                 onClick={(e) => handleVoidSale(r.saleId, e)}
                               >
-                                Annuler
+                                {t.reports.recentSalesCancel}
                               </Button>
                             ) : null,
                         },

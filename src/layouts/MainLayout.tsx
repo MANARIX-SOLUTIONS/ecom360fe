@@ -132,6 +132,7 @@ export default function MainLayout() {
   const { isSuperAdmin } = useAuthRole();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
+  const canSeeReports = canAccessPlan("reports", canAccessBackend("reports"));
   const { notifications, unreadCount, markRead } = useNotifications();
   const { offline } = useNetworkStatus();
   const { profile: businessProfile } = useBusinessProfile();
@@ -396,16 +397,18 @@ export default function MainLayout() {
         >
           <ShoppingCart size={24} />
         </button>
-        <button
-          type="button"
-          className={location.pathname === "/reports" ? styles.navActive : ""}
-          onClick={() => navigate("/reports")}
-          aria-label="Rapports"
-        >
-          <TrendingUp size={22} />
-          <span>Rapports</span>
-          {location.pathname === "/reports" && <span className={styles.navDot} />}
-        </button>
+        {canSeeReports && (
+          <button
+            type="button"
+            className={location.pathname === "/reports" ? styles.navActive : ""}
+            onClick={() => navigate("/reports")}
+            aria-label={t.reports.title}
+          >
+            <TrendingUp size={22} />
+            <span>{t.reports.title}</span>
+            {location.pathname === "/reports" && <span className={styles.navDot} />}
+          </button>
+        )}
         <button
           type="button"
           className={moreNavActive ? styles.navActive : ""}

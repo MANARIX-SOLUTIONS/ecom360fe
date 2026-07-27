@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Skeleton, Alert, Button, Table, DatePicker, Typography } from "antd";
 import dayjs from "dayjs";
@@ -21,6 +21,7 @@ import {
 import { getGlobalView } from "@/api/dashboard";
 import type { GlobalViewResponse } from "@/api/dashboard";
 import { EmptyState } from "@/components/EmptyState";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
 import { formatRangeSummaryFr } from "@/utils/dateLocal";
 import {
@@ -33,7 +34,17 @@ import styles from "./VueGlobale.module.css";
 
 type PeriodKey = GlobalViewPeriodKey;
 
-const PERIOD_TAB_KEYS: PeriodKey[] = ["today", "last7", "thisMonth", "month", "quarter", "year"];
+const BASE_PERIOD_TAB_KEYS: PeriodKey[] = ["today", "last7", "thisMonth", "month"];
+const ADVANCED_PERIOD_TAB_KEYS: PeriodKey[] = ["quarter", "year"];
+
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  today: t.globalView.periodToday,
+  last7: t.globalView.periodLast7,
+  thisMonth: t.globalView.periodThisMonth,
+  month: t.globalView.periodPickMonth,
+  quarter: t.globalView.periodQuarter,
+  year: t.globalView.periodYear,
+};
 
 const frInteger = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
@@ -74,7 +85,7 @@ function KpiCard({
   icon: LucideIcon;
   iconWrapClass: string;
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Card variant="borderless" className={className}>
@@ -101,8 +112,9 @@ function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
     rev > 0 ? Math.min(100, Math.round((data.totalExpenses / rev) * 1000) / 10) : null;
 
   const profitPositive = data.totalProfit >= 0;
-
-  const showExpenseBar = rev > 0 && data.totalSalesCount > 0 && expenseRatioPct != null;
+  const hasSales = data.totalSalesCount > 0;
+  const hasExpenses = data.totalExpenses > 0;
+  const showExpenseBar = hasSales && rev > 0 && expenseRatioPct != null;
 
   return (
     <div className={styles.execSummary}>
@@ -116,7 +128,7 @@ function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
               {t.globalView.execSummaryTitle}
             </Typography.Title>
           </div>
-          {netMarginPct != null && data.totalSalesCount > 0 && (
+          {netMarginPct != null && hasSales && (
             <span
               className={`${styles.execChip} ${profitPositive ? styles.execChipPositive : styles.execChipNegative}`}
             >
@@ -125,8 +137,20 @@ function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
           )}
         </div>
 
-        {data.totalSalesCount === 0 ? (
+        {!hasSales && !hasExpenses ? (
           <p className={styles.execSummaryMuted}>{t.globalView.execSummaryNoActivity}</p>
+        ) : !hasSales ? (
+          <>
+            <div className={styles.execHeroMoney}>
+              <KpiMoney value={data.totalExpenses} large className={styles.execHeroMoneyInner} />
+            </div>
+            <p className={styles.execSummaryLine}>
+              {t.globalView.execSummaryExpensesOnly.replace(
+                "{expenses}",
+                formatFCFA(data.totalExpenses)
+              )}
+            </p>
+          </>
         ) : (
           <>
             <div className={styles.execHeroMoney}>
@@ -187,8 +211,31 @@ function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
   );
 }
 
+function ContentSkeleton() {
+  return (
+    <>
+      <Skeleton active paragraph={{ rows: 2 }} className={styles.execSkeleton} />
+      <div className={styles.kpiGrid} style={{ marginBottom: 32 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} variant="borderless" className={styles.kpiCard}>
+            <div className={styles.kpiCardInner}>
+              <Skeleton active paragraph={{ rows: 2 }} />
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Skeleton active paragraph={{ rows: 5 }} style={{ marginBottom: 32 }} />
+      <div className={styles.twoCol}>
+        <Skeleton active paragraph={{ rows: 6 }} />
+        <Skeleton active paragraph={{ rows: 6 }} />
+      </div>
+    </>
+  );
+}
+
 export default function VueGlobale() {
   const navigate = useNavigate();
+  const { canAdvancedReports, canStockAlerts } = usePlanFeatures();
   const [period, setPeriod] = useState<PeriodKey>("thisMonth");
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
   const [selectedQuarter, setSelectedQuarter] = useState<Dayjs>(() => dayjs());
@@ -196,15 +243,23 @@ export default function VueGlobale() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GlobalViewResponse | null>(null);
+  const fetchIdRef = useRef(0);
+  /** Premier chargement : skeleton plein écran ; ensuite on garde le hero. */
+  const hasLoadedOnceRef = useRef(false);
 
-  const periodLabels: Record<PeriodKey, string> = {
-    today: t.globalView.periodToday,
-    last7: t.globalView.periodLast7,
-    thisMonth: t.globalView.periodThisMonth,
-    month: t.globalView.periodPickMonth,
-    quarter: t.globalView.periodQuarter,
-    year: t.globalView.periodYear,
-  };
+  const periodTabKeys = useMemo(
+    () =>
+      canAdvancedReports
+        ? [...BASE_PERIOD_TAB_KEYS, ...ADVANCED_PERIOD_TAB_KEYS]
+        : BASE_PERIOD_TAB_KEYS,
+    [canAdvancedReports]
+  );
+
+  useEffect(() => {
+    if (!canAdvancedReports && (period === "quarter" || period === "year")) {
+      setPeriod("thisMonth");
+    }
+  }, [canAdvancedReports, period]);
 
   const periodAnchors = useMemo(
     () => ({
@@ -220,17 +275,24 @@ export default function VueGlobale() {
       setLoading(false);
       return;
     }
+    const fetchId = ++fetchIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const { start, end } = resolveGlobalViewPeriodRange(period, periodAnchors);
       const res = await getGlobalView({ periodStart: start, periodEnd: end });
+      if (fetchId !== fetchIdRef.current) return;
       setData(res);
+      hasLoadedOnceRef.current = true;
     } catch (e) {
+      if (fetchId !== fetchIdRef.current) return;
       setError(e instanceof Error ? e.message : t.globalView.loadError);
       setData(null);
+      hasLoadedOnceRef.current = true;
     } finally {
-      setLoading(false);
+      if (fetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [period, periodAnchors]);
 
@@ -252,7 +314,99 @@ export default function VueGlobale() {
     (data?.totalSalesCount ?? 0) > 0 ||
     (data?.totalExpenses ?? 0) > 0;
 
-  if (loading) {
+  const showFullPageSkeleton = loading && !hasLoadedOnceRef.current;
+
+  const hero = (
+    <header className={styles.hero}>
+      <div className={styles.heroBackdrop} aria-hidden />
+      <div className={styles.heroContent}>
+        <p className={styles.heroBadge}>{t.globalView.heroBadge}</p>
+        <h1 className={styles.heroTitle}>{t.globalView.title}</h1>
+        <p className={styles.heroSubtitle}>{t.globalView.subtitle}</p>
+        <div className={styles.periodTabs} role="tablist" aria-label={t.globalView.periodTabsAria}>
+          {periodTabKeys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={period === key}
+              aria-label={PERIOD_LABELS[key]}
+              className={`${styles.periodTab} ${period === key ? styles.periodTabActive : ""}`}
+              onClick={() => setPeriod(key)}
+            >
+              {PERIOD_LABELS[key]}
+            </button>
+          ))}
+        </div>
+        {period === "month" && (
+          <div className={styles.monthPickerWrap}>
+            <label htmlFor="vue-globale-month" className={styles.monthPickerLabel}>
+              {t.globalView.monthDisplayedLabel}
+            </label>
+            <DatePicker
+              id="vue-globale-month"
+              picker="month"
+              value={selectedMonth}
+              onChange={(d) => {
+                if (d) setSelectedMonth(d);
+              }}
+              format="MMMM YYYY"
+              allowClear={false}
+              disabledDate={(current) =>
+                current ? current.isAfter(dayjs().endOf("month")) : false
+              }
+              className={styles.monthPicker}
+            />
+          </div>
+        )}
+        {canAdvancedReports && period === "quarter" && (
+          <div className={styles.monthPickerWrap}>
+            <label htmlFor="vue-globale-quarter" className={styles.monthPickerLabel}>
+              {t.globalView.quarterDisplayedLabel}
+            </label>
+            <DatePicker
+              id="vue-globale-quarter"
+              picker="quarter"
+              value={selectedQuarter}
+              onChange={(d) => {
+                if (d) setSelectedQuarter(d);
+              }}
+              format="[T]Q YYYY"
+              allowClear={false}
+              disabledDate={(current) => (current ? isCalendarQuarterAfterCurrent(current) : false)}
+              className={styles.monthPicker}
+            />
+          </div>
+        )}
+        {canAdvancedReports && period === "year" && (
+          <div className={styles.monthPickerWrap}>
+            <label htmlFor="vue-globale-year" className={styles.monthPickerLabel}>
+              {t.globalView.yearDisplayedLabel}
+            </label>
+            <DatePicker
+              id="vue-globale-year"
+              picker="year"
+              value={selectedYear}
+              onChange={(d) => {
+                if (d) setSelectedYear(d);
+              }}
+              format="YYYY"
+              allowClear={false}
+              disabledDate={(current) => (current ? isCalendarYearAfterCurrent(current) : false)}
+              className={styles.monthPicker}
+            />
+          </div>
+        )}
+        {data && !loading && (
+          <p className={styles.periodSummary}>
+            {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
+          </p>
+        )}
+      </div>
+    </header>
+  );
+
+  if (showFullPageSkeleton) {
     return (
       <div className={styles.page}>
         <div className={styles.hero}>
@@ -261,28 +415,14 @@ export default function VueGlobale() {
             <Skeleton.Input active style={{ width: 200, height: 32 }} />
             <Skeleton.Input active style={{ width: 280, height: 20, marginTop: 12 }} />
             <div className={styles.periodTabs}>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <Skeleton.Button key={i} active style={{ width: 100 }} />
               ))}
             </div>
           </div>
         </div>
         <div className={styles.content}>
-          <Skeleton active paragraph={{ rows: 2 }} className={styles.execSkeleton} />
-          <div className={styles.kpiGrid} style={{ marginBottom: 32 }}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} variant="borderless" className={styles.kpiCard}>
-                <div className={styles.kpiCardInner}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
-                </div>
-              </Card>
-            ))}
-          </div>
-          <Skeleton active paragraph={{ rows: 5 }} style={{ marginBottom: 32 }} />
-          <div className={styles.twoCol}>
-            <Skeleton active paragraph={{ rows: 6 }} />
-            <Skeleton active paragraph={{ rows: 6 }} />
-          </div>
+          <ContentSkeleton />
         </div>
       </div>
     );
@@ -290,99 +430,7 @@ export default function VueGlobale() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
-        <div className={styles.heroBackdrop} aria-hidden />
-        <div className={styles.heroContent}>
-          <p className={styles.heroBadge}>{t.globalView.heroBadge}</p>
-          <h1 className={styles.heroTitle}>{t.globalView.title}</h1>
-          <p className={styles.heroSubtitle}>{t.globalView.subtitle}</p>
-          <div
-            className={styles.periodTabs}
-            role="tablist"
-            aria-label={t.globalView.periodTabsAria}
-          >
-            {PERIOD_TAB_KEYS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={period === key}
-                aria-label={periodLabels[key]}
-                className={`${styles.periodTab} ${period === key ? styles.periodTabActive : ""}`}
-                onClick={() => setPeriod(key)}
-              >
-                {periodLabels[key]}
-              </button>
-            ))}
-          </div>
-          {period === "month" && (
-            <div className={styles.monthPickerWrap}>
-              <label htmlFor="vue-globale-month" className={styles.monthPickerLabel}>
-                {t.globalView.monthDisplayedLabel}
-              </label>
-              <DatePicker
-                id="vue-globale-month"
-                picker="month"
-                value={selectedMonth}
-                onChange={(d) => {
-                  if (d) setSelectedMonth(d);
-                }}
-                format="MMMM YYYY"
-                allowClear={false}
-                disabledDate={(current) =>
-                  current ? current.isAfter(dayjs().endOf("month")) : false
-                }
-                className={styles.monthPicker}
-              />
-            </div>
-          )}
-          {period === "quarter" && (
-            <div className={styles.monthPickerWrap}>
-              <label htmlFor="vue-globale-quarter" className={styles.monthPickerLabel}>
-                {t.globalView.quarterDisplayedLabel}
-              </label>
-              <DatePicker
-                id="vue-globale-quarter"
-                picker="quarter"
-                value={selectedQuarter}
-                onChange={(d) => {
-                  if (d) setSelectedQuarter(d);
-                }}
-                format="[T]Q YYYY"
-                allowClear={false}
-                disabledDate={(current) =>
-                  current ? isCalendarQuarterAfterCurrent(current) : false
-                }
-                className={styles.monthPicker}
-              />
-            </div>
-          )}
-          {period === "year" && (
-            <div className={styles.monthPickerWrap}>
-              <label htmlFor="vue-globale-year" className={styles.monthPickerLabel}>
-                {t.globalView.yearDisplayedLabel}
-              </label>
-              <DatePicker
-                id="vue-globale-year"
-                picker="year"
-                value={selectedYear}
-                onChange={(d) => {
-                  if (d) setSelectedYear(d);
-                }}
-                format="YYYY"
-                allowClear={false}
-                disabledDate={(current) => (current ? isCalendarYearAfterCurrent(current) : false)}
-                className={styles.monthPicker}
-              />
-            </div>
-          )}
-          {data && (
-            <p className={styles.periodSummary}>
-              {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
-            </p>
-          )}
-        </div>
-      </header>
+      {hero}
 
       <div className={styles.content}>
         {error && (
@@ -393,7 +441,7 @@ export default function VueGlobale() {
             closable
             onClose={() => setError(null)}
             action={
-              <Button size="small" onClick={load}>
+              <Button size="small" onClick={() => void load()}>
                 {t.globalView.retry}
               </Button>
             }
@@ -401,7 +449,9 @@ export default function VueGlobale() {
           />
         )}
 
-        {data && (
+        {loading ? (
+          <ContentSkeleton />
+        ) : data ? (
           <>
             <ExecutiveSummary data={data} />
 
@@ -532,7 +582,10 @@ export default function VueGlobale() {
                             {store.revenue > 0 && (
                               <>
                                 {" · "}
-                                <span className={styles.storeShare}>{store.sharePercent}% CA</span>
+                                <span className={styles.storeShare}>
+                                  {store.sharePercent}
+                                  {t.globalView.storeShareOfCa}
+                                </span>
                               </>
                             )}
                           </span>
@@ -632,52 +685,61 @@ export default function VueGlobale() {
                 </div>
               </section>
 
-              <section className={styles.section} aria-labelledby="low-stock-heading">
-                <h2 id="low-stock-heading" className={styles.sectionTitle}>
-                  <AlertTriangle size={22} className={styles.sectionTitleIcon} aria-hidden />
-                  {t.dashboard.lowStockAlerts}
-                </h2>
-                <div className={styles.panel}>
-                  {data.lowStockItems.length === 0 ? (
-                    <EmptyState
-                      compact
-                      icon={AlertTriangle}
-                      title={t.globalView.emptyStockTitle}
-                      description={t.globalView.emptyStockDesc}
-                    />
-                  ) : (
-                    <ul className={styles.lowStockList}>
-                      {data.lowStockItems.slice(0, 10).map((item) => (
-                        <li
-                          key={`${item.productId}-${item.storeName}`}
-                          className={styles.lowStockItem}
-                        >
-                          <a
-                            href={`/products/${item.productId}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigate(`/products/${item.productId}`);
-                            }}
+              {canStockAlerts && (
+                <section className={styles.section} aria-labelledby="low-stock-heading">
+                  <h2 id="low-stock-heading" className={styles.sectionTitle}>
+                    <AlertTriangle size={22} className={styles.sectionTitleIcon} aria-hidden />
+                    {t.dashboard.lowStockAlerts}
+                  </h2>
+                  <div className={styles.panel}>
+                    {data.lowStockItems.length === 0 ? (
+                      <EmptyState
+                        compact
+                        icon={AlertTriangle}
+                        title={t.globalView.emptyStockTitle}
+                        description={t.globalView.emptyStockDesc}
+                      />
+                    ) : (
+                      <ul className={styles.lowStockList}>
+                        {data.lowStockItems.map((item) => (
+                          <li
+                            key={`${item.productId}-${item.storeName}`}
+                            className={styles.lowStockItem}
                           >
-                            {item.productName}
-                          </a>
-                          <span
-                            className={styles.lowStockBadge}
-                            style={{
-                              background: "rgba(255,77,79,0.12)",
-                              color: "var(--color-error)",
-                            }}
-                          >
-                            {item.quantity} / {item.minStock} · {item.storeName}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </section>
+                            <a
+                              href={`/products/${item.productId}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate(`/products/${item.productId}`);
+                              }}
+                            >
+                              {item.productName}
+                            </a>
+                            <span className={styles.lowStockBadge}>
+                              {item.quantity} / {item.minStock} · {item.storeName}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
           </>
+        ) : (
+          !error && (
+            <EmptyState
+              icon={BarChart3}
+              title={t.globalView.emptyPageTitle}
+              description={t.globalView.emptyPageDesc}
+              action={
+                <Button type="primary" onClick={() => void load()}>
+                  {t.globalView.retry}
+                </Button>
+              }
+            />
+          )
         )}
       </div>
     </div>
