@@ -1,7 +1,7 @@
 {
   "name": "ecom360pme",
   "private": true,
-  "version": "1.10.0+20262707",
+  "version": "1.10.1+20262907",
   "type": "module",
   "scripts": {
     "dev": "vite",
