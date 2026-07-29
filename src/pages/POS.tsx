@@ -24,6 +24,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import {
   getStockByStore,
+  getStockForProducts,
   listClients,
   createSale,
   getSale,
@@ -732,17 +733,16 @@ export default function POS() {
           });
         }
         const byCat = Object.fromEntries(catsRes.map((c) => [c.id, c.name]));
-        setProducts(
-          stockList.map((s) => ({
-            id: s.productId,
-            name: s.productName,
-            price: s.salePrice ?? 0,
-            category: (s.categoryId && byCat[s.categoryId]) || "Divers",
-            stock: s.quantity,
-            minStock: s.minStock,
-            imageUrl: s.imageUrl ?? null,
-          }))
-        );
+        const mapped = stockList.map((s) => ({
+          id: s.productId,
+          name: s.productName,
+          price: s.salePrice ?? 0,
+          category: (s.categoryId && byCat[s.categoryId]) || "Divers",
+          stock: s.quantity,
+          minStock: s.minStock,
+          imageUrl: s.imageUrl ?? null,
+        }));
+        setProducts(mapped);
       } catch (e) {
         if (cancelled) return;
         message.error(e instanceof Error ? e.message : t.pos.msgProductsLoadError);
@@ -901,22 +901,40 @@ export default function POS() {
       message.warning(t.pos.editSaleWrongStore);
       return;
     }
-    for (const line of cart) {
-      const p = products.find((pr) => pr.id === line.id);
-      const unitPrice = p !== undefined ? p.price : line.price;
-      if (!editSaleId && !p) {
+    // Resolve unit prices from in-memory catalog; if lines are missing
+    // (catalog still loading after remount, search filter, pagination),
+    // re-check against the stock API before treating them as unavailable.
+    const priceByProductId = new Map<string, number>();
+    for (const p of products) priceByProductId.set(p.id, p.price);
+    const missingIds = editSaleId
+      ? []
+      : cart.filter((l) => !priceByProductId.has(l.id)).map((l) => l.id);
+    if (missingIds.length > 0) {
+      try {
+        const stockRows = await getStockForProducts(activeStore.id, missingIds);
+        for (const s of stockRows) {
+          priceByProductId.set(s.productId, s.salePrice ?? 0);
+        }
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : t.pos.msgProductsLoadError);
+        return;
+      }
+      const stillMissing = missingIds.filter((id) => !priceByProductId.has(id));
+      if (stillMissing.length > 0) {
         message.warning(t.pos.cartProductUnavailable);
         return;
       }
-      if (unitPrice <= 0) {
+    }
+    for (const line of cart) {
+      const unitPrice = priceByProductId.get(line.id) ?? (editSaleId ? line.price : undefined);
+      if (unitPrice == null || unitPrice <= 0) {
         message.warning(t.pos.cartUnitPriceInvalid);
         return;
       }
     }
     const discountRounded = Math.round(discount);
     const subtotalRounded = cart.reduce((s, l) => {
-      const p = products.find((pr) => pr.id === l.id);
-      const unit = p !== undefined ? p.price : l.price;
+      const unit = priceByProductId.get(l.id) ?? l.price;
       return s + unit * l.qty;
     }, 0);
     if (discountRounded > subtotalRounded) {
