@@ -13,7 +13,6 @@ import {
   Input,
   InputNumber,
   DatePicker,
-  Space,
   message,
 } from "antd";
 import { Plus, ClipboardList, Trash2 } from "lucide-react";
@@ -209,7 +208,7 @@ export default function PurchaseOrders() {
           <Select
             allowClear
             placeholder={t.purchaseOrders.filterStatus}
-            style={{ minWidth: 160 }}
+            style={{ minWidth: 160, maxWidth: "100%" }}
             value={statusFilter}
             onChange={(v) => {
               setStatusFilter(v);
@@ -253,60 +252,64 @@ export default function PurchaseOrders() {
             }
           />
         ) : (
-          <Table
-            rowKey="id"
-            loading={loading}
-            dataSource={rows}
-            pagination={{
-              current: page + 1,
-              pageSize,
-              total,
-              showSizeChanger: true,
-              onChange: (p, ps) => {
-                setPage(p - 1);
-                setPageSize(ps);
-              },
-            }}
-            onRow={(r) => ({
-              onClick: () => navigate(`/purchase-orders/${r.id}`),
-              style: { cursor: "pointer" },
-            })}
-            columns={[
-              {
-                title: t.purchaseOrders.reference,
-                dataIndex: "reference",
-                render: (ref: string) => <Typography.Text strong>{ref}</Typography.Text>,
-              },
-              {
-                title: t.purchaseOrders.supplier,
-                dataIndex: "supplierId",
-                render: (id: string) => supplierNameById.get(id) ?? "—",
-              },
-              {
-                title: t.purchaseOrders.store,
-                dataIndex: "storeId",
-                render: (id: string) => storeNameById.get(id) ?? "—",
-              },
-              {
-                title: t.purchaseOrders.statusColumn,
-                dataIndex: "status",
-                render: (s: string) => (
-                  <Tag color={STATUS_COLOR[s] || "default"}>{statusLabel(s)}</Tag>
-                ),
-              },
-              {
-                title: t.purchaseOrders.total,
-                dataIndex: "totalAmount",
-                align: "right",
-                render: (n: number) => formatFCFA(n),
-              },
-              {
-                title: t.purchaseOrders.expectedDate,
-                dataIndex: "expectedDate",
-                render: (d: string | null) => (d ? dayjs(d).format("DD/MM/YYYY") : "—"),
-              },
-            ]}
-          />
+          <div className="tableResponsive">
+            <Table
+              className="dataTable"
+              rowKey="id"
+              loading={loading}
+              dataSource={rows}
+              scroll={{ x: "max-content" }}
+              pagination={{
+                current: page + 1,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                onChange: (p, ps) => {
+                  setPage(p - 1);
+                  setPageSize(ps);
+                },
+              }}
+              onRow={(r) => ({
+                onClick: () => navigate(`/purchase-orders/${r.id}`),
+                style: { cursor: "pointer" },
+              })}
+              columns={[
+                {
+                  title: t.purchaseOrders.reference,
+                  dataIndex: "reference",
+                  render: (ref: string) => <Typography.Text strong>{ref}</Typography.Text>,
+                },
+                {
+                  title: t.purchaseOrders.supplier,
+                  dataIndex: "supplierId",
+                  render: (id: string) => supplierNameById.get(id) ?? "—",
+                },
+                {
+                  title: t.purchaseOrders.store,
+                  dataIndex: "storeId",
+                  render: (id: string) => storeNameById.get(id) ?? "—",
+                },
+                {
+                  title: t.purchaseOrders.statusColumn,
+                  dataIndex: "status",
+                  render: (s: string) => (
+                    <Tag color={STATUS_COLOR[s] || "default"}>{statusLabel(s)}</Tag>
+                  ),
+                },
+                {
+                  title: t.purchaseOrders.total,
+                  dataIndex: "totalAmount",
+                  align: "right",
+                  render: (n: number) => formatFCFA(n),
+                },
+                {
+                  title: t.purchaseOrders.expectedDate,
+                  dataIndex: "expectedDate",
+                  render: (d: string | null) => (d ? dayjs(d).format("DD/MM/YYYY") : "—"),
+                },
+              ]}
+            />
+          </div>
         )}
       </Card>
 
@@ -318,7 +321,8 @@ export default function PurchaseOrders() {
         okText={t.common.confirm}
         cancelText={t.common.cancel}
         confirmLoading={creating}
-        width={720}
+        width="min(720px, calc(100vw - 32px))"
+        styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
         destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
@@ -358,23 +362,23 @@ export default function PurchaseOrders() {
             {(fields, { add, remove }) => (
               <>
                 {fields.map((field) => (
-                  <Space
-                    key={field.key}
-                    align="start"
-                    style={{ display: "flex", marginBottom: 8, width: "100%" }}
-                    wrap
-                  >
+                  <div key={field.key} className={styles.poLineRow}>
                     <Form.Item
                       {...field}
                       name={[field.name, "productId"]}
-                      rules={[{ required: true, message: t.purchaseOrders.productRequired }]}
-                      style={{ minWidth: 220, marginBottom: 0 }}
+                      rules={[
+                        {
+                          required: true,
+                          message: t.purchaseOrders.productRequired,
+                        },
+                      ]}
+                      className={styles.poLineProduct}
                     >
                       <Select
                         showSearch
                         optionFilterProp="label"
                         placeholder={t.purchaseOrders.product}
-                        style={{ minWidth: 220 }}
+                        style={{ width: "100%" }}
                         options={products.map((p) => ({
                           value: p.id,
                           label: `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
@@ -398,24 +402,24 @@ export default function PurchaseOrders() {
                       {...field}
                       name={[field.name, "quantity"]}
                       rules={[{ required: true }]}
-                      style={{ width: 100, marginBottom: 0 }}
+                      className={styles.poLineQty}
                     >
                       <InputNumber
                         min={1}
                         placeholder={t.purchaseOrders.qty}
-                        style={{ width: 100 }}
+                        style={{ width: "100%" }}
                       />
                     </Form.Item>
                     <Form.Item
                       {...field}
                       name={[field.name, "unitCost"]}
                       rules={[{ required: true }]}
-                      style={{ width: 120, marginBottom: 0 }}
+                      className={styles.poLineCost}
                     >
                       <InputNumber
                         min={0}
                         placeholder={t.purchaseOrders.unitCost}
-                        style={{ width: 120 }}
+                        style={{ width: "100%" }}
                       />
                     </Form.Item>
                     {fields.length > 1 && (
@@ -424,9 +428,10 @@ export default function PurchaseOrders() {
                         danger
                         icon={<Trash2 size={16} />}
                         onClick={() => remove(field.name)}
+                        aria-label={t.common.delete}
                       />
                     )}
-                  </Space>
+                  </div>
                 ))}
                 <Button type="dashed" onClick={() => add({ quantity: 1, unitCost: 0 })} block>
                   {t.purchaseOrders.addLine}

@@ -280,6 +280,7 @@ export default function SupplierDetail() {
               pagination={false}
               size="small"
               className="dataTable"
+              scroll={{ x: "max-content" }}
               columns={[
                 { title: t.common.date, dataIndex: "date" },
                 {

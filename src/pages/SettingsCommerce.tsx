@@ -191,7 +191,7 @@ export default function SettingsCommerce() {
   };
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
+    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
       <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
@@ -212,9 +212,11 @@ export default function SettingsCommerce() {
         title={t.settings.commerceConnections}
         extra={
           canCreate ? (
-            <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
-              {t.settings.commerceConnect}
-            </Button>
+            <div className={styles.settingsCardExtra}>
+              <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
+                {t.settings.commerceConnect}
+              </Button>
+            </div>
           ) : null
         }
       >
@@ -238,83 +240,87 @@ export default function SettingsCommerce() {
             }
           />
         ) : (
-          <Table
-            rowKey="id"
-            dataSource={connections}
-            pagination={false}
-            columns={[
-              {
-                title: t.settings.commerceLabel,
-                dataIndex: "label",
-                render: (label: string) => <Typography.Text strong>{label}</Typography.Text>,
-              },
-              {
-                title: t.settings.commerceSource,
-                dataIndex: "sourceType",
-                render: (s: string) => sourceLabel(s),
-              },
-              {
-                title: t.settings.commerceStore,
-                dataIndex: "storeId",
-                render: (id: string) => storeNameById.get(id) ?? id.slice(0, 8),
-              },
-              {
-                title: t.settings.commerceActive,
-                dataIndex: "isActive",
-                width: 100,
-                render: (active: boolean, row: CommerceConnectionResponse) => (
-                  <Switch
-                    checked={active}
-                    disabled={!canUpdate}
-                    onChange={(v) => void handleToggleActive(row, v)}
-                  />
-                ),
-              },
-              {
-                title: t.settings.commerceWebhookUrl,
-                dataIndex: "incomingWebhookPath",
-                render: (_: string, row: CommerceConnectionResponse) => {
-                  const url = absoluteWebhookUrl(
-                    row.incomingWebhookPath,
-                    row.sourceType === "WOOCOMMERCE"
-                  );
-                  return (
-                    <Space size={4}>
-                      <Typography.Text
-                        code
-                        style={{ fontSize: 12, maxWidth: 280 }}
-                        ellipsis={{ tooltip: url }}
-                      >
-                        {url}
-                      </Typography.Text>
+          <div className="tableResponsive">
+            <Table
+              className="dataTable"
+              rowKey="id"
+              dataSource={connections}
+              pagination={false}
+              scroll={{ x: "max-content" }}
+              columns={[
+                {
+                  title: t.settings.commerceLabel,
+                  dataIndex: "label",
+                  render: (label: string) => <Typography.Text strong>{label}</Typography.Text>,
+                },
+                {
+                  title: t.settings.commerceSource,
+                  dataIndex: "sourceType",
+                  render: (s: string) => sourceLabel(s),
+                },
+                {
+                  title: t.settings.commerceStore,
+                  dataIndex: "storeId",
+                  render: (id: string) => storeNameById.get(id) ?? id.slice(0, 8),
+                },
+                {
+                  title: t.settings.commerceActive,
+                  dataIndex: "isActive",
+                  width: 100,
+                  render: (active: boolean, row: CommerceConnectionResponse) => (
+                    <Switch
+                      checked={active}
+                      disabled={!canUpdate}
+                      onChange={(v) => void handleToggleActive(row, v)}
+                    />
+                  ),
+                },
+                {
+                  title: t.settings.commerceWebhookUrl,
+                  dataIndex: "incomingWebhookPath",
+                  render: (_: string, row: CommerceConnectionResponse) => {
+                    const url = absoluteWebhookUrl(
+                      row.incomingWebhookPath,
+                      row.sourceType === "WOOCOMMERCE"
+                    );
+                    return (
+                      <Space size={4}>
+                        <Typography.Text
+                          code
+                          style={{ fontSize: 12, maxWidth: 220 }}
+                          ellipsis={{ tooltip: url }}
+                        >
+                          {url}
+                        </Typography.Text>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Copy size={14} />}
+                          onClick={() => void copyText(url)}
+                          aria-label={t.settings.commerceCopy}
+                        />
+                      </Space>
+                    );
+                  },
+                },
+                {
+                  title: t.common.actions,
+                  key: "actions",
+                  width: 80,
+                  render: (_: unknown, row: CommerceConnectionResponse) =>
+                    canDelete ? (
                       <Button
                         type="text"
-                        size="small"
-                        icon={<Copy size={14} />}
-                        onClick={() => void copyText(url)}
-                        aria-label={t.settings.commerceCopy}
+                        danger
+                        icon={<Trash2 size={16} />}
+                        onClick={() => handleDelete(row)}
+                        aria-label={t.common.delete}
                       />
-                    </Space>
-                  );
+                    ) : null,
                 },
-              },
-              {
-                title: t.common.actions,
-                key: "actions",
-                width: 80,
-                render: (_: unknown, row: CommerceConnectionResponse) =>
-                  canDelete ? (
-                    <Button
-                      type="text"
-                      danger
-                      icon={<Trash2 size={16} />}
-                      onClick={() => handleDelete(row)}
-                      aria-label={t.common.delete}
-                    />
-                  ) : null,
-              },
-            ]}
-          />
+              ]}
+            />
+          </div>
         )}
       </Card>
 
@@ -323,11 +329,11 @@ export default function SettingsCommerce() {
         className={styles.settingsCard}
         style={{ marginTop: 16 }}
         title={t.settings.commerceJournal}
-        extra={
+      >
+        <div className={styles.settingsFilterBar}>
           <Select
             allowClear
             placeholder={t.settings.commerceFilterConnection}
-            style={{ minWidth: 200 }}
             value={connectionFilter}
             onChange={(v) => {
               setConnectionFilter(v);
@@ -335,64 +341,67 @@ export default function SettingsCommerce() {
             }}
             options={connections.map((c) => ({ value: c.id, label: c.label }))}
           />
-        }
-      >
-        <Table
-          rowKey="id"
-          loading={logsLoading}
-          dataSource={logs}
-          locale={{ emptyText: t.settings.commerceJournalEmpty }}
-          pagination={{
-            current: logPage + 1,
-            pageSize: 20,
-            total: logTotal,
-            onChange: (p) => setLogPage(p - 1),
-          }}
-          columns={[
-            {
-              title: t.settings.commerceColDate,
-              dataIndex: "createdAt",
-              width: 150,
-              render: (d: string) => dayjs(d).format("DD/MM/YYYY HH:mm"),
-            },
-            {
-              title: t.settings.commerceLabel,
-              dataIndex: "connectionId",
-              render: (id: string) => connectionLabelById.get(id) ?? id.slice(0, 8),
-            },
-            {
-              title: t.settings.commerceExternalOrder,
-              dataIndex: "externalOrderId",
-            },
-            {
-              title: t.settings.commerceColStatus,
-              dataIndex: "status",
-              render: (s: string) => (
-                <Tag color={STATUS_COLOR[s] || "default"}>
-                  {(t.settings.commerceStatus as Record<string, string>)[s] ?? s}
-                </Tag>
-              ),
-            },
-            {
-              title: t.settings.commerceColError,
-              dataIndex: "errorMessage",
-              render: (msg: string | null) =>
-                msg ? (
-                  <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                    {msg}
-                  </Typography.Text>
-                ) : (
-                  "—"
+        </div>
+        <div className="tableResponsive">
+          <Table
+            className="dataTable"
+            rowKey="id"
+            loading={logsLoading}
+            dataSource={logs}
+            locale={{ emptyText: t.settings.commerceJournalEmpty }}
+            scroll={{ x: "max-content" }}
+            pagination={{
+              current: logPage + 1,
+              pageSize: 20,
+              total: logTotal,
+              onChange: (p) => setLogPage(p - 1),
+            }}
+            columns={[
+              {
+                title: t.settings.commerceColDate,
+                dataIndex: "createdAt",
+                width: 150,
+                render: (d: string) => dayjs(d).format("DD/MM/YYYY HH:mm"),
+              },
+              {
+                title: t.settings.commerceLabel,
+                dataIndex: "connectionId",
+                render: (id: string) => connectionLabelById.get(id) ?? id.slice(0, 8),
+              },
+              {
+                title: t.settings.commerceExternalOrder,
+                dataIndex: "externalOrderId",
+              },
+              {
+                title: t.settings.commerceColStatus,
+                dataIndex: "status",
+                render: (s: string) => (
+                  <Tag color={STATUS_COLOR[s] || "default"}>
+                    {(t.settings.commerceStatus as Record<string, string>)[s] ?? s}
+                  </Tag>
                 ),
-            },
-            {
-              title: t.settings.commerceColSale,
-              dataIndex: "saleId",
-              render: (saleId: string | null) =>
-                saleId ? <Link to={`/sales`}>{saleId.slice(0, 8)}…</Link> : "—",
-            },
-          ]}
-        />
+              },
+              {
+                title: t.settings.commerceColError,
+                dataIndex: "errorMessage",
+                render: (msg: string | null) =>
+                  msg ? (
+                    <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                      {msg}
+                    </Typography.Text>
+                  ) : (
+                    "—"
+                  ),
+              },
+              {
+                title: t.settings.commerceColSale,
+                dataIndex: "saleId",
+                render: (saleId: string | null) =>
+                  saleId ? <Link to={`/sales`}>{saleId.slice(0, 8)}…</Link> : "—",
+              },
+            ]}
+          />
+        </div>
       </Card>
 
       <Modal

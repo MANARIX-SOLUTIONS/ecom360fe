@@ -404,6 +404,7 @@ export default function Expenses() {
               dataSource={filtered}
               className="dataTable"
               rowKey="id"
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
                 pageSize,

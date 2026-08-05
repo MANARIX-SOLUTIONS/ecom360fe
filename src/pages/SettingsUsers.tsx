@@ -114,7 +114,7 @@ export default function SettingsUsers() {
   };
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
+    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
       <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
@@ -151,6 +151,7 @@ export default function SettingsUsers() {
               dataSource={users}
               rowKey="id"
               pagination={false}
+              scroll={{ x: "max-content" }}
               className={styles.usersTable}
               columns={[
                 {
