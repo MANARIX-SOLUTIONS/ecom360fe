@@ -219,7 +219,7 @@ export default function SettingsApi() {
   };
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
+    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
       <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
@@ -242,13 +242,7 @@ export default function SettingsApi() {
               label: t.settings.apiKeysTab,
               children: (
                 <>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div className={styles.settingsCardExtra} style={{ marginBottom: 12 }}>
                     {canCreateKey && (
                       <Button
                         type="primary"
@@ -279,62 +273,66 @@ export default function SettingsApi() {
                       }
                     />
                   ) : (
-                    <Table
-                      rowKey="id"
-                      dataSource={keys}
-                      pagination={false}
-                      columns={[
-                        {
-                          title: t.settings.apiKeyLabel,
-                          dataIndex: "label",
-                          render: (v: string) => <Typography.Text strong>{v}</Typography.Text>,
-                        },
-                        {
-                          title: t.settings.apiKeyPermissions,
-                          dataIndex: "permissions",
-                          render: (v: string) => (
-                            <Typography.Text code style={{ fontSize: 12 }}>
-                              {v}
-                            </Typography.Text>
-                          ),
-                        },
-                        {
-                          title: t.settings.apiKeyExpires,
-                          dataIndex: "expiresAt",
-                          render: (d: string | null) =>
-                            d ? dayjs(d).format("DD/MM/YYYY") : t.settings.apiKeyNoExpiry,
-                        },
-                        {
-                          title: t.settings.commerceColStatus,
-                          dataIndex: "isActive",
-                          render: (active: boolean) => (
-                            <Tag color={active ? "success" : "default"}>
-                              {active ? t.settings.apiKeyActive : t.settings.apiKeyRevokedLabel}
-                            </Tag>
-                          ),
-                        },
-                        {
-                          title: t.settings.commerceColDate,
-                          dataIndex: "createdAt",
-                          render: (d: string) => dayjs(d).format("DD/MM/YYYY"),
-                        },
-                        {
-                          title: t.common.actions,
-                          key: "actions",
-                          render: (_: unknown, row: ApiKeyResponse) =>
-                            canRevokeKey && row.isActive ? (
-                              <Button
-                                type="text"
-                                danger
-                                icon={<Trash2 size={16} />}
-                                onClick={() => handleRevokeKey(row)}
-                              >
-                                {t.settings.apiKeyRevoke}
-                              </Button>
-                            ) : null,
-                        },
-                      ]}
-                    />
+                    <div className="tableResponsive">
+                      <Table
+                        className="dataTable"
+                        rowKey="id"
+                        dataSource={keys}
+                        pagination={false}
+                        scroll={{ x: "max-content" }}
+                        columns={[
+                          {
+                            title: t.settings.apiKeyLabel,
+                            dataIndex: "label",
+                            render: (v: string) => <Typography.Text strong>{v}</Typography.Text>,
+                          },
+                          {
+                            title: t.settings.apiKeyPermissions,
+                            dataIndex: "permissions",
+                            render: (v: string) => (
+                              <Typography.Text code style={{ fontSize: 12 }}>
+                                {v}
+                              </Typography.Text>
+                            ),
+                          },
+                          {
+                            title: t.settings.apiKeyExpires,
+                            dataIndex: "expiresAt",
+                            render: (d: string | null) =>
+                              d ? dayjs(d).format("DD/MM/YYYY") : t.settings.apiKeyNoExpiry,
+                          },
+                          {
+                            title: t.settings.commerceColStatus,
+                            dataIndex: "isActive",
+                            render: (active: boolean) => (
+                              <Tag color={active ? "success" : "default"}>
+                                {active ? t.settings.apiKeyActive : t.settings.apiKeyRevokedLabel}
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: t.settings.commerceColDate,
+                            dataIndex: "createdAt",
+                            render: (d: string) => dayjs(d).format("DD/MM/YYYY"),
+                          },
+                          {
+                            title: t.common.actions,
+                            key: "actions",
+                            render: (_: unknown, row: ApiKeyResponse) =>
+                              canRevokeKey && row.isActive ? (
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<Trash2 size={16} />}
+                                  onClick={() => handleRevokeKey(row)}
+                                >
+                                  {t.settings.apiKeyRevoke}
+                                </Button>
+                              ) : null,
+                          },
+                        ]}
+                      />
+                    </div>
                   )}
                 </>
               ),
@@ -344,13 +342,7 @@ export default function SettingsApi() {
               label: t.settings.webhooksTab,
               children: (
                 <>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginBottom: 12,
-                    }}
-                  >
+                  <div className={styles.settingsCardExtra} style={{ marginBottom: 12 }}>
                     {canCreateWh && (
                       <Button
                         type="primary"
@@ -381,68 +373,72 @@ export default function SettingsApi() {
                       }
                     />
                   ) : (
-                    <Table
-                      rowKey="id"
-                      dataSource={webhooks}
-                      pagination={false}
-                      columns={[
-                        {
-                          title: t.settings.webhookUrl,
-                          dataIndex: "url",
-                          render: (url: string) => (
-                            <Typography.Text
-                              code
-                              style={{ fontSize: 12, maxWidth: 280 }}
-                              ellipsis={{ tooltip: url }}
-                            >
-                              {url}
-                            </Typography.Text>
-                          ),
-                        },
-                        {
-                          title: t.settings.webhookEvents,
-                          dataIndex: "events",
-                        },
-                        {
-                          title: t.settings.apiKeyActive,
-                          dataIndex: "isActive",
-                          render: (active: boolean, row: WebhookResponse) => (
-                            <Switch
-                              checked={active}
-                              disabled={!canUpdateWh}
-                              onChange={(v) => void handleToggleWebhook(row, v)}
-                            />
-                          ),
-                        },
-                        {
-                          title: t.common.actions,
-                          key: "actions",
-                          render: (_: unknown, row: WebhookResponse) => (
-                            <Space>
-                              {canUpdateWh && (
-                                <Button
-                                  type="text"
-                                  icon={<Send size={16} />}
-                                  loading={testingId === row.id}
-                                  disabled={!row.isActive}
-                                  onClick={() => void handleTestWebhook(row)}
-                                >
-                                  {t.settings.webhookTest}
-                                </Button>
-                              )}
-                              {canDeleteWh && (
-                                <Button
-                                  type="text"
-                                  danger
-                                  icon={<Trash2 size={16} />}
-                                  onClick={() => handleDeleteWebhook(row)}
-                                />
-                              )}
-                            </Space>
-                          ),
-                        },
-                      ]}
-                    />
+                    <div className="tableResponsive">
+                      <Table
+                        className="dataTable"
+                        rowKey="id"
+                        dataSource={webhooks}
+                        pagination={false}
+                        scroll={{ x: "max-content" }}
+                        columns={[
+                          {
+                            title: t.settings.webhookUrl,
+                            dataIndex: "url",
+                            render: (url: string) => (
+                              <Typography.Text
+                                code
+                                style={{ fontSize: 12, maxWidth: 220 }}
+                                ellipsis={{ tooltip: url }}
+                              >
+                                {url}
+                              </Typography.Text>
+                            ),
+                          },
+                          {
+                            title: t.settings.webhookEvents,
+                            dataIndex: "events",
+                          },
+                          {
+                            title: t.settings.apiKeyActive,
+                            dataIndex: "isActive",
+                            render: (active: boolean, row: WebhookResponse) => (
+                              <Switch
+                                checked={active}
+                                disabled={!canUpdateWh}
+                                onChange={(v) => void handleToggleWebhook(row, v)}
+                              />
+                            ),
+                          },
+                          {
+                            title: t.common.actions,
+                            key: "actions",
+                            render: (_: unknown, row: WebhookResponse) => (
+                              <Space wrap>
+                                {canUpdateWh && (
+                                  <Button
+                                    type="text"
+                                    icon={<Send size={16} />}
+                                    loading={testingId === row.id}
+                                    disabled={!row.isActive}
+                                    onClick={() => void handleTestWebhook(row)}
+                                  >
+                                    {t.settings.webhookTest}
+                                  </Button>
+                                )}
+                                {canDeleteWh && (
+                                  <Button
+                                    type="text"
+                                    danger
+                                    icon={<Trash2 size={16} />}
+                                    onClick={() => handleDeleteWebhook(row)}
+                                  />
+                                )}
+                              </Space>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
                   )}
                 </>
               ),

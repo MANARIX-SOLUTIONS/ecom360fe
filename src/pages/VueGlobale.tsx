@@ -648,39 +648,42 @@ export default function VueGlobale() {
                       description={t.globalView.emptyProductsDesc}
                     />
                   ) : (
-                    <Table
-                      dataSource={data.topProducts.map((p) => ({
-                        key: p.productId,
-                        name: p.productName,
-                        qty: p.totalQuantity,
-                        revenue: p.totalRevenue,
-                      }))}
-                      pagination={false}
-                      size="small"
-                      className={styles.dataTablePremium}
-                      onRow={(r) => ({
-                        onClick: () => navigate(`/products/${r.key}`),
-                        style: { cursor: "pointer" },
-                      })}
-                      columns={[
-                        { title: t.common.name, dataIndex: "name", ellipsis: true },
-                        {
-                          title: t.globalView.columnQtyShort,
-                          dataIndex: "qty",
-                          width: 64,
-                          align: "center",
-                        },
-                        {
-                          title: t.globalView.columnRevenueShort,
-                          dataIndex: "revenue",
-                          width: 100,
-                          align: "right",
-                          render: (v: number) => (
-                            <span className={styles.tableAmount}>{formatFCFA(v)}</span>
-                          ),
-                        },
-                      ]}
-                    />
+                    <div className="tableResponsive">
+                      <Table
+                        dataSource={data.topProducts.map((p) => ({
+                          key: p.productId,
+                          name: p.productName,
+                          qty: p.totalQuantity,
+                          revenue: p.totalRevenue,
+                        }))}
+                        pagination={false}
+                        size="small"
+                        className={styles.dataTablePremium}
+                        scroll={{ x: "max-content" }}
+                        onRow={(r) => ({
+                          onClick: () => navigate(`/products/${r.key}`),
+                          style: { cursor: "pointer" },
+                        })}
+                        columns={[
+                          { title: t.common.name, dataIndex: "name", ellipsis: true },
+                          {
+                            title: t.globalView.columnQtyShort,
+                            dataIndex: "qty",
+                            width: 64,
+                            align: "center",
+                          },
+                          {
+                            title: t.globalView.columnRevenueShort,
+                            dataIndex: "revenue",
+                            width: 100,
+                            align: "right",
+                            render: (v: number) => (
+                              <span className={styles.tableAmount}>{formatFCFA(v)}</span>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
                   )}
                 </div>
               </section>

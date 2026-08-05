@@ -273,45 +273,49 @@ export default function PurchaseOrderDetail() {
         className={`${styles.card} contentCard`}
         title={t.purchaseOrders.lines}
       >
-        <Table
-          rowKey="id"
-          pagination={false}
-          dataSource={po.lines}
-          columns={[
-            {
-              title: t.purchaseOrders.product,
-              dataIndex: "productId",
-              render: (pid: string) => productNames[pid] ?? pid.slice(0, 8),
-            },
-            {
-              title: t.purchaseOrders.qty,
-              dataIndex: "quantity",
-              align: "right",
-            },
-            {
-              title: t.purchaseOrders.unitCost,
-              dataIndex: "unitCost",
-              align: "right",
-              render: (n: number) => formatFCFA(n),
-            },
-            {
-              title: t.purchaseOrders.lineTotal,
-              dataIndex: "lineTotal",
-              align: "right",
-              render: (n: number) => formatFCFA(n),
-            },
-          ]}
-          summary={() => (
-            <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={3} align="right">
-                <Typography.Text strong>{t.purchaseOrders.total}</Typography.Text>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={1} align="right">
-                <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>
-              </Table.Summary.Cell>
-            </Table.Summary.Row>
-          )}
-        />
+        <div className="tableResponsive">
+          <Table
+            className="dataTable"
+            rowKey="id"
+            pagination={false}
+            dataSource={po.lines}
+            scroll={{ x: "max-content" }}
+            columns={[
+              {
+                title: t.purchaseOrders.product,
+                dataIndex: "productId",
+                render: (pid: string) => productNames[pid] ?? pid.slice(0, 8),
+              },
+              {
+                title: t.purchaseOrders.qty,
+                dataIndex: "quantity",
+                align: "right",
+              },
+              {
+                title: t.purchaseOrders.unitCost,
+                dataIndex: "unitCost",
+                align: "right",
+                render: (n: number) => formatFCFA(n),
+              },
+              {
+                title: t.purchaseOrders.lineTotal,
+                dataIndex: "lineTotal",
+                align: "right",
+                render: (n: number) => formatFCFA(n),
+              },
+            ]}
+            summary={() => (
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={3} align="right">
+                  <Typography.Text strong>{t.purchaseOrders.total}</Typography.Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={1} align="right">
+                  <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
+          />
+        </div>
       </Card>
     </div>
   );

@@ -48,7 +48,7 @@
 .card {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.2s ease;
 }
 
@@ -107,6 +107,19 @@
 .heroInfo {
   flex: 1;
   min-width: 0;
+}
+
+.heroPriceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .heroName {
@@ -183,5 +196,18 @@
   .heroInner {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .heroPriceBlock {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions :global(.ant-btn) {
+    flex: 1 1 auto;
   }
 }

@@ -220,7 +220,7 @@ export default function BackofficeSubscriptionPayments() {
           <Select
             allowClear
             placeholder="Statut"
-            style={{ width: 160 }}
+            style={{ minWidth: 140, maxWidth: "100%" }}
             value={statusFilter}
             onChange={(v) => {
               setStatusFilter(v);
@@ -261,23 +261,26 @@ export default function BackofficeSubscriptionPayments() {
           )}
         </Space>
 
-        <Table
-          rowKey="intentId"
-          loading={loading}
-          columns={columns}
-          dataSource={rows}
-          scroll={{ x: 1100 }}
-          pagination={{
-            current: page + 1,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p - 1);
-              setPageSize(ps);
-            },
-          }}
-        />
+        <div className="tableResponsive">
+          <Table
+            className="dataTable"
+            rowKey="intentId"
+            loading={loading}
+            columns={columns}
+            dataSource={rows}
+            scroll={{ x: 1100 }}
+            pagination={{
+              current: page + 1,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              onChange: (p, ps) => {
+                setPage(p - 1);
+                setPageSize(ps);
+              },
+            }}
+          />
+        </div>
       </Card>
     </div>
   );
