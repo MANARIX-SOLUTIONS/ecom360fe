@@ -757,23 +757,27 @@ export default function Reports() {
               {t.reports.marginSectionLead}
             </Typography.Paragraph>
             {data.topMarginProducts?.length ? (
-              <Table
-                size="small"
-                pagination={false}
-                dataSource={data.topMarginProducts.map((r) => ({
-                  key: r.productId,
-                  ...r,
-                }))}
-                columns={[
-                  { title: t.reports.columnProduct, dataIndex: "productName" },
-                  {
-                    title: t.reports.columnEstimatedMargin,
-                    dataIndex: "marginAmount",
-                    align: "right",
-                    render: (v: number) => formatFCFA(v),
-                  },
-                ]}
-              />
+              <div className="tableResponsive">
+                <Table
+                  className="dataTable"
+                  size="small"
+                  pagination={false}
+                  scroll={{ x: "max-content" }}
+                  dataSource={data.topMarginProducts.map((r) => ({
+                    key: r.productId,
+                    ...r,
+                  }))}
+                  columns={[
+                    { title: t.reports.columnProduct, dataIndex: "productName" },
+                    {
+                      title: t.reports.columnEstimatedMargin,
+                      dataIndex: "marginAmount",
+                      align: "right",
+                      render: (v: number) => formatFCFA(v),
+                    },
+                  ]}
+                />
+              </div>
             ) : (
               <EmptyState
                 compact
@@ -793,6 +797,7 @@ export default function Reports() {
           >
             <div className="tableResponsive">
               <Table
+                className="dataTable"
                 dataSource={salesInPeriod.map((s) => ({
                   key: s.saleId,
                   saleId: s.saleId,
@@ -804,6 +809,7 @@ export default function Reports() {
                 }))}
                 pagination={false}
                 size="small"
+                scroll={{ x: "max-content" }}
                 onRow={(r) => ({
                   style: { cursor: "pointer" },
                   onClick: () => navigate("/receipt", { state: { saleId: r.saleId } }),
@@ -891,7 +897,7 @@ export default function Reports() {
       <Drawer
         title={t.reports.glossaryTitle}
         placement="right"
-        width={420}
+        width="min(420px, 100vw)"
         onClose={() => setGlossaryOpen(false)}
         open={glossaryOpen}
         footer={

@@ -1,17 +1,18 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, Button, Typography, Tag, message, Modal, Spin } from "antd";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Card, Button, Typography, Tag, message, Modal, Spin, Radio, Space } from "antd";
 import { ArrowLeft, Star, Check, X as XIcon, Zap } from "lucide-react";
 import { t } from "@/i18n";
 import {
   getSubscription,
   listPlans,
-  changePlan,
+  createSubscriptionCheckout,
+  getCheckoutStatus,
   cancelSubscription,
   reactivateSubscription,
   getSubscriptionUsage,
 } from "@/api";
-import type { SubscriptionResponse } from "@/api";
+import type { PaymentChannel, SubscriptionResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
 import styles from "./Settings.module.css";
@@ -134,6 +135,7 @@ function formatUsage(count: number, limit: number): string {
 
 export default function SettingsSubscription() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { matrixCan } = useMatrixCan();
   const [plans, setPlans] = useState<PlanResponse[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null | undefined>(
@@ -145,6 +147,10 @@ export default function SettingsSubscription() {
   const [changing, setChanging] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [payChannel, setPayChannel] = useState<PaymentChannel>("wave");
+  const [confirmingCheckout, setConfirmingCheckout] = useState(false);
+  const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const comparisonRows = getPlanComparisonRows();
 
@@ -155,12 +161,12 @@ export default function SettingsSubscription() {
   const cancelAtPeriodEnd = subscription?.cancelAtPeriodEnd === true;
   const daysRemaining = subscription?.daysRemaining;
 
-  const refreshSubscription = () => {
+  const refreshSubscription = useCallback(() => {
     getSubscription().then(setSubscription);
     getSubscriptionUsage()
       .then(setUsage)
       .catch(() => setUsage(null));
-  };
+  }, []);
 
   useEffect(() => {
     Promise.all([listPlans(), getSubscription(), getSubscriptionUsage()])
@@ -173,27 +179,148 @@ export default function SettingsSubscription() {
       .finally(() => setLoading(false));
   }, []);
 
+  const pollCheckout = useCallback(
+    (intentId: string) => {
+      let attempts = 0;
+      const maxAttempts = 48; // ~4 min at 5s
+      setConfirmingCheckout(true);
+      setPendingCheckoutId(intentId);
+      message.loading({ content: t.settings.planPayConfirming, key: "checkout", duration: 0 });
+
+      const clearPoll = () => {
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      };
+
+      const finish = (status: string, planSlug?: string) => {
+        clearPoll();
+        setConfirmingCheckout(false);
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("checkout");
+            next.delete("cancelled");
+            return next;
+          },
+          { replace: true }
+        );
+        if (status === "paid") {
+          setPendingCheckoutId(null);
+          message.success({
+            content: t.settings.planPaySuccess.replace("{plan}", planSlug ?? ""),
+            key: "checkout",
+          });
+          if (planSlug) localStorage.setItem("ecom360_plan_slug", planSlug);
+          window.dispatchEvent(new Event("ecom360:plan-updated"));
+          refreshSubscription();
+        } else if (status === "failed" || status === "cancelled" || status === "expired") {
+          setPendingCheckoutId(null);
+          message.error({ content: t.settings.planPayFailed, key: "checkout" });
+        } else {
+          message.info({ content: t.settings.planPayPending, key: "checkout", duration: 6 });
+        }
+      };
+
+      const tick = () => {
+        attempts += 1;
+        getCheckoutStatus(intentId)
+          .then((res) => {
+            if (
+              res.status === "paid" ||
+              res.status === "failed" ||
+              res.status === "cancelled" ||
+              res.status === "expired"
+            ) {
+              finish(res.status, res.planSlug);
+            } else if (attempts >= maxAttempts) {
+              finish(res.status, res.planSlug);
+            }
+          })
+          .catch(() => {
+            if (attempts >= 8) {
+              finish("pending");
+            }
+          });
+      };
+
+      clearPoll();
+      tick();
+      pollRef.current = setInterval(tick, 5000);
+      return clearPoll;
+    },
+    [setSearchParams, refreshSubscription]
+  );
+
+  useEffect(() => {
+    const intentId = searchParams.get("checkout");
+    if (!intentId) return;
+    const clearPoll = pollCheckout(intentId);
+    return () => {
+      clearPoll();
+      message.destroy("checkout");
+    };
+  }, [searchParams, pollCheckout]);
+
   const handleChoose = (plan: ReturnType<typeof planToDisplay>) => {
-    if (plan.key === currentPlanSlug) return;
+    if (plan.key === currentPlanSlug && !isTrialing && !isExpired) return;
+    let selectedChannel: PaymentChannel = payChannel;
     Modal.confirm({
       title: t.settings.planChangeModalTitle.replace("{plan}", plan.name),
-      content: t.settings.planChangeModalContent
-        .replace("{amount}", yearlyBilling ? plan.priceYear : plan.price)
-        .replace("{period}", yearlyBilling ? t.settings.periodPerYear : t.subscription.perMonth),
+      content: (
+        <div style={{ marginTop: 8 }}>
+          <p style={{ marginBottom: 12 }}>
+            {t.settings.planChangeModalContent
+              .replace("{amount}", yearlyBilling ? plan.priceYear : plan.price)
+              .replace(
+                "{period}",
+                yearlyBilling ? t.settings.periodPerYear : t.subscription.perMonth
+              )}
+          </p>
+          <Typography.Text strong style={{ display: "block", marginBottom: 8 }}>
+            {t.settings.planPayChannelTitle}
+          </Typography.Text>
+          <Radio.Group
+            defaultValue={selectedChannel}
+            onChange={(e) => {
+              selectedChannel = e.target.value;
+              setPayChannel(e.target.value);
+            }}
+          >
+            <Space direction="vertical">
+              <Radio value="wave">{t.settings.planPayWave}</Radio>
+              <Radio value="orange_money">{t.settings.planPayOrangeMoney}</Radio>
+            </Space>
+          </Radio.Group>
+          <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+            {t.settings.planPayChannelHint}
+          </Typography.Paragraph>
+        </div>
+      ),
       okText: t.common.confirm,
       cancelText: t.common.cancel,
       onOk: () => {
         setChanging(plan.key);
-        return changePlan(plan.key, yearlyBilling ? "yearly" : "monthly")
-          .then((sub) => {
-            message.success(t.settings.planUpdatedToast.replace("{plan}", plan.name));
-            setSubscription(sub);
-            if (sub?.planSlug) localStorage.setItem("ecom360_plan_slug", sub.planSlug);
-            window.dispatchEvent(new Event("ecom360:plan-updated"));
-            refreshSubscription();
+        message.loading({ content: t.settings.planPayRedirecting, key: "pay", duration: 0 });
+        return createSubscriptionCheckout(
+          plan.key,
+          yearlyBilling ? "yearly" : "monthly",
+          selectedChannel
+        )
+          .then((res) => {
+            if (!res.checkoutUrl) {
+              message.error({ content: t.settings.planPayError, key: "pay" });
+              return Promise.reject(new Error(t.settings.planPayError));
+            }
+            message.destroy("pay");
+            window.location.href = res.checkoutUrl;
           })
           .catch((e) => {
-            message.error(e instanceof Error ? e.message : t.settings.planChangeError);
+            message.error({
+              content: e instanceof Error ? e.message : t.settings.planPayError,
+              key: "pay",
+            });
             return Promise.reject(e);
           })
           .finally(() => setChanging(null));
@@ -244,6 +371,16 @@ export default function SettingsSubscription() {
         <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
           {t.settings.subscriptionPageSubtitle}
         </Typography.Text>
+        {pendingCheckoutId && !confirmingCheckout && (
+          <div style={{ marginTop: 12 }}>
+            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+              {t.settings.planPayPending}
+            </Typography.Text>
+            <Button size="small" onClick={() => pollCheckout(pendingCheckoutId)}>
+              {t.settings.planPayRecheck}
+            </Button>
+          </div>
+        )}
       </header>
 
       {/* Usage summary */}
@@ -360,8 +497,8 @@ export default function SettingsSubscription() {
                   {yearlyBilling ? t.settings.periodPerYear : t.subscription.perMonth}
                 </span>
               </div>
-              {isCurrent ? (
-                <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+              {isCurrent && (
+                <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                   <span
                     className={styles.planCardBadge}
                     style={{ display: "inline-flex", alignItems: "center" }}
@@ -385,24 +522,26 @@ export default function SettingsSubscription() {
                     </Tag>
                   )}
                 </div>
-              ) : matrixCan("SUBSCRIPTION_UPDATE", "settings:subscription") ? (
+              )}
+              {matrixCan("SUBSCRIPTION_UPDATE", "settings:subscription") &&
+              (!isCurrent || isTrialing || isExpired) ? (
                 <Button
-                  type={plan.recommended ? "primary" : "default"}
+                  type={plan.recommended || isTrialing || isExpired ? "primary" : "default"}
                   block
                   style={{ marginBottom: 16, height: 44 }}
                   onClick={() => handleChoose(plan)}
-                  loading={changing === plan.key}
+                  loading={changing === plan.key || confirmingCheckout}
                 >
-                  {t.settings.choosePlan}
+                  {isTrialing || isExpired ? t.settings.planPayChannelTitle : t.settings.choosePlan}
                 </Button>
-              ) : (
+              ) : !matrixCan("SUBSCRIPTION_UPDATE", "settings:subscription") ? (
                 <span
                   className={styles.planCardBadge}
                   style={{ display: "inline-block", marginBottom: 16 }}
                 >
                   {t.settings.planReadOnlyBadge}
                 </span>
-              )}
+              ) : null}
               <ul className={styles.planFeatures}>
                 {plan.features.map((f) => (
                   <li key={f}>

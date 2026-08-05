@@ -665,6 +665,7 @@ export default function BackofficeBusinesses() {
           <Table
             dataSource={businesses}
             rowKey="id"
+            scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
               pageSize,
@@ -813,7 +814,7 @@ export default function BackofficeBusinesses() {
         title={detail?.name ?? ""}
         open={!!detail}
         onClose={() => setDetail(null)}
-        width={620}
+        width="min(620px, 100vw)"
       >
         {detail && (
           <>
@@ -956,6 +957,7 @@ export default function BackofficeBusinesses() {
                     pagination={false}
                     rowKey="id"
                     dataSource={adminStores}
+                    scroll={{ x: "max-content" }}
                     columns={[
                       {
                         title: "Nom",
@@ -1029,6 +1031,7 @@ export default function BackofficeBusinesses() {
                     pagination={false}
                     rowKey="id"
                     dataSource={roleOptions}
+                    scroll={{ x: "max-content" }}
                     columns={[
                       {
                         title: t.backoffice.businessDrawer.roleColumn,
@@ -1104,6 +1107,7 @@ export default function BackofficeBusinesses() {
                     pagination={false}
                     rowKey="id"
                     dataSource={members}
+                    scroll={{ x: "max-content" }}
                     columns={[
                       {
                         title: t.backoffice.businessDrawer.memberColumn,
@@ -1165,6 +1169,12 @@ export default function BackofficeBusinesses() {
               </Button>
               <Button block icon={<CreditCard size={16} />} onClick={openAssignPlanModal}>
                 Changer le plan
+              </Button>
+              <Button
+                block
+                onClick={() => window.open(`/backoffice/payments?businessId=${detail.id}`, "_self")}
+              >
+                Voir les paiements
               </Button>
               <Tooltip
                 title={
@@ -1436,7 +1446,8 @@ export default function BackofficeBusinesses() {
         }}
         okText={t.common.save}
         confirmLoading={rolePermSaving}
-        width={720}
+        width="min(720px, calc(100vw - 32px))"
+        styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
         destroyOnClose
       >
         {permissionCatalogItems.length > 0 ? (

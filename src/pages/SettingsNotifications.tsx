@@ -116,7 +116,7 @@ export default function SettingsNotifications() {
   };
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
+    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
       <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
@@ -221,55 +221,59 @@ export default function SettingsNotifications() {
             description={t.settings.notificationsEmptyHistoryDesc}
           />
         ) : (
-          <Table
-            size="small"
-            dataSource={notifications}
-            rowKey="id"
-            pagination={false}
-            columns={[
-              {
-                title: t.common.date,
-                dataIndex: "createdAt",
-                key: "createdAt",
-                width: 140,
-                render: (v: string) =>
-                  v
-                    ? new Date(v).toLocaleString("fr-FR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
-                    : "—",
-              },
-              {
-                title: t.settings.notificationsColType,
-                dataIndex: "type",
-                key: "type",
-                width: 120,
-                render: (type: string) => notificationTypeLabel(type),
-              },
-              {
-                title: t.settings.notificationsColTitle,
-                dataIndex: "title",
-                key: "title",
-                ellipsis: true,
-              },
-              {
-                title: "",
-                key: "read",
-                width: 80,
-                render: (_: unknown, record: NotificationResponse) =>
-                  !record.isRead ? (
-                    <Button type="link" size="small" onClick={() => handleMarkRead(record.id)}>
-                      {t.settings.notificationsMarkRead}
-                    </Button>
-                  ) : (
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {t.settings.notificationsReadStatus}
-                    </Typography.Text>
-                  ),
-              },
-            ]}
-          />
+          <div className="tableResponsive">
+            <Table
+              className="dataTable"
+              size="small"
+              dataSource={notifications}
+              rowKey="id"
+              pagination={false}
+              scroll={{ x: "max-content" }}
+              columns={[
+                {
+                  title: t.common.date,
+                  dataIndex: "createdAt",
+                  key: "createdAt",
+                  width: 140,
+                  render: (v: string) =>
+                    v
+                      ? new Date(v).toLocaleString("fr-FR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : "—",
+                },
+                {
+                  title: t.settings.notificationsColType,
+                  dataIndex: "type",
+                  key: "type",
+                  width: 120,
+                  render: (type: string) => notificationTypeLabel(type),
+                },
+                {
+                  title: t.settings.notificationsColTitle,
+                  dataIndex: "title",
+                  key: "title",
+                  ellipsis: true,
+                },
+                {
+                  title: "",
+                  key: "read",
+                  width: 100,
+                  render: (_: unknown, record: NotificationResponse) =>
+                    !record.isRead ? (
+                      <Button type="link" size="small" onClick={() => handleMarkRead(record.id)}>
+                        {t.settings.notificationsMarkRead}
+                      </Button>
+                    ) : (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {t.settings.notificationsReadStatus}
+                      </Typography.Text>
+                    ),
+                },
+              ]}
+            />
+          </div>
         )}
       </Card>
     </div>

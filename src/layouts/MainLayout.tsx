@@ -11,6 +11,7 @@ import {
   Bike,
   Receipt,
   ListOrdered,
+  ClipboardList,
   TrendingUp,
   Settings,
   Store,
@@ -89,6 +90,12 @@ const navConfig = [
     label: "Fournisseurs",
   },
   {
+    key: "/purchase-orders",
+    permission: "purchaseOrders" as const,
+    icon: <ClipboardList size={20} />,
+    label: "Bons de commande",
+  },
+  {
     key: "/livreurs",
     permission: "livreurs" as const,
     icon: <Bike size={20} />,
@@ -114,6 +121,7 @@ const MORE_SECTION_PREFIXES = [
   "/clients",
   "/expenses",
   "/suppliers",
+  "/purchase-orders",
   "/livreurs",
   "/sales",
   "/vue-globale",
