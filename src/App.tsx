@@ -46,6 +46,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const More = lazy(() => import("./pages/More"));
 const DemoRequest = lazy(() => import("./pages/DemoRequest"));
 const BackofficeDemoRequests = lazy(() => import("./pages/BackofficeDemoRequests"));
+const BackofficeSubscriptionPayments = lazy(() => import("./pages/BackofficeSubscriptionPayments"));
 
 function PageLoader() {
   return (
@@ -411,6 +412,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <BackofficeDemoRequests />
+              </Suspense>
+            }
+          />
+          <Route
+            path="payments"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeSubscriptionPayments />
               </Suspense>
             }
           />

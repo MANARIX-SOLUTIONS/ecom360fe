@@ -1166,6 +1166,12 @@ export default function BackofficeBusinesses() {
               <Button block icon={<CreditCard size={16} />} onClick={openAssignPlanModal}>
                 Changer le plan
               </Button>
+              <Button
+                block
+                onClick={() => window.open(`/backoffice/payments?businessId=${detail.id}`, "_self")}
+              >
+                Voir les paiements
+              </Button>
               <Tooltip
                 title={
                   detail.plan === "-"
