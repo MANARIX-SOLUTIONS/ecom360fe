@@ -399,6 +399,7 @@
   .content {
     margin-left: 0;
     padding: 16px;
+    padding-bottom: max(24px, calc(16px + env(safe-area-inset-bottom, 0px)));
   }
 
   .backBtnText {

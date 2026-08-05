@@ -1010,6 +1010,7 @@ export default function Dashboard() {
                   pagination={false}
                   size="small"
                   className={styles.dataTable}
+                  scroll={{ x: "max-content" }}
                   onRow={(r) => ({
                     style: { cursor: "pointer" },
                     onClick: () => navigate(`/products/${r.productId}`),
@@ -1081,6 +1082,7 @@ export default function Dashboard() {
                     pagination={false}
                     size="small"
                     className={styles.dataTable}
+                    scroll={{ x: "max-content" }}
                     onRow={(r) => ({
                       style: { cursor: "pointer" },
                       onClick: () => navigate(`/products/${r.productId}`),

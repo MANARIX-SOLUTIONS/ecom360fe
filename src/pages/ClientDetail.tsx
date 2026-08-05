@@ -221,7 +221,7 @@ export default function ClientDetail() {
               {client.creditBalance.toLocaleString("fr-FR")} F
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className={styles.heroActions}>
             {canClientCredits && matrixCan("CLIENTS_UPDATE", "clients") && (
               <Button
                 type="primary"
@@ -268,6 +268,7 @@ export default function ClientDetail() {
               pagination={false}
               size="small"
               className="dataTable"
+              scroll={{ x: "max-content" }}
               columns={[
                 { title: t.common.date, dataIndex: "date" },
                 {

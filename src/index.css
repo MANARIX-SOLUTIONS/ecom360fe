@@ -409,9 +409,34 @@ body {
   overflow: hidden;
 }
 
+/* Keep modals inside the viewport on phones */
+@media (max-width: 480px) {
+  .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+  }
+
+  .ant-modal-body {
+    max-height: min(70vh, 560px);
+    overflow-y: auto;
+  }
+}
+
 /* Drawer */
 .ant-drawer-content-wrapper {
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+@media (max-width: 480px) {
+  .ant-drawer-right > .ant-drawer-content-wrapper,
+  .ant-drawer-left > .ant-drawer-content-wrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .ant-drawer-bottom > .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+  }
 }
 
 /* Tags */

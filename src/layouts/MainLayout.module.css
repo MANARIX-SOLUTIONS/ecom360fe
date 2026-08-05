@@ -1,6 +1,7 @@
 .root {
   min-height: 100vh;
-  padding-bottom: 72px;
+  /* Bottom nav (68px) + buffer + iOS home indicator */
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ========== Sidebar ========== */

@@ -12,6 +12,7 @@ import {
   Form,
   Spin,
   Result,
+  Drawer,
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
@@ -537,6 +538,7 @@ export default function POS() {
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("Tous");
@@ -958,6 +960,7 @@ export default function POS() {
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
+      setCartSheetOpen(false);
       setCart([]);
       if (!editSaleId) {
         clearPosCart(activeStore.id);
@@ -1044,9 +1047,43 @@ export default function POS() {
     );
   }
 
+  const isMobilePos = posBreakpoint === "mobile";
+
+  const cartPanel = (
+    <PosCartPanel
+      cart={cart}
+      itemCount={itemCount}
+      onUpdateQty={updateQty}
+      onRemoveLine={removeLine}
+      onClear={clearCart}
+    />
+  );
+
+  const checkoutPanel = (
+    <PosCheckoutPanel
+      paymentMethods={paymentMethods}
+      paymentMethod={paymentMethod}
+      onPaymentMethodChange={setPaymentMethod}
+      clients={clients}
+      selectedClientId={selectedClientId}
+      onClientChange={setSelectedClientId}
+      onQuickAddClient={openQuickClient}
+      selectedClient={selectedClient}
+      discount={discount}
+      onDiscountChange={onDiscountChange}
+      total={total}
+      editSaleId={editSaleId}
+      salesAtLimit={salesAtLimit}
+      loading={loading}
+      editHydrated={editHydrated}
+      cartEmpty={cart.length === 0}
+      onValidate={validateSale}
+    />
+  );
+
   return (
     <>
-      <div className={styles.pos}>
+      <div className={`${styles.pos} ${isMobilePos ? styles.posMobile : ""}`}>
         {/* Left: search + categories + product grid */}
         <div className={styles.left}>
           <Input
@@ -1101,34 +1138,56 @@ export default function POS() {
           </div>
         </div>
 
-        <PosCartPanel
-          cart={cart}
-          itemCount={itemCount}
-          onUpdateQty={updateQty}
-          onRemoveLine={removeLine}
-          onClear={clearCart}
-        />
-
-        <PosCheckoutPanel
-          paymentMethods={paymentMethods}
-          paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
-          clients={clients}
-          selectedClientId={selectedClientId}
-          onClientChange={setSelectedClientId}
-          onQuickAddClient={openQuickClient}
-          selectedClient={selectedClient}
-          discount={discount}
-          onDiscountChange={onDiscountChange}
-          total={total}
-          editSaleId={editSaleId}
-          salesAtLimit={salesAtLimit}
-          loading={loading}
-          editHydrated={editHydrated}
-          cartEmpty={cart.length === 0}
-          onValidate={validateSale}
-        />
+        {!isMobilePos && (
+          <>
+            {cartPanel}
+            {checkoutPanel}
+          </>
+        )}
       </div>
+
+      {isMobilePos && (
+        <>
+          <div className={styles.mobileCartBar} role="region" aria-label={t.pos.cartTitle}>
+            <div className={styles.mobileCartBarInfo}>
+              <span className={styles.mobileCartBarCount}>
+                {t.pos.cartBarItems.replace("{count}", String(itemCount))}
+              </span>
+              <span className={`amount ${styles.mobileCartBarTotal}`}>
+                {total.toLocaleString("fr-FR")} F
+              </span>
+            </div>
+            <Button
+              type="primary"
+              size="large"
+              className={styles.mobileCartBarBtn}
+              icon={<ShoppingBag size={18} />}
+              disabled={cart.length === 0}
+              onClick={() => setCartSheetOpen(true)}
+            >
+              {t.pos.openCart}
+            </Button>
+          </div>
+
+          <Drawer
+            title={t.pos.cartSheetTitle}
+            placement="bottom"
+            open={cartSheetOpen}
+            onClose={() => setCartSheetOpen(false)}
+            height="92%"
+            destroyOnClose={false}
+            styles={{
+              body: { padding: 12, paddingBottom: 24, overflowY: "auto" },
+              wrapper: { maxWidth: "100%" },
+            }}
+          >
+            <div className={styles.mobileSheetStack}>
+              {cartPanel}
+              {checkoutPanel}
+            </div>
+          </Drawer>
+        </>
+      )}
 
       <Modal
         title={t.pos.quickAddClientTitle}
