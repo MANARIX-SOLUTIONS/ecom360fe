@@ -621,6 +621,11 @@
   font-weight: 600;
 }
 
+.remaining {
+  color: #c2410c;
+  font-weight: 600;
+}
+
 /* ========== Payment & footer ========== */
 .payment {
   margin: 0;

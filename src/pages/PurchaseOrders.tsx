@@ -303,6 +303,17 @@ export default function PurchaseOrders() {
                   render: (n: number) => formatFCFA(n),
                 },
                 {
+                  title: t.purchaseOrders.remainingDue,
+                  dataIndex: "remainingAmount",
+                  align: "right",
+                  render: (n: number, r: PurchaseOrderResponse) =>
+                    r.status === "received" && n > 0 ? (
+                      <Tag color="gold">{formatFCFA(n)}</Tag>
+                    ) : (
+                      "—"
+                    ),
+                },
+                {
                   title: t.purchaseOrders.expectedDate,
                   dataIndex: "expectedDate",
                   render: (d: string | null) => (d ? dayjs(d).format("DD/MM/YYYY") : "—"),

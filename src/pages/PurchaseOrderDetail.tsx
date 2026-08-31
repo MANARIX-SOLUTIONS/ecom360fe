@@ -12,7 +12,7 @@ import {
   message,
   Descriptions,
 } from "antd";
-import { ArrowLeft, CheckCircle, Send, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Send, XCircle, Wallet } from "lucide-react";
 import dayjs from "dayjs";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
@@ -27,6 +27,8 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { ReceivePurchaseOrderModal } from "@/components/ReceivePurchaseOrderModal";
+import { RecordPurchaseOrderPaymentModal } from "@/components/RecordPurchaseOrderPaymentModal";
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "default",
@@ -74,6 +76,8 @@ export default function PurchaseOrderDetail() {
   const [storeName, setStoreName] = useState<string>("");
   const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [acting, setActing] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -121,12 +125,20 @@ export default function PurchaseOrderDetail() {
     );
   }
 
-  const transition = (status: PurchaseOrderStatus, confirmReceive?: boolean) => {
+  const transition = (
+    status: PurchaseOrderStatus,
+    extra?: {
+      amountPaid?: number;
+      paymentMethod?: string;
+      dueDate?: string | null;
+    }
+  ) => {
     const run = async () => {
       setActing(true);
       try {
-        const updated = await updatePurchaseOrderStatus(po.id, status);
+        const updated = await updatePurchaseOrderStatus(po.id, status, extra);
         setPo(updated);
+        setReceiveOpen(false);
         message.success(
           status === "received"
             ? t.purchaseOrders.msgReceived
@@ -141,14 +153,8 @@ export default function PurchaseOrderDetail() {
       }
     };
 
-    if (confirmReceive && status === "received") {
-      Modal.confirm({
-        title: t.purchaseOrders.receiveConfirmTitle,
-        content: t.purchaseOrders.receiveConfirmDesc,
-        okText: t.purchaseOrders.actionReceive,
-        cancelText: t.common.cancel,
-        onOk: run,
-      });
+    if (status === "received") {
+      void run();
       return;
     }
     if (status === "cancelled") {
@@ -194,7 +200,9 @@ export default function PurchaseOrderDetail() {
               {statusLabel(po.status)}
             </Tag>
           </div>
-          {canUpdate && actions.length > 0 && (
+          {canUpdate &&
+            (actions.length > 0 ||
+              (po.status === "received" && (po.remainingAmount ?? 0) > 0)) && (
             <Space wrap>
               {actions.map((a) => (
                 <Button
@@ -211,11 +219,22 @@ export default function PurchaseOrderDetail() {
                       <XCircle size={16} />
                     )
                   }
-                  onClick={() => transition(a.status, a.confirm)}
+                  onClick={() =>
+                    a.status === "received" ? setReceiveOpen(true) : transition(a.status)
+                  }
                 >
                   {t.purchaseOrders[a.labelKey]}
                 </Button>
               ))}
+              {po.status === "received" && (po.remainingAmount ?? 0) > 0 && (
+                <Button
+                  type="primary"
+                  icon={<Wallet size={16} />}
+                  onClick={() => setPayOpen(true)}
+                >
+                  {t.purchaseOrders.recordPayment}
+                </Button>
+              )}
             </Space>
           )}
         </div>
@@ -244,6 +263,29 @@ export default function PurchaseOrderDetail() {
               label: t.purchaseOrders.total,
               children: <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>,
             },
+            ...(po.status === "received"
+              ? [
+                  {
+                    key: "paid",
+                    label: t.purchaseOrders.amountPaid,
+                    children: formatFCFA(po.amountPaid ?? 0),
+                  },
+                  {
+                    key: "remaining",
+                    label: t.purchaseOrders.remainingDue,
+                    children: (
+                      <Typography.Text strong>
+                        {formatFCFA(po.remainingAmount ?? 0)}
+                      </Typography.Text>
+                    ),
+                  },
+                  {
+                    key: "due",
+                    label: t.purchaseOrders.dueDate,
+                    children: po.dueDate ? dayjs(po.dueDate).format("DD/MM/YYYY") : "—",
+                  },
+                ]
+              : []),
             {
               key: "expected",
               label: t.purchaseOrders.expectedDate,
@@ -317,6 +359,20 @@ export default function PurchaseOrderDetail() {
           />
         </div>
       </Card>
+
+      <ReceivePurchaseOrderModal
+        open={receiveOpen}
+        po={po}
+        submitting={acting}
+        onClose={() => setReceiveOpen(false)}
+        onConfirm={(payload) => transition("received", payload)}
+      />
+      <RecordPurchaseOrderPaymentModal
+        open={payOpen}
+        po={po}
+        onClose={() => setPayOpen(false)}
+        onRecorded={() => void load()}
+      />
     </div>
   );
 }

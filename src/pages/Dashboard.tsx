@@ -26,6 +26,7 @@ import {
   PiggyBank,
   Package,
   CreditCard,
+  Banknote,
   ShoppingCart,
   Plus,
   FileText,
@@ -410,6 +411,15 @@ export default function Dashboard() {
         tooltip: t.dashboard.tooltipPeriodRevenue,
       },
       {
+        key: "pCash",
+        label: t.dashboard.periodCashCollected,
+        value: formatFCFA(data.periodCashCollected ?? 0),
+        variant: "profit",
+        icon: Banknote,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipPeriodCashCollected,
+      },
+      {
         key: "pTxn",
         label: t.dashboard.periodTransactions,
         value: String(data.periodSalesCount),
@@ -475,6 +485,15 @@ export default function Dashboard() {
           debtors > 0 ? t.dashboard.periodDebtorsHint.replace("{n}", String(debtors)) : undefined,
         tooltip: t.dashboard.tooltipPeriodReceivable,
       });
+      rows.push({
+        key: "pOutstanding",
+        label: t.dashboard.periodOutstandingSales,
+        value: formatFCFA(data.outstandingSalesAmount ?? data.totalReceivable ?? 0),
+        variant: "sales",
+        icon: Banknote,
+        trendPct: null,
+        tooltip: t.dashboard.tooltipPeriodOutstandingSales,
+      });
     }
 
     return rows;
@@ -482,7 +501,7 @@ export default function Dashboard() {
 
   const todayCardSkeletonCount = 2 + (canExpenses && canAccess("expenses") ? 1 : 0);
 
-  const periodCardSkeletonCount = 7;
+  const periodCardSkeletonCount = 8;
 
   const topProducts = useMemo(() => {
     const base =

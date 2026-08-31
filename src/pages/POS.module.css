@@ -677,6 +677,66 @@
   margin-bottom: 16px;
 }
 
+.partialSection {
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.partialToggleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.partialSection .discountRow:last-child {
+  margin-bottom: 0;
+}
+
+.quickPayRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quickPayChip {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--v2-border-subtle, #e8e8e8);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.quickPayChip:hover {
+  border-color: var(--color-primary, #1677ff);
+  color: var(--color-primary, #1677ff);
+}
+
+.remainingRow {
+  margin-bottom: 12px;
+}
+
+.remainingAmount {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: #d46b08 !important;
+}
+
+.mobileCartBarRemaining {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d46b08;
+}
+
 .totalAmount {
   font-size: 32px !important;
   font-variant-numeric: tabular-nums;
@@ -686,11 +746,25 @@
 }
 
 .validateBtn {
-  height: 52px !important;
+  height: auto !important;
+  min-height: 52px !important;
   font-size: 16px !important;
   font-weight: 600 !important;
   border-radius: var(--radius) !important;
   letter-spacing: -0.01em;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 16px !important;
+}
+
+.validateBtnHint {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.9;
+  letter-spacing: 0;
 }
 
 .validateBtn:disabled {

@@ -12,13 +12,14 @@ import {
   deleteClient,
   recordClientPayment,
   listClientPayments,
+  listSales,
   ApiError,
 } from "@/api";
+import type { ClientResponse, SaleResponse } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
-import type { ClientResponse } from "@/api";
 import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 
@@ -39,6 +40,7 @@ export default function ClientDetail() {
   const { matrixCan } = useMatrixCan();
   const [client, setClient] = useState<ClientResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
+  const [outstandingSales, setOutstandingSales] = useState<SaleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -86,13 +88,26 @@ export default function ClientDetail() {
     }
   }, [id]);
 
+  const fetchOutstandingSales = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await listSales({ clientId: id, status: "completed", size: 50 });
+      setOutstandingSales((res.content ?? []).filter((s) => (s.remainingAmount ?? 0) > 0));
+    } catch {
+      setOutstandingSales([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchClient();
   }, [fetchClient]);
 
   useEffect(() => {
-    if (client) fetchPayments();
-  }, [client, fetchPayments]);
+    if (client) {
+      fetchPayments();
+      fetchOutstandingSales();
+    }
+  }, [client, fetchPayments, fetchOutstandingSales]);
 
   if (!id) return <Navigate to="/clients" replace />;
 
@@ -186,6 +201,7 @@ export default function ClientDetail() {
       setPaymentAmount(Math.abs(client.creditBalance));
       fetchClient();
       fetchPayments();
+      fetchOutstandingSales();
     } catch (e) {
       message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
@@ -260,6 +276,57 @@ export default function ClientDetail() {
             )}
           </div>
         </div>
+      </Card>
+
+      <Card
+        title={t.clients.outstandingSales}
+        variant="borderless"
+        className={`${styles.card} contentCard`}
+      >
+        {outstandingSales.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Wallet}
+            title={t.clients.noOutstandingSales}
+            description={t.clients.outstandingSalesDesc}
+          />
+        ) : (
+          <div className="tableResponsive">
+            <Table
+              dataSource={outstandingSales}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              className="dataTable"
+              scroll={{ x: "max-content" }}
+              onRow={(record) => ({
+                style: { cursor: "pointer" },
+                onClick: () => navigate("/receipt", { state: { saleId: record.id } }),
+              })}
+              columns={[
+                { title: t.sales.receiptNumber, dataIndex: "receiptNumber" },
+                {
+                  title: t.common.total,
+                  dataIndex: "total",
+                  render: (v: number) => `${v.toLocaleString("fr-FR")} F`,
+                },
+                {
+                  title: t.sales.remainingDue,
+                  dataIndex: "remainingAmount",
+                  render: (v: number) => (
+                    <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>
+                  ),
+                },
+                {
+                  title: t.sales.dueDate,
+                  dataIndex: "dueDate",
+                  render: (v: string | null) =>
+                    v ? new Date(`${v}T00:00:00`).toLocaleDateString("fr-FR") : "—",
+                },
+              ]}
+            />
+          </div>
+        )}
       </Card>
 
       <Card

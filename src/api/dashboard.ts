@@ -64,6 +64,10 @@ export type DashboardResponse = {
   previousPeriodProfit?: number;
   debtorClientsCount?: number;
   totalReceivable?: number;
+  /** Trésorerie réellement encaissée sur la période (versements). */
+  periodCashCollected?: number;
+  /** Reste à encaisser sur les ventes validées. */
+  outstandingSalesAmount?: number;
   /** CA completed par jour (yyyy-MM-dd) sur la période effective. */
   periodDailySales?: { date: string; amount: number }[];
   /** Dépenses par jour (yyyy-MM-dd) sur la période effective. */

@@ -16,6 +16,12 @@ function formatPrice(n: number): string {
   return n.toLocaleString("fr-FR") + " F";
 }
 
+function formatIsoDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR");
+}
+
 /** Bloc client sur le PDF A4 (optionnel). */
 export type PrintedReceiptClient =
   | {
@@ -42,6 +48,9 @@ export type A4ReceiptData = {
   total: number;
   discount: number;
   method: string;
+  amountPaid?: number;
+  remainingAmount?: number;
+  dueDate?: string | null;
   /** Client facturé (hors comptoir) ou mention comptoir / legacy */
   printedClient?: PrintedReceiptClient;
   i18n: {
@@ -58,6 +67,9 @@ export type A4ReceiptData = {
     legalNotice: string;
     docTypeBadge: string;
     detailLinesTitle: string;
+    amountPaid: string;
+    remainingToPay: string;
+    dueDate: string;
   };
 };
 
@@ -223,6 +235,7 @@ const A4_PRINT_STYLES = `
   .a4-total-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px; max-width: 300px; margin-left: auto; }
   .a4-total-row span:first-child { color: #64748b; }
   .a4-discount { color: #0d9488; font-weight: 600; }
+  .a4-remaining { color: #c2410c; font-weight: 600; }
   .a4-total-final {
     display: flex;
     justify-content: space-between;
@@ -309,6 +322,18 @@ function buildA4ReceiptHTML(data: A4ReceiptData): string {
   `
       : "";
 
+  const remaining = data.remainingAmount ?? 0;
+  const amountPaid = data.amountPaid ?? data.total;
+  const dueDateLabel = data.dueDate ? formatIsoDate(data.dueDate) : "";
+  const balanceRows =
+    remaining > 0
+      ? `
+    <div class="a4-total-row"><span>${escapeHtml(data.i18n.amountPaid)}</span><span>${formatPrice(amountPaid)}</span></div>
+    <div class="a4-total-row"><span>${escapeHtml(data.i18n.remainingToPay)}</span><span class="a4-remaining">${formatPrice(remaining)}</span></div>
+    ${dueDateLabel ? `<div class="a4-total-row"><span>${escapeHtml(data.i18n.dueDate)}</span><span>${escapeHtml(dueDateLabel)}</span></div>` : ""}
+  `
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -345,6 +370,7 @@ function buildA4ReceiptHTML(data: A4ReceiptData): string {
       <section class="a4-totals">
         ${discountRows}
         <div class="a4-total-final"><span>${data.i18n.total}</span><span>${formatPrice(data.total)}</span></div>
+        ${balanceRows}
       </section>
       <div class="a4-payment">
         <span class="a4-payment-label">${data.i18n.paymentMethod}</span>

@@ -24,6 +24,10 @@ export type PurchaseOrderResponse = {
   reference: string;
   status: PurchaseOrderStatus | string;
   totalAmount: number;
+  amountPaid: number;
+  remainingAmount: number;
+  paymentStatus: "paid" | "partial" | "unpaid" | string;
+  dueDate: string | null;
   expectedDate: string | null;
   receivedDate: string | null;
   note: string | null;
@@ -73,7 +77,46 @@ export async function createPurchaseOrder(
 
 export async function updatePurchaseOrderStatus(
   id: string,
-  status: PurchaseOrderStatus | string
+  status: PurchaseOrderStatus | string,
+  extra?: {
+    amountPaid?: number;
+    paymentMethod?: string;
+    dueDate?: string | null;
+  }
 ): Promise<PurchaseOrderResponse> {
-  return api.patch<PurchaseOrderResponse>(`/purchase-orders/${id}/status`, { status });
+  return api.patch<PurchaseOrderResponse>(`/purchase-orders/${id}/status`, {
+    status,
+    ...extra,
+  });
+}
+
+export type PurchaseOrderPaymentRequest = {
+  amount: number;
+  paymentMethod: string;
+  note?: string;
+};
+
+export type PurchaseOrderPaymentResponse = {
+  id: string;
+  purchaseOrderId: string;
+  storeId: string;
+  userId: string;
+  amount: number;
+  paymentMethod: string;
+  kind: "deposit" | "installment";
+  note: string | null;
+  createdAt: string;
+};
+
+export async function recordPurchaseOrderPayment(
+  id: string,
+  req: PurchaseOrderPaymentRequest
+): Promise<PurchaseOrderPaymentResponse> {
+  return api.post<PurchaseOrderPaymentResponse>(`/purchase-orders/${id}/payments`, req);
+}
+
+export async function listPurchaseOrderPayments(
+  id: string
+): Promise<PurchaseOrderPaymentResponse[]> {
+  return api.get<PurchaseOrderPaymentResponse[]>(`/purchase-orders/${id}/payments`);
 }
