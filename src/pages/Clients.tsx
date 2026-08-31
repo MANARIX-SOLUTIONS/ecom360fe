@@ -15,7 +15,10 @@ import {
 } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { EmptyState } from "@/components/EmptyState";
+import { canRecordClientPayment, creditBalanceTagColor } from "@/utils/clientCredit";
+import { isWalkInClientName } from "@/utils/clientWalkIn";
 
 type Client = {
   id: string;
@@ -39,6 +42,7 @@ export default function Clients() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const { matrixCan } = useMatrixCan();
+  const { canClientCredits } = usePlanFeatures();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
@@ -227,7 +231,7 @@ export default function Clients() {
                   dataIndex: "balance",
                   sorter: (a: Client, b: Client) => a.balance - b.balance,
                   render: (v: number) => (
-                    <Tag color={v > 0 ? "success" : v < 0 ? "error" : "default"}>
+                    <Tag color={creditBalanceTagColor(v)}>
                       {v > 0 ? "+" : ""}
                       {v.toLocaleString("fr-FR")} F
                     </Tag>
@@ -243,18 +247,23 @@ export default function Clients() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {matrixCan("CLIENTS_UPDATE", "clients") && (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<Wallet size={14} />}
-                          onClick={() => {
-                            setPaymentModal(r);
-                            setPaymentAmount(Math.abs(r.balance));
-                          }}
-                          aria-label={t.clients.addPayment}
-                        />
-                      )}
+                      {canRecordClientPayment({
+                        canClientCredits,
+                        balance: r.balance,
+                        isWalkIn: isWalkInClientName(r.name),
+                      }) &&
+                        matrixCan("CLIENTS_UPDATE", "clients") && (
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<Wallet size={14} />}
+                            onClick={() => {
+                              setPaymentModal(r);
+                              setPaymentAmount(r.balance);
+                            }}
+                            aria-label={t.clients.addPayment}
+                          />
+                        )}
                       {matrixCan("CLIENTS_UPDATE", "clients") && (
                         <Button
                           type="text"
@@ -309,7 +318,19 @@ export default function Clients() {
         open={!!paymentModal}
         onCancel={() => setPaymentModal(null)}
         onOk={async () => {
-          if (!paymentModal || paymentAmount <= 0 || !activeStore?.id) return;
+          if (!paymentModal) return;
+          if (!activeStore?.id) {
+            message.error(t.clients.paymentNeedsActiveStore);
+            return;
+          }
+          if (paymentAmount <= 0) {
+            message.error(t.validation.amountMin);
+            return;
+          }
+          if (paymentAmount > paymentModal.balance) {
+            message.error(t.clients.paymentExceedsBalance);
+            return;
+          }
           try {
             await recordClientPayment(paymentModal.id, {
               storeId: activeStore.id,
@@ -340,9 +361,10 @@ export default function Clients() {
               </div>
             </div>
             <Form layout="vertical" style={{ marginTop: 16 }}>
-              <Form.Item label="Montant">
+              <Form.Item label={t.expenses.amount}>
                 <CurrencyInput
-                  min={0}
+                  min={1}
+                  max={paymentModal.balance}
                   value={paymentAmount}
                   onChange={(v) => setPaymentAmount(Number(v) || 0)}
                   style={{ width: "100%" }}

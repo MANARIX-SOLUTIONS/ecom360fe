@@ -330,6 +330,9 @@ export const t = {
     placeholderPhoneExample: "77 123 45 67",
     placeholderAddress: "Adresse du client",
     paymentNeedsActiveStore: "Sélectionnez une boutique active pour enregistrer un paiement.",
+    paymentExceedsBalance: "Le paiement ne peut pas dépasser le solde dû.",
+    noOutstandingBalance: "Ce client n'a pas de crédit en cours.",
+    walkInNoCreditPayment: "Le client comptoir n'a pas de crédit nominatif.",
     msgAdded: "Client ajouté",
   },
   suppliers: {

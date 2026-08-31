@@ -19,6 +19,8 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import type { ClientResponse } from "@/api";
+import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
+import { isWalkInClientName } from "@/utils/clientWalkIn";
 
 function getInitials(name: string) {
   return name
@@ -117,12 +119,12 @@ export default function ClientDetail() {
     );
   if (!client) return <Navigate to="/clients" replace />;
 
-  const balanceColor =
-    client.creditBalance > 0
-      ? "var(--color-success)"
-      : client.creditBalance < 0
-        ? "var(--color-danger)"
-        : "var(--color-text)";
+  const balanceColor = creditBalanceCssVar(client.creditBalance);
+  const canPay = canRecordClientPayment({
+    canClientCredits,
+    balance: client.creditBalance,
+    isWalkIn: isWalkInClientName(client.name),
+  });
 
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
@@ -157,8 +159,20 @@ export default function ClientDetail() {
       message.error(t.clients.paymentNeedsActiveStore);
       return;
     }
+    if (isWalkInClientName(client.name)) {
+      message.error(t.clients.walkInNoCreditPayment);
+      return;
+    }
+    if (client.creditBalance <= 0) {
+      message.error(t.clients.noOutstandingBalance);
+      return;
+    }
     if (paymentAmount <= 0) {
       message.error(t.validation.amountMin);
+      return;
+    }
+    if (paymentAmount > client.creditBalance) {
+      message.error(t.clients.paymentExceedsBalance);
       return;
     }
     try {
@@ -222,12 +236,12 @@ export default function ClientDetail() {
             </span>
           </div>
           <div className={styles.heroActions}>
-            {canClientCredits && matrixCan("CLIENTS_UPDATE", "clients") && (
+            {canPay && matrixCan("CLIENTS_UPDATE", "clients") && (
               <Button
                 type="primary"
                 icon={<Plus size={18} />}
                 onClick={() => {
-                  setPaymentAmount(Math.abs(client.creditBalance));
+                  setPaymentAmount(client.creditBalance);
                   setPaymentOpen(true);
                 }}
               >
@@ -346,6 +360,7 @@ export default function ClientDetail() {
             <Form.Item label={t.expenses.amount}>
               <CurrencyInput
                 min={1}
+                max={client.creditBalance}
                 value={paymentAmount}
                 onChange={(v) => setPaymentAmount(Number(v) || 0)}
                 style={{ width: "100%" }}

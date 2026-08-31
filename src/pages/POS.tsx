@@ -405,6 +405,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             options={clients.map((c) => ({
               value: c.id,
               label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
+              disabled: paymentMethod === "credit" && c.isWalkIn,
             }))}
             style={{ width: "100%" }}
             size="large"
@@ -414,7 +415,12 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
               <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
             }
           />
-          {paymentMethod === "credit" && selectedClientId && (
+          {paymentMethod === "credit" && (!selectedClientId || selectedClient?.isWalkIn) && (
+            <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+              {t.pos.warnCreditNeedsNamedClient}
+            </Typography.Text>
+          )}
+          {paymentMethod === "credit" && selectedClientId && !selectedClient?.isWalkIn && (
             <Typography.Text
               type="secondary"
               style={{ display: "block", marginTop: 8, fontSize: 13 }}
@@ -472,7 +478,12 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
           className={styles.validateBtn}
           onClick={onValidate}
           loading={loading}
-          disabled={cartEmpty || (!!editSaleId && !editHydrated) || (!editSaleId && salesAtLimit)}
+          disabled={
+            cartEmpty ||
+            (!!editSaleId && !editHydrated) ||
+            (!editSaleId && salesAtLimit) ||
+            (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn))
+          }
         >
           {editSaleId ? t.pos.updateSale : t.pos.validateSale}
         </Button>
@@ -795,6 +806,31 @@ export default function POS() {
     [clients, selectedClientId]
   );
 
+  const handlePaymentMethodChange = useCallback(
+    (method: PaymentMethod) => {
+      setPaymentMethod(method);
+      if (method !== "credit") return;
+      setSelectedClientId((prev) => {
+        const current = clients.find((c) => c.id === prev);
+        if (current?.isWalkIn) return null;
+        return prev;
+      });
+    },
+    [clients]
+  );
+
+  const handleClientChange = useCallback(
+    (id: string) => {
+      const next = clients.find((c) => c.id === id);
+      setSelectedClientId(id);
+      if (next?.isWalkIn && paymentMethod === "credit") {
+        setPaymentMethod("cash");
+        message.warning(t.pos.warnCreditNeedsNamedClient);
+      }
+    },
+    [clients, paymentMethod]
+  );
+
   const originalQtyByProduct = useMemo(() => {
     if (!saleToEdit) return new Map<string, number>();
     const m = new Map<string, number>();
@@ -959,6 +995,15 @@ export default function POS() {
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
+      if (!editSaleId && paymentMethod === "credit" && selectedClientId) {
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === selectedClientId
+              ? { ...c, creditBalance: (c.creditBalance ?? 0) + sale.total }
+              : c
+          )
+        );
+      }
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
       setCartSheetOpen(false);
       setCart([]);
@@ -1063,10 +1108,10 @@ export default function POS() {
     <PosCheckoutPanel
       paymentMethods={paymentMethods}
       paymentMethod={paymentMethod}
-      onPaymentMethodChange={setPaymentMethod}
+      onPaymentMethodChange={handlePaymentMethodChange}
       clients={clients}
       selectedClientId={selectedClientId}
-      onClientChange={setSelectedClientId}
+      onClientChange={handleClientChange}
       onQuickAddClient={openQuickClient}
       selectedClient={selectedClient}
       discount={discount}
