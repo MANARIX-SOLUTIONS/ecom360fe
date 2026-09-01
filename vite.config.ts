@@ -1,9 +1,52 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+import { isPosRuntimeCacheUrl } from "./src/pwaCache";
+
+const apiProxy = {
+  "/api": {
+    target: "http://localhost:8080",
+    changeOrigin: true,
+  },
+  "/actuator": {
+    target: "http://localhost:8080",
+    changeOrigin: true,
+  },
+};
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      injectRegister: false,
+      includeAssets: ["favicon.svg", "logo/*.png", "images/payments/*"],
+      manifest: false,
+      filename: "sw.js",
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/api/, /^\/actuator/],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webp,json}"],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => isPosRuntimeCacheUrl(url),
+            handler: "NetworkFirst",
+            method: "GET",
+            options: {
+              cacheName: "ecom360-pos-api",
+              networkTimeoutSeconds: 3,
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   test: {
     globals: true,
     environment: "jsdom",
@@ -35,15 +78,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-      "/actuator": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-    },
+    proxy: apiProxy,
+  },
+  preview: {
+    port: 5173,
+    proxy: apiProxy,
   },
 });

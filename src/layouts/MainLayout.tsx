@@ -28,9 +28,10 @@ import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { HeaderProfile } from "@/components/HeaderProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useSaleOutbox } from "@/hooks/useSaleOutbox";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { t } from "@/i18n";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { APP_LOGO_MARK } from "@/constants/branding";
@@ -143,6 +144,7 @@ export default function MainLayout() {
   const canSeeReports = canAccessPlan("reports", canAccessBackend("reports"));
   const { notifications, unreadCount, markRead } = useNotifications();
   const { offline } = useNetworkStatus();
+  const { pendingCount, syncing } = useSaleOutbox();
   const { profile: businessProfile } = useBusinessProfile();
   const brandLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
   const [brandLogoBroken, setBrandLogoBroken] = useState(false);
@@ -348,7 +350,7 @@ export default function MainLayout() {
             <StoreSwitcher />
           </div>
           <Space size="middle">
-            <SyncIndicator offline={offline} />
+            <SyncIndicator offline={offline} pendingCount={pendingCount} syncing={syncing} />
             <Dropdown
               menu={{ items: notificationItems }}
               trigger={["click"]}

@@ -52,6 +52,23 @@ export async function getStockByStore(
 }
 
 /** Stock for specific products in a store (products list page). */
+const STOCK_PAGE_SIZE = 100;
+const MAX_STOCK_PAGES = 20;
+
+/** All in-stock rows for a store (paginated until exhausted). Used to fill the SW cache. */
+export async function getAllStockByStore(storeId: string): Promise<StockLevelResponse[]> {
+  const all: StockLevelResponse[] = [];
+  for (let page = 0; page < MAX_STOCK_PAGES; page++) {
+    const res = await getStockByStore(storeId, { page, size: STOCK_PAGE_SIZE });
+    const list = Array.isArray(res) ? res : res.content;
+    all.push(...list);
+    if (Array.isArray(res)) break;
+    if (list.length < STOCK_PAGE_SIZE) break;
+    if (page + 1 >= res.totalPages) break;
+  }
+  return all;
+}
+
 export async function getStockForProducts(
   storeId: string,
   productIds: string[]

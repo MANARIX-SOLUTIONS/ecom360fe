@@ -117,6 +117,13 @@ export const t = {
     depositNotInPlan: "Le paiement par acompte n'est pas inclus dans votre plan.",
     payHalf: "50 %",
     payInFull: "Tout encaisser",
+    pendingSales: "{count} vente(s) en attente",
+    saleQueuedOffline: "Vente enregistrée — sync à la reconnexion",
+    digitalPaymentNeedsNetwork: "Wave / Orange Money nécessite une connexion",
+    stockInsufficientAdjust: "Stock insuffisant, ajuster",
+    offlineBannerPending: "{count} ventes seront envoyées à la reconnexion",
+    failedSalesTitle: "Ventes non synchronisées",
+    retrySync: "Réessayer la sync",
   },
   products: {
     title: "Produits",

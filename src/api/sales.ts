@@ -34,6 +34,8 @@ export type SaleRequest = {
   dueDate?: string | null;
   note?: string;
   lines: SaleLineRequest[];
+  /** Idempotence POS / outbox offline — unique par business. */
+  clientSaleId?: string;
 };
 
 export type SaleResponse = {

@@ -6,7 +6,9 @@
 
 import { API_BASE } from "./apiBase";
 import { PERMISSIONS_CACHE_KEY } from "@/constants/storageKeys";
+import { isBrowserOffline, shouldExpireSessionOn401 } from "@/offline/network";
 import { clearAllPosCarts } from "@/utils/posCartStorage";
+import { clearSaleOutbox } from "@/offline/saleOutboxStore";
 
 const API_PREFIX = "/api/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -41,6 +43,7 @@ export function clearAuth() {
   localStorage.removeItem("ecom360_active_store_id");
   localStorage.removeItem(PERMISSIONS_CACHE_KEY);
   clearAllPosCarts();
+  void clearSaleOutbox();
 }
 
 export function setAuth(
@@ -190,6 +193,9 @@ async function request<T>(path: string, options: RequestInitWithAuth = {}): Prom
   clearTimeout(timeoutId);
 
   if (res.status === 401 && !skipAuth && token) {
+    if (isBrowserOffline() || !shouldExpireSessionOn401()) {
+      throw new ApiError("Connexion impossible — vérifiez le réseau", 0);
+    }
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       const newToken = getAccessToken();
@@ -202,6 +208,9 @@ async function request<T>(path: string, options: RequestInitWithAuth = {}): Prom
         clearTimeout(retryTimeoutId);
       }
     } else {
+      if (!shouldExpireSessionOn401()) {
+        throw new ApiError("Connexion impossible — vérifiez le réseau", 0);
+      }
       clearAuth();
       window.dispatchEvent(new Event("ecom360:auth-expired"));
       throw new ApiError("Session expirée — veuillez vous reconnecter", 401);

@@ -28,7 +28,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import {
-  getStockByStore,
+  getAllStockByStore,
   getStockForProducts,
   listClients,
   createSale,
@@ -41,6 +41,17 @@ import {
 import type { SaleResponse } from "@/api";
 import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
 import { loadPosCart, savePosCart, clearPosCart, type PosCartLine } from "@/utils/posCartStorage";
+import { ApiError } from "@/api/client";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useSaleOutbox } from "@/hooks/useSaleOutbox";
+import {
+  enqueueSale,
+  newClientSaleId,
+  STOCK_INSUFFICIENT_MSG,
+  syncSaleOutbox,
+} from "@/offline/saleOutbox";
+import { canEnqueueOffline } from "@/offline/saleOutboxTypes";
+import { isBrowserOffline } from "@/offline/network";
 
 type CartLine = PosCartLine;
 
@@ -327,6 +338,9 @@ type PosCheckoutPanelProps = {
   editHydrated: boolean;
   cartEmpty: boolean;
   onValidate: () => void;
+  offline?: boolean;
+  failedSales?: { clientSaleId: string; error?: string }[];
+  onRetrySync?: () => void;
 };
 
 const PosCheckoutPanel = memo(function PosCheckoutPanel({
@@ -356,6 +370,9 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
   editHydrated,
   cartEmpty,
   onValidate,
+  offline = false,
+  failedSales = [],
+  onRetrySync,
 }: PosCheckoutPanelProps) {
   const remainingToPay = Math.max(0, total - amountPaid);
   return (
@@ -366,40 +383,47 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             Mode de paiement
           </Typography.Text>
           <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
-            {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={paymentMethod === key}
-                className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
-                onClick={() => onPaymentMethodChange(key)}
-                style={
-                  paymentMethod === key
-                    ? {
-                        borderColor: color,
-                        background: bg,
+            {paymentMethods.map(({ key, label, hint, image, color, bg }) => {
+              const digitalOffline = offline && (key === "wave" || key === "orange_money");
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === key}
+                  aria-disabled={digitalOffline}
+                  disabled={digitalOffline}
+                  className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
+                  onClick={() => !digitalOffline && onPaymentMethodChange(key)}
+                  style={
+                    paymentMethod === key
+                      ? {
+                          borderColor: color,
+                          background: bg,
+                        }
+                      : undefined
+                  }
+                >
+                  <span className={styles.payMethodVisual} aria-hidden>
+                    <img
+                      src={image}
+                      alt=""
+                      className={
+                        key === "wave" || key === "orange_money"
+                          ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
+                          : styles.payMethodImg
                       }
-                    : undefined
-                }
-              >
-                <span className={styles.payMethodVisual} aria-hidden>
-                  <img
-                    src={image}
-                    alt=""
-                    className={
-                      key === "wave" || key === "orange_money"
-                        ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
-                        : styles.payMethodImg
-                    }
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className={styles.payMethodLabel}>{label}</span>
-                <span className={styles.payMethodHint}>{hint}</span>
-              </button>
-            ))}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </span>
+                  <span className={styles.payMethodLabel}>{label}</span>
+                  <span className={styles.payMethodHint}>
+                    {digitalOffline ? t.pos.digitalPaymentNeedsNetwork : hint}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -468,7 +492,8 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
                 {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
                 {t.pos.afterThisSaleLabel}{" "}
                 <strong>
-                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")} F
+                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")}{" "}
+                  F
                 </strong>
               </Typography.Text>
             )}
@@ -588,6 +613,29 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             </Link>
           </div>
         )}
+        {failedSales.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              padding: 12,
+              marginBottom: 12,
+              background: "rgba(239,68,68,0.08)",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--color-danger)",
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{t.pos.failedSalesTitle}</div>
+            {failedSales.map((s) => (
+              <div key={s.clientSaleId}>{s.error ?? t.pos.stockInsufficientAdjust}</div>
+            ))}
+            {onRetrySync && (
+              <Button type="link" size="small" onClick={onRetrySync} style={{ paddingLeft: 0 }}>
+                {t.pos.retrySync}
+              </Button>
+            )}
+          </div>
+        )}
         <Button
           type="primary"
           size="large"
@@ -599,8 +647,11 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             cartEmpty ||
             (!!editSaleId && !editHydrated) ||
             (!editSaleId && salesAtLimit) ||
+            (offline && (paymentMethod === "wave" || paymentMethod === "orange_money")) ||
             (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn)) ||
-            (partialEnabled && remainingToPay > 0 && (!selectedClientId || !!selectedClient?.isWalkIn))
+            (partialEnabled &&
+              remainingToPay > 0 &&
+              (!selectedClientId || !!selectedClient?.isWalkIn))
           }
         >
           {editSaleId ? t.pos.updateSale : t.pos.validateSale}
@@ -658,6 +709,8 @@ export default function POS() {
   const { saleId: editSaleId } = useParams<{ saleId: string }>();
   const { activeStore, setActiveStoreId } = useStore();
   const { canMultiPayment, canClientCredits } = usePlanFeatures();
+  const { offline } = useNetworkStatus();
+  const { failed: failedSales } = useSaleOutbox();
   useDocumentTitle(editSaleId ? t.pos.editSaleTitle : undefined);
 
   const paymentMethods = useMemo(
@@ -674,7 +727,6 @@ export default function POS() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("Tous");
 
   const posBreakpoint = usePosBreakpoint();
@@ -682,11 +734,6 @@ export default function POS() {
   const [productVisibleLimit, setProductVisibleLimit] = useState<number>(
     () => PRODUCTS_PAGE_SIZE[getPosBreakpoint()]
   );
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
 
   useEffect(() => {
     setProductVisibleLimit(productPageSize);
@@ -827,18 +874,13 @@ export default function POS() {
     let cancelled = false;
     const load = async () => {
       try {
-        const [stockRes, catsRes, clientsRes] = await Promise.all([
-          getStockByStore(activeStore.id, {
-            page: 0,
-            size: 100,
-            search: debouncedSearch.trim() || undefined,
-          }),
+        const [stockList, catsRes, clientsRes] = await Promise.all([
+          getAllStockByStore(activeStore.id),
           listCategories(),
           listClients({ page: 0, size: 100 }),
         ]);
         if (cancelled) return;
 
-        const stockList = Array.isArray(stockRes) ? stockRes : stockRes.content;
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({
@@ -848,7 +890,8 @@ export default function POS() {
           isWalkIn: false,
         }));
         let walkIn = nextClients.find((c) => isWalkInClientName(c.name));
-        if (!walkIn) {
+        const online = typeof navigator === "undefined" || navigator.onLine;
+        if (!walkIn && online) {
           try {
             const created = await createClient({ name: WALK_IN_CLIENT_NAME });
             if (cancelled) return;
@@ -897,7 +940,7 @@ export default function POS() {
     return () => {
       cancelled = true;
     };
-  }, [activeStore?.id, editSaleId, debouncedSearch]);
+  }, [activeStore?.id, editSaleId]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement)?.tagName;
@@ -1151,21 +1194,74 @@ export default function POS() {
       return;
     }
 
+    if (!editSaleId && (offline || isBrowserOffline()) && !canEnqueueOffline(paymentMethod)) {
+      message.warning(t.pos.digitalPaymentNeedsNetwork);
+      return;
+    }
+
+    if (!editSaleId) {
+      for (const line of cart) {
+        const prod = products.find((p) => p.id === line.id);
+        if (!prod || prod.stock < line.qty) {
+          message.error(STOCK_INSUFFICIENT_MSG);
+          return;
+        }
+      }
+    }
+
+    const clientSaleId = newClientSaleId();
+    const body = {
+      storeId: activeStore.id,
+      clientId: selectedClientId,
+      paymentMethod,
+      discountAmount: discountRounded,
+      amountReceived:
+        paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
+          ? paidNow
+          : undefined,
+      amountPaid: paidNow,
+      dueDate: remainingAfterSale > 0 && dueDate ? dueDate.format("YYYY-MM-DD") : null,
+      lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
+      clientSaleId,
+    };
+
+    const finishLocalSuccess = () => {
+      setCartSheetOpen(false);
+      setCart([]);
+      if (!editSaleId) {
+        clearPosCart(activeStore.id);
+        setProducts((prev) =>
+          prev.map((p) => {
+            const line = cart.find((l) => l.id === p.id);
+            return line ? { ...p, stock: Math.max(0, p.stock - line.qty) } : p;
+          })
+        );
+      }
+      if (editSaleId) {
+        setSelectedClientId(null);
+      } else {
+        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
+        setSelectedClientId(defaultClient?.id ?? null);
+      }
+      setPartialEnabled(false);
+      setAmountPaid(0);
+      setDueDate(null);
+    };
+
     setLoading(true);
     try {
-      const body = {
-        storeId: activeStore.id,
-        clientId: selectedClientId,
-        paymentMethod,
-        discountAmount: discountRounded,
-        amountReceived:
-          paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
-            ? paidNow
-            : undefined,
-        amountPaid: paidNow,
-        dueDate: remainingAfterSale > 0 && dueDate ? dueDate.format("YYYY-MM-DD") : null,
-        lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
-      };
+      if (!editSaleId && (offline || isBrowserOffline())) {
+        const businessId = localStorage.getItem("ecom360_business_id") ?? "";
+        await enqueueSale({
+          payload: body,
+          businessId,
+          userId: localStorage.getItem("ecom360_user") ?? "offline",
+        });
+        message.success(t.pos.saleQueuedOffline);
+        finishLocalSuccess();
+        return;
+      }
+
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       if (!editSaleId && sale.remainingAmount > 0 && selectedClientId) {
         setClients((prev) =>
@@ -1177,20 +1273,7 @@ export default function POS() {
         );
       }
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
-      setCartSheetOpen(false);
-      setCart([]);
-      if (!editSaleId) {
-        clearPosCart(activeStore.id);
-      }
-      if (editSaleId) {
-        setSelectedClientId(null);
-      } else {
-        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
-        setSelectedClientId(defaultClient?.id ?? null);
-      }
-      setPartialEnabled(false);
-      setAmountPaid(0);
-      setDueDate(null);
+      finishLocalSuccess();
       navigate("/receipt", {
         state: {
           sale,
@@ -1201,6 +1284,26 @@ export default function POS() {
         },
       });
     } catch (e) {
+      if (!editSaleId && e instanceof ApiError && (e.status === 0 || e.status === 408)) {
+        try {
+          const businessId = localStorage.getItem("ecom360_business_id") ?? "";
+          await enqueueSale({
+            payload: body,
+            businessId,
+            userId: localStorage.getItem("ecom360_user") ?? "offline",
+          });
+          message.success(t.pos.saleQueuedOffline);
+          finishLocalSuccess();
+          return;
+        } catch (enqueueErr) {
+          message.error(enqueueErr instanceof Error ? enqueueErr.message : t.pos.paymentError);
+          return;
+        }
+      }
+      if (e instanceof ApiError && e.status === 409) {
+        message.error(STOCK_INSUFFICIENT_MSG);
+        return;
+      }
       message.error(e instanceof Error ? e.message : t.pos.paymentError);
     } finally {
       setLoading(false);
@@ -1221,6 +1324,7 @@ export default function POS() {
     amountPaid,
     dueDate,
     alreadyCollected,
+    offline,
   ]);
 
   const openQuickClient = useCallback(() => setQuickClientOpen(true), []);
@@ -1320,6 +1424,9 @@ export default function POS() {
       editHydrated={editHydrated}
       cartEmpty={cart.length === 0}
       onValidate={validateSale}
+      offline={offline}
+      failedSales={failedSales}
+      onRetrySync={() => void syncSaleOutbox()}
     />
   );
 
@@ -1400,8 +1507,7 @@ export default function POS() {
               </span>
               {partialEnabled && total - effectiveAmountPaid > 0 && (
                 <span className={styles.mobileCartBarRemaining}>
-                  {t.pos.remainingToPay}{" "}
-                  {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
+                  {t.pos.remainingToPay} {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
                 </span>
               )}
             </div>

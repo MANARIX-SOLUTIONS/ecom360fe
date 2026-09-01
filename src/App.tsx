@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OfflineBanner } from "./components/OfflineBanner";
+import { startSaleOutboxSync } from "./offline/saleOutbox";
 import { Spin, message } from "antd";
 import { useAuth } from "./hooks/useAuth";
 import { t } from "@/i18n";
@@ -99,6 +100,8 @@ export default function App() {
     window.addEventListener("ecom360:auth-expired", onExpired);
     return () => window.removeEventListener("ecom360:auth-expired", onExpired);
   }, []);
+
+  useEffect(() => startSaleOutboxSync(), []);
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

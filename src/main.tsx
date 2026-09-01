@@ -6,7 +6,10 @@ import { antdTheme } from "./theme";
 import { StoreProvider } from "./contexts/StoreContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./App";
+import { registerPwa } from "./pwa";
 import "./index.css";
+
+registerPwa();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
