@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { getAdminStats } from "@/api/backoffice";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Backoffice.module.css";
 
 const planColors: Record<string, string> = {
@@ -130,11 +131,8 @@ export default function Backoffice() {
 
   if (loading || !stats) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.pageHeader}>
-          <Skeleton.Input active style={{ width: 240, height: 28 }} />
-          <Skeleton.Input active style={{ width: 180, height: 18, marginTop: 8 }} />
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.backoffice.overview} />
         <Row gutter={[16, 16]}>
           {[1, 2, 3, 4].map((i) => (
             <Col xs={12} sm={6} key={i}>
@@ -144,29 +142,23 @@ export default function Backoffice() {
             </Col>
           ))}
         </Row>
-      </div>
+      </PageShell>
     );
   }
 
+  const overviewDate = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      {/* Header */}
-      <div className={styles.pageHeader}>
-        <div>
-          <Typography.Title level={4} className={styles.pageTitle}>
-            Vue d'ensemble
-          </Typography.Title>
-          <Typography.Text type="secondary" className={styles.pageSubtitle}>
-            Tableau de bord de la plateforme —{" "}
-            {new Date().toLocaleDateString("fr-FR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </Typography.Text>
-        </div>
-      </div>
+    <PageShell className={styles.page}>
+      <PageHeader
+        title={t.backoffice.overview}
+        subtitle={t.backoffice.overviewSubtitle.replace("{date}", overviewDate)}
+      />
 
       {/* KPI Cards */}
       <Row gutter={[16, 16]} className={styles.kpiSection}>
@@ -276,7 +268,7 @@ export default function Backoffice() {
                 </div>
               ))}
               {stats.planDistribution.length === 0 && (
-                <Typography.Text type="secondary">Aucune donnée</Typography.Text>
+                <Typography.Text type="secondary">{t.backoffice.emptyPlanData}</Typography.Text>
               )}
             </div>
           </Card>
@@ -334,12 +326,12 @@ export default function Backoffice() {
                 </div>
               ))}
               {stats.topBusinesses.length === 0 && (
-                <Typography.Text type="secondary">Aucune entreprise</Typography.Text>
+                <Typography.Text type="secondary">{t.backoffice.emptyBusinesses}</Typography.Text>
               )}
             </div>
           </Card>
         </Col>
       </Row>
-    </div>
+    </PageShell>
   );
 }

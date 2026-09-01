@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Typography, Button, Modal, Form, Input, message } from "antd";
-import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { Store, Plus, MapPin, Check, Pencil, Trash2 } from "lucide-react";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { getSubscriptionUsage } from "@/api";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { t } from "@/i18n";
 import styles from "./SettingsStores.module.css";
 import layoutStyles from "./Settings.module.css";
@@ -58,45 +59,44 @@ export default function SettingsStores() {
     });
   };
 
-  const handleRemove = async (id: string) => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    try {
-      await removeStore(id);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const handleRemove = (id: string) => {
+    const store = stores.find((s) => s.id === id);
+    Modal.confirm({
+      title: t.stores.deleteConfirmTitle,
+      content: t.stores.deleteConfirmContent.replace("{name}", store?.name ?? ""),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await removeStore(id);
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
   };
 
   return (
-    <div className={`${layoutStyles.settingsPage} pageWrapper`}>
-      <button
-        type="button"
-        className={layoutStyles.settingsBack}
-        onClick={() => navigate("/settings")}
-      >
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.header}>
-        <div>
-          <Typography.Title level={4} className={layoutStyles.settingsPageTitle}>
-            {t.stores.title}
-          </Typography.Title>
-          <Typography.Text type="secondary" className={layoutStyles.settingsPageSubtitle}>
-            {t.stores.titleDesc}
-          </Typography.Text>
-        </div>
-        {storesAtLimit ? (
-          <Typography.Text type="secondary">
-            Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
-          </Typography.Text>
-        ) : matrixCan("STORES_CREATE", "settings:stores") ? (
-          <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
-            {t.stores.addStore}
-          </Button>
-        ) : null}
-      </header>
+    <PageShell className={layoutStyles.settingsPage}>
+      <PageHeader
+        title={t.stores.title}
+        subtitle={t.stores.titleDesc}
+        onBack={() => navigate("/settings")}
+        actions={
+          storesAtLimit ? (
+            <Typography.Text type="secondary">
+              {t.products.limitReached}{" "}
+              <Link to="/settings/subscription">{t.pos.upgradePlanLink}</Link>
+            </Typography.Text>
+          ) : matrixCan("STORES_CREATE", "settings:stores") ? (
+            <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
+              {t.stores.addStore}
+            </Button>
+          ) : null
+        }
+      />
 
       <Card variant="borderless" className={styles.card}>
         {!hasStores ? (
@@ -196,6 +196,6 @@ export default function SettingsStores() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

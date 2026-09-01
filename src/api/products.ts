@@ -3,6 +3,7 @@
  */
 
 import { api } from "./client";
+import { toQuery } from "./query";
 
 export type PageResponse<T> = {
   content: T[];
@@ -44,19 +45,28 @@ export type ProductRequest = {
   storeId: string;
 };
 
-export async function listProducts(params?: {
+export type ListProductsParams = {
   page?: number;
   size?: number;
   search?: string;
   storeId?: string;
-}): Promise<PageResponse<ProductResponse>> {
-  const search = new URLSearchParams();
-  if (params?.page != null) search.set("page", String(params.page));
-  if (params?.size != null) search.set("size", String(params.size));
-  if (params?.search) search.set("search", params.search);
-  if (params?.storeId) search.set("storeId", params.storeId);
-  const qs = search.toString();
-  return api.get<PageResponse<ProductResponse>>(`/products${qs ? `?${qs}` : ""}`);
+  categoryId?: string;
+  isActive?: boolean;
+};
+
+export async function listProducts(
+  params?: ListProductsParams
+): Promise<PageResponse<ProductResponse>> {
+  return api.get<PageResponse<ProductResponse>>(
+    `/products${toQuery({
+      page: params?.page,
+      size: params?.size,
+      search: params?.search,
+      storeId: params?.storeId,
+      categoryId: params?.categoryId,
+      isActive: params?.isActive,
+    })}`
+  );
 }
 
 export async function getProduct(id: string): Promise<ProductResponse> {

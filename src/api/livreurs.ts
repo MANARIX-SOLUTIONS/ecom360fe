@@ -3,6 +3,7 @@
  */
 
 import { api } from "./client";
+import { toQuery } from "./query";
 
 export type CourierResponse = {
   id: string;
@@ -22,8 +23,57 @@ export type CourierRequest = {
   isActive?: boolean;
 };
 
-export async function listCouriers(activeOnly = false): Promise<CourierResponse[]> {
-  return api.get<CourierResponse[]>(`/delivery/couriers?activeOnly=${activeOnly}`);
+export type CourierStatsResponse = {
+  courierId: string;
+  totalParcelsDelivered: number;
+  totalDeliveries: number;
+  failedDeliveries: number;
+  successRatePercent: number;
+};
+
+export type DeliveryStatus = "delivered" | "failed" | "cancelled";
+
+export type DeliveryRequest = {
+  courierId: string;
+  saleId?: string;
+  status: DeliveryStatus;
+  parcelsCount: number;
+  notes?: string;
+};
+
+export type DeliveryResponse = {
+  id: string;
+  businessId: string;
+  courierId: string;
+  saleId: string | null;
+  status: string;
+  parcelsCount: number;
+  deliveredAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ListCouriersParams = {
+  activeOnly?: boolean;
+};
+
+export type ListDeliveriesParams = {
+  courierId?: string;
+  page?: number;
+  size?: number;
+};
+
+export async function listCouriers(
+  activeOnlyOrParams: boolean | ListCouriersParams = false
+): Promise<CourierResponse[]> {
+  const activeOnly =
+    typeof activeOnlyOrParams === "boolean"
+      ? activeOnlyOrParams
+      : (activeOnlyOrParams.activeOnly ?? false);
+  return api.get<CourierResponse[]>(
+    `/delivery/couriers${toQuery({ activeOnly })}`
+  );
 }
 
 export async function getCourier(id: string): Promise<CourierResponse> {
@@ -45,58 +95,32 @@ export async function deleteCourier(id: string): Promise<void> {
   return api.delete(`/delivery/couriers/${id}`);
 }
 
-/** Performance stats for one courier */
-export type CourierStatsResponse = {
-  courierId: string;
-  totalParcelsDelivered: number;
-  totalDeliveries: number;
-  failedDeliveries: number;
-  successRatePercent: number;
-};
-
 export async function getCouriersStats(): Promise<CourierStatsResponse[]> {
   return api.get<CourierStatsResponse[]>("/delivery/couriers/stats");
 }
 
-export async function getCourierStats(courierId: string): Promise<CourierStatsResponse> {
-  return api.get<CourierStatsResponse>(`/delivery/couriers/${courierId}/stats`);
+export async function getCourierStats(
+  courierId: string
+): Promise<CourierStatsResponse> {
+  return api.get<CourierStatsResponse>(
+    `/delivery/couriers/${courierId}/stats`
+  );
 }
 
-/** Record a delivery (livraison) for performance tracking */
-export type DeliveryRequest = {
-  courierId: string;
-  saleId?: string;
-  status: "delivered" | "failed" | "cancelled";
-  parcelsCount: number;
-  notes?: string;
-};
-
-export type DeliveryResponse = {
-  id: string;
-  businessId: string;
-  courierId: string;
-  saleId: string | null;
-  status: string;
-  parcelsCount: number;
-  deliveredAt: string | null;
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export async function createDelivery(req: DeliveryRequest): Promise<DeliveryResponse> {
+export async function createDelivery(
+  req: DeliveryRequest
+): Promise<DeliveryResponse> {
   return api.post<DeliveryResponse>("/delivery/deliveries", req);
 }
 
-export async function listDeliveries(params?: {
-  courierId?: string;
-  page?: number;
-  size?: number;
-}): Promise<DeliveryResponse[]> {
-  const search = new URLSearchParams();
-  if (params?.courierId) search.set("courierId", params.courierId);
-  if (params?.page != null) search.set("page", String(params.page));
-  if (params?.size != null) search.set("size", String(params.size));
-  const qs = search.toString();
-  return api.get<DeliveryResponse[]>(`/delivery/deliveries${qs ? `?${qs}` : ""}`);
+export async function listDeliveries(
+  params?: ListDeliveriesParams
+): Promise<DeliveryResponse[]> {
+  return api.get<DeliveryResponse[]>(
+    `/delivery/deliveries${toQuery({
+      courierId: params?.courierId,
+      page: params?.page,
+      size: params?.size,
+    })}`
+  );
 }

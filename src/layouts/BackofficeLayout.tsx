@@ -12,8 +12,6 @@ import {
   X,
   Bell,
   Activity,
-  AlertTriangle,
-  CheckCircle,
   UserPlus,
   FileText,
   CreditCard,
@@ -22,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { getAdminStats } from "@/api/backoffice";
 import { SkipLink } from "@/components/SkipLink";
-// i18n removed – labels are now inline French
+import { t } from "@/i18n";
 import { APP_LOGO_MARK } from "@/constants/branding";
 import styles from "./BackofficeLayout.module.css";
 
@@ -48,53 +46,11 @@ const navItems = [
 
 const notifItems = [
   {
-    key: "1",
+    key: "empty",
+    disabled: true,
     label: (
-      <div className="bo-notif-item">
-        <AlertTriangle
-          size={14}
-          style={{ color: "var(--color-warning)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Abonnement expiré</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Mini Market Rufisque — Plan Starter
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "2",
-    label: (
-      <div className="bo-notif-item">
-        <UserPlus
-          size={14}
-          style={{ color: "var(--color-primary)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Nouvel utilisateur inscrit</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Moussa Keita — Il y a 2h
-          </div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "3",
-    label: (
-      <div className="bo-notif-item">
-        <CheckCircle
-          size={14}
-          style={{ color: "var(--color-success)", flexShrink: 0, marginTop: 2 }}
-        />
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13 }}>Backup terminé</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            Base de données — 04:00 UTC
-          </div>
-        </div>
+      <div style={{ padding: 16, textAlign: "center", color: "var(--color-text-muted)", fontSize: 13 }}>
+        {t.backoffice.emptyNotifications}
       </div>
     ),
   },
@@ -257,7 +213,7 @@ export default function BackofficeLayout() {
           <div className={styles.headerActions}>
             <Dropdown menu={{ items: notifItems }} trigger={["click"]} placement="bottomRight">
               <button type="button" className={styles.headerBtn} aria-label="Notifications">
-                <Badge count={3} size="small" offset={[-2, 2]}>
+                <Badge count={0} size="small" offset={[-2, 2]}>
                   <Bell size={18} />
                 </Badge>
               </button>

@@ -13,7 +13,7 @@ Interface SaaS moderne pour petits et moyens commerces (Sénégal / Afrique) : c
 
 ## Design
 
-- **Couleurs** : Primaire #1F3A5F, Succès #2ECC71, Warning #F39C12, Danger #E74C3C, Fond #F5F7FA
+- **Couleurs** : Primaire #0f3460, Accent #0ea5e9, Succès #059669, Warning #d97706, Danger #dc2626, Fond #f1f5f9
 - **Typo** : Inter
 - **Objectifs** : POS ≤ 2 clics, lisibilité 1 m, tap targets ≥ 44px, mobile-first
 

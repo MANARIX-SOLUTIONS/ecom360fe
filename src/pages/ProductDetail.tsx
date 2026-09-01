@@ -40,6 +40,7 @@ import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { PageShell } from "@/components/ui";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
@@ -197,14 +198,14 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
         <div className={styles.backWrap}>
           <Skeleton.Button active style={{ width: 80 }} />
         </div>
         <Card variant="borderless" className={styles.heroCard}>
           <Skeleton active paragraph={{ rows: 3 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -258,13 +259,23 @@ export default function ProductDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteProduct(id)
-      .then(() => {
-        message.success(t.products.msgDeleted);
-        navigate("/products");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+    Modal.confirm({
+      title: t.products.deleteConfirmTitle,
+      content: t.products.deleteConfirmContent.replace("{name}", product?.name ?? ""),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteProduct(id);
+          message.success(t.products.msgDeleted);
+          navigate("/products");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
   };
 
   const handleStockSave = () => {
@@ -297,7 +308,7 @@ export default function ProductDetail() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       <div className={styles.backWrap}>
         <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/products")}>
           {t.common.back}
@@ -688,6 +699,6 @@ export default function ProductDetail() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

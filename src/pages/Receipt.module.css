@@ -7,7 +7,7 @@
   --receipt-muted: var(--color-text-muted);
   --receipt-accent: var(--color-primary);
   --receipt-radius: var(--radius-lg);
-  --receipt-shadow: 0 4px 24px rgba(27, 77, 122, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --receipt-shadow: 0 4px 24px rgba(15, 52, 96, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 /* ========== Success banner ========== */
@@ -120,7 +120,7 @@
 .templateToggle:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.03);
+  background: rgba(15, 52, 96, 0.03);
 }
 
 .templateToggle span {
@@ -151,12 +151,12 @@
 
 .templateCard:hover {
   border-color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.03);
+  background: rgba(15, 52, 96, 0.03);
 }
 
 .templateCardActive {
   border-color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.08);
+  background: rgba(15, 52, 96, 0.08);
   box-shadow: 0 0 0 1px var(--color-primary);
 }
 
@@ -207,7 +207,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #1b4d7a 0%, #0e7490 50%, #1b4d7a 100%);
+  background: linear-gradient(90deg, #0f3460 0%, #0ea5e9 50%, #0f3460 100%);
   border-radius: var(--receipt-radius) var(--receipt-radius) 0 0;
   pointer-events: none;
 }
@@ -219,7 +219,7 @@
 .receiptThermal.templateModerne .receiptBrandLogo {
   padding: 10px 14px;
   background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-  border: 1px solid rgba(27, 77, 122, 0.1);
+  border: 1px solid rgba(15, 52, 96, 0.1);
   border-radius: 12px;
   max-height: none;
 }
@@ -332,7 +332,7 @@
   text-align: center;
   margin: 0 0 8px;
   padding-bottom: 20px;
-  border-bottom: 2px solid rgba(27, 77, 122, 0.15);
+  border-bottom: 2px solid rgba(15, 52, 96, 0.15);
 }
 
 .receiptBrandLogo {
@@ -395,8 +395,8 @@
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(27, 77, 122, 0.08);
-  color: #1b4d7a;
+  background: rgba(15, 52, 96, 0.08);
+  color: #0f3460;
   letter-spacing: 0.16em;
 }
 
@@ -458,8 +458,8 @@
   padding: 16px;
   text-align: left;
   border-radius: var(--radius-sm);
-  background: linear-gradient(165deg, rgba(27, 77, 122, 0.06) 0%, #fff 55%);
-  border: 1px solid rgba(27, 77, 122, 0.15);
+  background: linear-gradient(165deg, rgba(15, 52, 96, 0.06) 0%, #fff 55%);
+  border: 1px solid rgba(15, 52, 96, 0.15);
   border-left: 4px solid var(--receipt-accent);
 }
 
@@ -555,7 +555,7 @@
 }
 
 .lines tbody tr:hover td {
-  background: rgba(27, 77, 122, 0.04);
+  background: rgba(15, 52, 96, 0.04);
 }
 
 .colDesc {
@@ -610,7 +610,7 @@
   font-weight: 700;
   margin-top: 14px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, rgba(27, 77, 122, 0.06) 0%, rgba(27, 77, 122, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.06) 0%, rgba(15, 52, 96, 0.02) 100%);
   border-radius: var(--radius-sm);
   border-left: 4px solid var(--receipt-accent);
   color: var(--receipt-text);
@@ -632,9 +632,9 @@
   padding: 12px 16px;
   font-size: 14px;
   color: var(--receipt-text);
-  background: rgba(27, 77, 122, 0.04);
+  background: rgba(15, 52, 96, 0.04);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(27, 77, 122, 0.1);
+  border: 1px solid rgba(15, 52, 96, 0.1);
 }
 
 .paymentLabel {
@@ -682,14 +682,22 @@
   font-size: 16px;
   font-weight: 600;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--color-primary) 0%, #0e3456 100%) !important;
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--v2-primary-hover) 100%
+  ) !important;
   border: none !important;
-  box-shadow: 0 2px 8px rgba(27, 77, 122, 0.35);
+  box-shadow: 0 2px 8px rgba(15, 52, 96, 0.35);
 }
 
 .actionBtnMain:hover {
-  background: linear-gradient(135deg, #234d73 0%, #0e3456 100%) !important;
-  box-shadow: 0 4px 12px rgba(27, 77, 122, 0.4);
+  background: linear-gradient(
+    135deg,
+    var(--v2-primary-hover) 0%,
+    var(--v2-primary) 100%
+  ) !important;
+  box-shadow: 0 4px 12px rgba(15, 52, 96, 0.4);
 }
 
 .actionsSecondary {
@@ -921,7 +929,7 @@
 
   html:not([class*="print-a4"]) .receiptThermal.templateModerne {
     padding-top: 10px;
-    border-top: 3px solid #1b4d7a;
+    border-top: 3px solid #0f3460;
   }
 
   html:not([class*="print-a4"]) .receiptThermal.templateModerne::before {
@@ -1082,7 +1090,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding-bottom: 24px;
-  border-bottom: 3px solid #1b4d7a;
+  border-bottom: 3px solid #0f3460;
   margin-bottom: 24px;
 }
 
@@ -1146,7 +1154,7 @@
   font-size: 20px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #1b4d7a;
+  color: #0f3460;
   letter-spacing: 0.02em;
 }
 
@@ -1192,7 +1200,7 @@
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  border-left: 4px solid #1b4d7a;
+  border-left: 4px solid #0f3460;
 }
 
 .a4BillToKicker {
@@ -1286,7 +1294,7 @@
 .a4Totals {
   margin-bottom: 24px;
   padding: 24px 0;
-  border-top: 3px solid #1b4d7a;
+  border-top: 3px solid #0f3460;
 }
 
 .a4TotalRow {

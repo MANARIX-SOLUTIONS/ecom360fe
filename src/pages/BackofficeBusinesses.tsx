@@ -63,6 +63,7 @@ import { labelForPermissionCode } from "@/utils/permissionCatalog";
 import type { StoreResponse } from "@/api/stores";
 import type { SubscriptionUsageResponse } from "@/api/subscription";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 
 type Business = AdminBusiness & { stores: number };
 
@@ -104,6 +105,7 @@ function subscriptionBillingLabel(cycle: string): string {
 
 export default function BackofficeBusinesses() {
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -181,6 +183,7 @@ export default function BackofficeBusinesses() {
       message.error(e instanceof Error ? e.message : t.backoffice.businessesLoadError);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, [page, pageSize, searchDebounced, filterStatus, filterPlan]);
 
@@ -598,66 +601,69 @@ export default function BackofficeBusinesses() {
     [detail?.id, loadStoresForBusiness, modal, refreshDetail]
   );
 
-  if (loading) {
-    return (
-      <div className="pageWrapper">
-        <Skeleton active paragraph={{ rows: 8 }} />
+  const filterBar = (
+    <div className={styles.toolbar}>
+      <div className={styles.toolbarLeft}>
+        <Input
+          prefix={<Search size={16} />}
+          placeholder={t.backoffice.searchBusinesses}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          className={styles.toolbarSearch}
+        />
+        <Select
+          value={filterPlan}
+          onChange={setFilterPlan}
+          style={{ minWidth: 120 }}
+          options={[
+            { value: "all", label: t.backoffice.allPlans },
+            { value: "Starter", label: "Starter" },
+            { value: "Pro", label: "Pro" },
+            { value: "Business", label: "Business" },
+          ]}
+        />
+        <Select
+          value={filterStatus}
+          onChange={setFilterStatus}
+          style={{ minWidth: 120 }}
+          options={[
+            { value: "all", label: t.backoffice.allStatuses },
+            { value: "active", label: t.backoffice.statusActive },
+            { value: "suspended", label: t.backoffice.statusSuspended },
+            { value: "trial", label: t.backoffice.statusTrial },
+          ]}
+        />
       </div>
+      <div className={styles.toolbarRight}>
+        <Button type="primary" icon={<Plus size={16} />} onClick={openCreateModal}>
+          {t.backoffice.newBusiness}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (!hasLoaded && loading) {
+    return (
+      <PageShell className={styles.page}>
+        {contextHolder}
+        <PageHeader title={t.backoffice.businesses} />
+        {filterBar}
+        <Card variant="borderless" className={styles.tableCard}>
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </Card>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       {contextHolder}
-      <div className={styles.pageHeader}>
-        <Typography.Title level={4} className={styles.pageTitle}>
-          Entreprises
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          {total} entreprise{total > 1 ? "s" : ""} inscrite{total > 1 ? "s" : ""} sur la plateforme
-        </Typography.Text>
-      </div>
-
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <Input
-            prefix={<Search size={16} />}
-            placeholder="Rechercher entreprise ou propriétaire..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <Select
-            value={filterPlan}
-            onChange={setFilterPlan}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous les plans" },
-              { value: "Starter", label: "Starter" },
-              { value: "Pro", label: "Pro" },
-              { value: "Business", label: "Business" },
-            ]}
-          />
-          <Select
-            value={filterStatus}
-            onChange={setFilterStatus}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous statuts" },
-              { value: "active", label: "Actif" },
-              { value: "suspended", label: "Suspendu" },
-              { value: "trial", label: "Essai" },
-            ]}
-          />
-        </div>
-        <div className={styles.toolbarRight}>
-          <Button type="primary" icon={<Plus size={16} />} onClick={openCreateModal}>
-            Nouvelle entreprise
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t.backoffice.businesses}
+        subtitle={t.backoffice.businessesCount.replace("{count}", String(total))}
+      />
+      {filterBar}
 
       {/* Table */}
       <Card variant="borderless" className={styles.tableCard}>
@@ -665,6 +671,7 @@ export default function BackofficeBusinesses() {
           <Table
             dataSource={businesses}
             rowKey="id"
+            loading={loading}
             scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
@@ -1462,6 +1469,6 @@ export default function BackofficeBusinesses() {
           </Typography.Text>
         )}
       </Modal>
-    </div>
+    </PageShell>
   );
 }

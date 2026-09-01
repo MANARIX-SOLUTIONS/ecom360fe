@@ -3,7 +3,7 @@
   box-shadow: var(--shadow-card);
   margin-bottom: var(--section-gap);
   border: 1px solid var(--color-border);
-  background: linear-gradient(135deg, rgba(27, 77, 122, 0.02) 0%, rgba(8, 145, 178, 0.02) 100%);
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.02) 0%, rgba(14, 165, 233, 0.02) 100%);
   overflow: hidden;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .step:hover:not(:disabled) {
-  background: rgba(27, 77, 122, 0.03);
+  background: rgba(15, 52, 96, 0.03);
 }
 
 .step:disabled {
@@ -72,7 +72,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(27, 77, 122, 0.08);
+  background: rgba(15, 52, 96, 0.08);
   color: var(--color-primary);
   display: flex;
   align-items: center;

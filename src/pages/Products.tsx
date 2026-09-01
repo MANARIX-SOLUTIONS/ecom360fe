@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Card,
@@ -19,6 +19,7 @@ import {
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { Search, Plus, Pencil, Package, Trash2, Tags, Upload as UploadIcon } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
@@ -80,6 +81,7 @@ export default function Products() {
   const { matrixCan } = useMatrixCan();
   const [search, setSearch] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
+  const [filterCategory, setFilterCategory] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [stockModalOpen, setStockModalOpen] = useState(false);
@@ -97,7 +99,7 @@ export default function Products() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null);
   const [categoryForm] = Form.useForm();
-  const hasLoadedOnce = useRef(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   /** Pending file chosen in the product modal (upload after create/update). */
   const [imageFile, setImageFile] = useState<File | null>(null);
   /** True when user removed the existing image without picking a new file. */
@@ -111,15 +113,14 @@ export default function Products() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset page + "initial load" when store / search changes
   useEffect(() => {
-    hasLoadedOnce.current = false;
+    setHasLoaded(false);
     setPage(0);
   }, [activeStore?.id]);
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filterCategory]);
 
   useEffect(() => {
     getSubscriptionUsage()
@@ -138,11 +139,13 @@ export default function Products() {
   const fetchData = useCallback(
     async (silent = false, searchOverride?: string, isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!silent && !isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          if (!silent) setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
-      const isInitialLoad = !hasLoadedOnce.current;
-      if (!silent && isInitialLoad && !isCancelled?.()) setLoading(true);
+      if (!silent && !isCancelled?.()) setLoading(true);
       const searchToUse = searchOverride !== undefined ? searchOverride : debouncedSearch;
       try {
         const [productsRes, categoriesRes] = await Promise.all([
@@ -151,6 +154,7 @@ export default function Products() {
             size: pageSize,
             search: searchToUse || undefined,
             storeId: activeStore?.id,
+            categoryId: filterCategory,
           }),
           fetchCategories(),
         ]);
@@ -189,17 +193,18 @@ export default function Products() {
             };
           })
         );
-        hasLoadedOnce.current = true;
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setProducts([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
-        if (!silent && isInitialLoad && !isCancelled?.()) setLoading(false);
+        if (!silent && !isCancelled?.()) setLoading(false);
       }
     },
-    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize]
+    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize, filterCategory]
   );
 
   useEffect(() => {
@@ -284,17 +289,47 @@ export default function Products() {
     });
   };
 
-  const onCategoryDelete = async (c: CategoryResponse) => {
-    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
-    try {
-      await deleteCategory(c.id);
-      message.success(t.common.categoryDeleted);
-      const refreshed = await listCategories();
-      setCategories(refreshed);
-      fetchData(true, "");
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const onCategoryDelete = (c: CategoryResponse) => {
+    Modal.confirm({
+      title: t.products.deleteCategoryTitle,
+      content: t.products.deleteCategoryContent.replace("{name}", c.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteCategory(c.id);
+          message.success(t.common.categoryDeleted);
+          const refreshed = await listCategories();
+          setCategories(refreshed);
+          if (filterCategory === c.id) setFilterCategory(undefined);
+          void fetchData(true, "");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
+  };
+
+  const confirmDeleteProduct = (p: Product) => {
+    Modal.confirm({
+      title: t.products.deleteConfirmTitle,
+      content: t.products.deleteConfirmContent.replace("{name}", p.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteProduct(p.id);
+          message.success(t.products.msgDeleted);
+          void fetchData(true, "");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
   };
 
   const openEdit = (p: Product) => {
@@ -389,7 +424,7 @@ export default function Products() {
     setStockProduct(p);
     stockForm.setFieldsValue({
       newStock: p.stock,
-      reason: "Ajustement manuel",
+      reason: t.products.manualAdjustmentReason,
     });
     setStockModalOpen(true);
   };
@@ -402,7 +437,7 @@ export default function Products() {
           storeId: activeStore.id,
           quantity: values.newStock,
           type: "adjustment",
-          note: values.reason || "Ajustement manuel",
+          note: values.reason || t.products.manualAdjustmentReason,
         });
         message.success(t.products.msgStockUpdated);
         setStockModalOpen(false);
@@ -415,75 +450,85 @@ export default function Products() {
     });
   };
 
-  if (loading) {
+  const canManageCategories =
+    matrixCan("CATEGORIES_CREATE", "products") ||
+    matrixCan("CATEGORIES_UPDATE", "products") ||
+    matrixCan("CATEGORIES_DELETE", "products");
+
+  const hasActiveFilters = Boolean(search) || Boolean(filterCategory) || filterStock !== "all";
+  const isCatalogEmpty = total === 0 && !hasActiveFilters;
+
+  const headerActions = (
+    <div className={styles.toolbar}>
+      {canManageCategories && (
+        <Button icon={<Tags size={18} />} onClick={openCategoryDrawer} className={styles.catBtn}>
+          {t.products.manageCategories}
+        </Button>
+      )}
+      {productsAtLimit ? (
+        <Typography.Text type="secondary">
+          {t.products.limitReached} <Link to="/settings/subscription">{t.pos.upgradePlanLink}</Link>
+        </Typography.Text>
+      ) : matrixCan("PRODUCTS_CREATE", "products") ? (
+        <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
+          {t.products.addProduct}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Input
+        prefix={<Search size={18} />}
+        placeholder={t.products.search}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        allowClear
+        className={styles.searchInput}
+      />
+      <Select
+        value={filterCategory}
+        onChange={(value) => setFilterCategory(value || undefined)}
+        allowClear
+        showSearch
+        optionFilterProp="label"
+        placeholder={t.products.allCategories}
+        options={categories.map((c) => ({ value: c.id, label: c.name }))}
+        className={styles.filterSelect}
+      />
+      <Select
+        value={filterStock}
+        onChange={setFilterStock}
+        options={[
+          { value: "all", label: t.products.filterAllStock },
+          { value: "low", label: t.products.lowStock },
+          { value: "ok", label: t.products.stockOk },
+        ]}
+        className={styles.filterSelect}
+      />
+    </div>
+  );
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 120, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 260, height: 44 }} />
-            <Skeleton.Button active style={{ width: 160, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.products.title} actions={headerActions} />
+        {filterBar}
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 6 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.products.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <div className={styles.filters}>
-            {(matrixCan("CATEGORIES_CREATE", "products") ||
-              matrixCan("CATEGORIES_UPDATE", "products") ||
-              matrixCan("CATEGORIES_DELETE", "products")) && (
-              <Button
-                icon={<Tags size={18} />}
-                onClick={openCategoryDrawer}
-                className={styles.catBtn}
-              >
-                {t.products.manageCategories}
-              </Button>
-            )}
-            <Input
-              prefix={<Search size={18} />}
-              placeholder={t.products.search}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              className={styles.searchInput}
-            />
-            <Select
-              value={filterStock}
-              onChange={setFilterStock}
-              options={[
-                { value: "all", label: "Tous" },
-                { value: "low", label: t.products.lowStock },
-                { value: "ok", label: "Stock OK" },
-              ]}
-              className={styles.filterSelect}
-            />
-          </div>
-          {productsAtLimit ? (
-            <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
-            </Typography.Text>
-          ) : matrixCan("PRODUCTS_CREATE", "products") ? (
-            <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
-              {t.products.addProduct}
-            </Button>
-          ) : null}
-        </div>
-      </header>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.products.title} actions={headerActions} />
+      {filterBar}
 
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {filtered.length === 0 && search === "" && filterStock === "all" ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Package}
             title={t.products.emptyTitle}
@@ -502,11 +547,14 @@ export default function Products() {
               ) : null
             }
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.products.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
               dataSource={filtered}
               rowKey="id"
+              loading={loading}
               pagination={{
                 current: page + 1,
                 pageSize,
@@ -532,7 +580,7 @@ export default function Products() {
                 },
               })}
               className="dataTable"
-              locale={{ emptyText: "Aucun produit trouvé" }}
+              locale={{ emptyText: t.products.emptySearch }}
               columns={[
                 {
                   title: "",
@@ -567,7 +615,7 @@ export default function Products() {
                   ),
                 },
                 {
-                  title: "Prix",
+                  title: t.products.salePrice,
                   dataIndex: "salePrice",
                   key: "salePrice",
                   minWidth: 140,
@@ -581,7 +629,7 @@ export default function Products() {
                   ),
                 },
                 {
-                  title: "Stock",
+                  title: t.products.stockColumn,
                   dataIndex: "stock",
                   width: 100,
                   sorter: (a: Product, b: Product) => a.stock - b.stock,
@@ -626,20 +674,7 @@ export default function Products() {
                           danger
                           size="small"
                           icon={<Trash2 size={14} />}
-                          onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteProduct(r.id)
-                                .then(() => {
-                                  message.success(t.products.msgDeleted);
-                                  fetchData(true, "");
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
-                          }}
+                          onClick={() => confirmDeleteProduct(r)}
                           aria-label={t.common.delete}
                         />
                       )}
@@ -806,7 +841,7 @@ export default function Products() {
           <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
             <Typography.Text type="secondary">{stockProduct.name}</Typography.Text>
             <Typography.Text strong style={{ display: "block", marginBottom: 16 }}>
-              Stock actuel : {stockProduct.stock}
+              {t.products.currentStockLabel} : {stockProduct.stock}
             </Typography.Text>
             <Form.Item
               name="newStock"
@@ -914,11 +949,11 @@ export default function Products() {
           <Form.Item name="color" label={t.products.categoryColor} initialValue="default">
             <Select options={CATEGORY_COLOR_OPTIONS} />
           </Form.Item>
-          <Form.Item name="sortOrder" label="Ordre" initialValue={0}>
+          <Form.Item name="sortOrder" label={t.products.sortOrder} initialValue={0}>
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

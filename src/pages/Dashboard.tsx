@@ -44,6 +44,7 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
@@ -59,6 +60,7 @@ function getDashboardPeriodBounds() {
 }
 
 const DASH_LIST_BATCH = 10;
+const DASH_ACTIVITY_SEEN_KEY = "ecom360_dash_activity_seen";
 
 const PAYMENT_COLORS: Record<string, string> = {
   cash: "var(--color-primary)",
@@ -212,6 +214,13 @@ export default function Dashboard() {
   const [loadingMoreLow, setLoadingMoreLow] = useState(false);
   const [topSliceHasNext, setTopSliceHasNext] = useState(false);
   const [lowSliceHasNext, setLowSliceHasNext] = useState(false);
+  const [activityDefaultOpen] = useState(() => {
+    try {
+      return localStorage.getItem(DASH_ACTIVITY_SEEN_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  });
 
   const loadData = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -264,6 +273,14 @@ export default function Dashboard() {
     const lowTotal = data.lowStockItemsTotal ?? data.lowStockItems.length;
     setLowSliceHasNext(lowTotal > data.lowStockItems.length);
   }, [data]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DASH_ACTIVITY_SEEN_KEY, "1");
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, []);
 
   const loadMoreTopProducts = useCallback(async () => {
     if (!data || loadingMoreTop) return;
@@ -598,13 +615,33 @@ export default function Dashboard() {
               : s.paymentMethod,
     })) ?? [];
 
+  const dashHeader = (
+    <PageHeader
+      title={t.dashboard.title}
+      subtitle={`${getGreeting()}, ${displayName}`}
+      meta={
+        <>
+          <span className={styles.headerDate}>{formatDate()}</span>
+          {activeStore ? <span className={styles.storeBadge}>{activeStore.name}</span> : null}
+        </>
+      }
+    />
+  );
+
+  const showGlobalView =
+    (data?.totalStores ?? 0) > 1 &&
+    matrixCan("GLOBAL_VIEW_READ", "globalView") &&
+    canAccessPlan("globalView", matrixNavAccess("globalView"));
+  const hasSecondaryQuickActions =
+    canAccess("products") ||
+    (canExpenses && canAccess("expenses")) ||
+    canAccess("clients") ||
+    showGlobalView;
+
   if (loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 260, height: 28 }} />
-          <Skeleton.Input active style={{ width: 160, height: 18, marginTop: 10 }} />
-        </div>
+      <PageShell className={styles.page}>
+        {dashHeader}
         <div className={styles.statsSection}>
           <Typography.Title level={5} className={styles.statsSectionTitle}>
             {t.dashboard.sectionToday}
@@ -664,7 +701,7 @@ export default function Dashboard() {
             </Col>
           </Row>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -678,20 +715,8 @@ export default function Dashboard() {
 
   if (emptyData) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <header className={styles.header}>
-          <div>
-            <Typography.Title level={4} className={styles.pageTitle}>
-              {getGreeting()}, {displayName}
-            </Typography.Title>
-            <div className={styles.headerMeta}>
-              <Typography.Text type="secondary" className={styles.headerDate}>
-                {formatDate()}
-              </Typography.Text>
-              {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
-            </div>
-          </div>
-        </header>
+      <PageShell className={styles.page}>
+        {dashHeader}
         <Card variant="borderless" className={`${styles.card} ${styles.emptyCard}`}>
           <EmptyState
             icon={ShoppingCart}
@@ -704,25 +729,13 @@ export default function Dashboard() {
             }
           />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <div>
-          <Typography.Title level={4} className={styles.pageTitle}>
-            {getGreeting()}, {displayName}
-          </Typography.Title>
-          <div className={styles.headerMeta}>
-            <Typography.Text type="secondary" className={styles.headerDate}>
-              {formatDate()}
-            </Typography.Text>
-            {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
-          </div>
-        </div>
-      </header>
+    <PageShell className={styles.page}>
+      {dashHeader}
 
       {apiError && (
         <Alert
@@ -809,7 +822,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Quick actions — alignées sur les mêmes règles que le menu (canAccess par route). */}
+      {/* Quick actions — POS is the only full-bleed primary; others stay compact. */}
       <section className={styles.quickActions} aria-label="Actions rapides">
         {canAccess("pos") && (
           <button
@@ -823,44 +836,58 @@ export default function Dashboard() {
             <span className={styles.quickCardLabel}>Nouvelle vente</span>
           </button>
         )}
-        {canAccess("products") && (
-          <button type="button" className={styles.quickCard} onClick={() => navigate("/products")}>
-            <span className={styles.quickCardIcon}>
-              <Plus size={22} />
-            </span>
-            <span className={styles.quickCardLabel}>Ajouter produit</span>
-          </button>
-        )}
-        {canExpenses && canAccess("expenses") && (
-          <button type="button" className={styles.quickCard} onClick={() => navigate("/expenses")}>
-            <span className={styles.quickCardIcon}>
-              <FileText size={22} />
-            </span>
-            <span className={styles.quickCardLabel}>Dépense</span>
-          </button>
-        )}
-        {canAccess("clients") && (
-          <button type="button" className={styles.quickCard} onClick={() => navigate("/clients")}>
-            <span className={styles.quickCardIcon}>
-              <Users size={22} />
-            </span>
-            <span className={styles.quickCardLabel}>Clients</span>
-          </button>
-        )}
-        {(data?.totalStores ?? 0) > 1 &&
-          matrixCan("GLOBAL_VIEW_READ", "globalView") &&
-          canAccessPlan("globalView", matrixNavAccess("globalView")) && (
-            <button
-              type="button"
-              className={styles.quickCard}
-              onClick={() => navigate("/vue-globale")}
-            >
-              <span className={styles.quickCardIcon}>
-                <Store size={22} />
-              </span>
-              <span className={styles.quickCardLabel}>Vue globale</span>
-            </button>
-          )}
+        {hasSecondaryQuickActions ? (
+          <div className={styles.quickActionsSecondary}>
+            {canAccess("products") && (
+              <button
+                type="button"
+                className={styles.quickCard}
+                onClick={() => navigate("/products")}
+              >
+                <span className={styles.quickCardIcon}>
+                  <Plus size={22} />
+                </span>
+                <span className={styles.quickCardLabel}>Ajouter produit</span>
+              </button>
+            )}
+            {canExpenses && canAccess("expenses") && (
+              <button
+                type="button"
+                className={styles.quickCard}
+                onClick={() => navigate("/expenses")}
+              >
+                <span className={styles.quickCardIcon}>
+                  <FileText size={22} />
+                </span>
+                <span className={styles.quickCardLabel}>Dépense</span>
+              </button>
+            )}
+            {canAccess("clients") && (
+              <button
+                type="button"
+                className={styles.quickCard}
+                onClick={() => navigate("/clients")}
+              >
+                <span className={styles.quickCardIcon}>
+                  <Users size={22} />
+                </span>
+                <span className={styles.quickCardLabel}>Clients</span>
+              </button>
+            )}
+            {showGlobalView && (
+              <button
+                type="button"
+                className={styles.quickCard}
+                onClick={() => navigate("/vue-globale")}
+              >
+                <span className={styles.quickCardIcon}>
+                  <Store size={22} />
+                </span>
+                <span className={styles.quickCardLabel}>Vue globale</span>
+              </button>
+            )}
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.statsSection} aria-label={t.dashboard.sectionToday}>
@@ -1009,245 +1036,282 @@ export default function Dashboard() {
         ) : null}
       </section>
 
-      <section className={styles.tablesSection} aria-label="Activité">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <Package size={20} aria-hidden />
-                  {t.dashboard.topProducts}
-                </span>
-              }
-              variant="borderless"
-              className={styles.card}
-            >
-              <div className="tableResponsive">
-                <Table
-                  dataSource={topProducts}
-                  rowKey="productId"
-                  pagination={false}
-                  size="small"
-                  className={styles.dataTable}
-                  scroll={{ x: "max-content" }}
-                  onRow={(r) => ({
-                    style: { cursor: "pointer" },
-                    onClick: () => navigate(`/products/${r.productId}`),
-                  })}
-                  columns={[
-                    {
-                      title: t.common.name,
-                      dataIndex: "name",
-                      ellipsis: true,
-                    },
-                    {
-                      title: "Qté",
-                      dataIndex: "qty",
-                      width: 72,
-                      align: "center",
-                    },
-                    {
-                      title: "Montant",
-                      dataIndex: "amount",
-                      width: 110,
-                      className: "amount",
-                      align: "right",
-                    },
-                  ]}
-                />
-                {data && topSliceHasNext ? (
-                  <div className={styles.tableFooterActions}>
-                    <Button
-                      type="default"
-                      size="small"
-                      loading={loadingMoreTop}
-                      onClick={loadMoreTopProducts}
-                    >
-                      Charger {Math.min(DASH_LIST_BATCH, topRemaining)} suivants
-                    </Button>
-                    {topRemaining > 0 ? (
-                      <Typography.Text type="secondary" className={styles.tableFooterMeta}>
-                        Encore {topRemaining} produit{topRemaining > 1 ? "s" : ""} à afficher
-                      </Typography.Text>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          </Col>
-          {canStockAlerts ? (
-            <Col xs={24} lg={12}>
-              <Card
-                title={
-                  <span className={styles.cardTitle}>
-                    <AlertTriangle size={20} className={styles.alertIcon} aria-hidden />
-                    {t.dashboard.lowStockAlerts}
-                  </span>
-                }
-                extra={
-                  lowStock.length > 0 && canAccess("products") ? (
-                    <Button type="link" size="small" onClick={() => navigate("/products")}>
-                      {t.dashboard.lowStockCta}
-                    </Button>
-                  ) : null
-                }
-                variant="borderless"
-                className={`${styles.card} ${styles.alertCard}`}
-              >
-                <div className="tableResponsive">
-                  <Table
-                    dataSource={lowStock}
-                    rowKey={(r) => `${r.productId}-${r.storeName}`}
-                    pagination={false}
-                    size="small"
-                    className={styles.dataTable}
-                    scroll={{ x: "max-content" }}
-                    onRow={(r) => ({
-                      style: { cursor: "pointer" },
-                      onClick: () => navigate(`/products/${r.productId}`),
-                    })}
-                    columns={[
-                      {
-                        title: t.common.name,
-                        dataIndex: "name",
-                        ellipsis: true,
-                      },
-                      {
-                        title: "Stock",
-                        dataIndex: "stock",
-                        width: 88,
-                        render: (
-                          val: number,
-                          r: { productId: string; storeName: string; min: number }
-                        ) => (
-                          <Tag color={val < r.min ? "error" : "default"}>
-                            {val} / {r.min}
-                          </Tag>
-                        ),
-                      },
-                    ]}
-                  />
-                  {data && lowSliceHasNext ? (
-                    <div className={styles.tableFooterActions}>
-                      <Button
-                        type="default"
-                        size="small"
-                        loading={loadingMoreLow}
-                        onClick={loadMoreLowStock}
+      <Collapse
+        bordered={false}
+        ghost
+        className={styles.activityCollapse}
+        defaultActiveKey={activityDefaultOpen ? ["activity"] : []}
+        expandIconPosition="end"
+        items={[
+          {
+            key: "activity",
+            label: (
+              <Typography.Title level={5} className={styles.activityCollapseHeading}>
+                {t.dashboard.activitySection}
+              </Typography.Title>
+            ),
+            children: (
+              <>
+                <section className={styles.tablesSection} aria-label="Activité">
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
+                      <Card
+                        title={
+                          <span className={styles.cardTitle}>
+                            <Package size={20} aria-hidden />
+                            {t.dashboard.topProducts}
+                          </span>
+                        }
+                        variant="borderless"
+                        className={styles.card}
                       >
-                        Charger {Math.min(DASH_LIST_BATCH, lowRemaining)} suivants
-                      </Button>
-                      {lowRemaining > 0 ? (
-                        <Typography.Text type="secondary" className={styles.tableFooterMeta}>
-                          Encore {lowRemaining} ligne{lowRemaining > 1 ? "s" : ""} à afficher
-                        </Typography.Text>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </Card>
-            </Col>
-          ) : null}
-        </Row>
-      </section>
+                        <div className="tableResponsive">
+                          <Table
+                            dataSource={topProducts}
+                            rowKey="productId"
+                            pagination={false}
+                            size="small"
+                            className={styles.dataTable}
+                            scroll={{ x: "max-content" }}
+                            onRow={(r) => ({
+                              style: { cursor: "pointer" },
+                              onClick: () => navigate(`/products/${r.productId}`),
+                            })}
+                            columns={[
+                              {
+                                title: t.common.name,
+                                dataIndex: "name",
+                                ellipsis: true,
+                              },
+                              {
+                                title: "Qté",
+                                dataIndex: "qty",
+                                width: 72,
+                                align: "center",
+                              },
+                              {
+                                title: "Montant",
+                                dataIndex: "amount",
+                                width: 110,
+                                className: "amount",
+                                align: "right",
+                              },
+                            ]}
+                          />
+                          {data && topSliceHasNext ? (
+                            <div className={styles.tableFooterActions}>
+                              <Button
+                                type="default"
+                                size="small"
+                                loading={loadingMoreTop}
+                                onClick={loadMoreTopProducts}
+                              >
+                                Charger {Math.min(DASH_LIST_BATCH, topRemaining)} suivants
+                              </Button>
+                              {topRemaining > 0 ? (
+                                <Typography.Text
+                                  type="secondary"
+                                  className={styles.tableFooterMeta}
+                                >
+                                  Encore {topRemaining} produit{topRemaining > 1 ? "s" : ""} à
+                                  afficher
+                                </Typography.Text>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </Card>
+                    </Col>
+                    {canStockAlerts ? (
+                      <Col xs={24} lg={12}>
+                        <Card
+                          title={
+                            <span className={styles.cardTitle}>
+                              <AlertTriangle size={20} className={styles.alertIcon} aria-hidden />
+                              {t.dashboard.lowStockAlerts}
+                            </span>
+                          }
+                          extra={
+                            lowStock.length > 0 && canAccess("products") ? (
+                              <Button
+                                type="link"
+                                size="small"
+                                onClick={() => navigate("/products")}
+                              >
+                                {t.dashboard.lowStockCta}
+                              </Button>
+                            ) : null
+                          }
+                          variant="borderless"
+                          className={`${styles.card} ${styles.alertCard}`}
+                        >
+                          <div className="tableResponsive">
+                            <Table
+                              dataSource={lowStock}
+                              rowKey={(r) => `${r.productId}-${r.storeName}`}
+                              pagination={false}
+                              size="small"
+                              className={styles.dataTable}
+                              scroll={{ x: "max-content" }}
+                              onRow={(r) => ({
+                                style: { cursor: "pointer" },
+                                onClick: () => navigate(`/products/${r.productId}`),
+                              })}
+                              columns={[
+                                {
+                                  title: t.common.name,
+                                  dataIndex: "name",
+                                  ellipsis: true,
+                                },
+                                {
+                                  title: "Stock",
+                                  dataIndex: "stock",
+                                  width: 88,
+                                  render: (
+                                    val: number,
+                                    r: { productId: string; storeName: string; min: number }
+                                  ) => (
+                                    <Tag color={val < r.min ? "error" : "default"}>
+                                      {val} / {r.min}
+                                    </Tag>
+                                  ),
+                                },
+                              ]}
+                            />
+                            {data && lowSliceHasNext ? (
+                              <div className={styles.tableFooterActions}>
+                                <Button
+                                  type="default"
+                                  size="small"
+                                  loading={loadingMoreLow}
+                                  onClick={loadMoreLowStock}
+                                >
+                                  Charger {Math.min(DASH_LIST_BATCH, lowRemaining)} suivants
+                                </Button>
+                                {lowRemaining > 0 ? (
+                                  <Typography.Text
+                                    type="secondary"
+                                    className={styles.tableFooterMeta}
+                                  >
+                                    Encore {lowRemaining} ligne{lowRemaining > 1 ? "s" : ""} à
+                                    afficher
+                                  </Typography.Text>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        </Card>
+                      </Col>
+                    ) : null}
+                  </Row>
+                </section>
 
-      <section className={styles.paymentSection} aria-label="Répartition des paiements">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <CreditCard size={20} aria-hidden />
-                  {t.dashboard.paymentBreakdown}
-                </span>
-              }
-              variant="borderless"
-              className={styles.card}
-            >
-              <div className={styles.paymentList}>
-                {recentSalesPaymentStats.breakdown.map(({ method, amount, pct, color }) => (
-                  <div key={method} className={styles.paymentRow}>
-                    <div className={styles.paymentLabel}>
-                      <span className={styles.paymentMethod}>{method}</span>
-                      <span className={styles.paymentPct}>{pct}%</span>
-                      <span className={`amount ${styles.paymentAmount}`}>{amount}</span>
-                    </div>
-                    <div className={styles.barBg} role="presentation">
-                      <div
-                        className={styles.barFill}
-                        style={{ width: `${pct}%`, backgroundColor: color }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <Receipt size={20} aria-hidden />
-                  Ventes récentes
-                </span>
-              }
-              variant="borderless"
-              className={styles.card}
-              extra={
-                matrixNavAccess("reports") &&
-                canAccessPlan("reports", matrixNavAccess("reports")) ? (
-                  <Button type="link" size="small" onClick={() => navigate("/reports")}>
-                    Voir tout
-                  </Button>
-                ) : null
-              }
-            >
-              <div className={styles.recentList}>
-                {recentSales.map((sale) => (
-                  <div
-                    key={sale.id}
-                    className={styles.recentRow}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate("/receipt", { state: { saleId: sale.saleId } })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate("/receipt", {
-                          state: { saleId: sale.saleId },
-                        });
-                      }
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className={styles.recentInfo}>
-                      <span className={styles.recentTime}>{sale.time}</span>
-                      <span className={styles.recentItems}>{sale.items}</span>
-                    </div>
-                    <div className={styles.recentRight}>
-                      <span className={`amount ${styles.recentTotal}`}>
-                        {sale.total.toLocaleString("fr-FR")} F
-                      </span>
-                      <Tag
-                        className={styles.recentMethod}
-                        color={
-                          sale.method === "Espèces"
-                            ? "default"
-                            : sale.method === "Wave"
-                              ? "processing"
-                              : "warning"
+                <section className={styles.paymentSection} aria-label="Répartition des paiements">
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={12}>
+                      <Card
+                        title={
+                          <span className={styles.cardTitle}>
+                            <CreditCard size={20} aria-hidden />
+                            {t.dashboard.paymentBreakdown}
+                          </span>
+                        }
+                        variant="borderless"
+                        className={styles.card}
+                      >
+                        <div className={styles.paymentList}>
+                          {recentSalesPaymentStats.breakdown.map(
+                            ({ method, amount, pct, color }) => (
+                              <div key={method} className={styles.paymentRow}>
+                                <div className={styles.paymentLabel}>
+                                  <span className={styles.paymentMethod}>{method}</span>
+                                  <span className={styles.paymentPct}>{pct}%</span>
+                                  <span className={`amount ${styles.paymentAmount}`}>{amount}</span>
+                                </div>
+                                <div className={styles.barBg} role="presentation">
+                                  <div
+                                    className={styles.barFill}
+                                    style={{ width: `${pct}%`, backgroundColor: color }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} lg={12}>
+                      <Card
+                        title={
+                          <span className={styles.cardTitle}>
+                            <Receipt size={20} aria-hidden />
+                            Ventes récentes
+                          </span>
+                        }
+                        variant="borderless"
+                        className={styles.card}
+                        extra={
+                          matrixNavAccess("reports") &&
+                          canAccessPlan("reports", matrixNavAccess("reports")) ? (
+                            <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                              Voir tout
+                            </Button>
+                          ) : null
                         }
                       >
-                        {sale.method}
-                      </Tag>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      </section>
-    </div>
+                        <div className={styles.recentList}>
+                          {recentSales.map((sale) => (
+                            <div
+                              key={sale.id}
+                              className={styles.recentRow}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() =>
+                                navigate("/receipt", { state: { saleId: sale.saleId } })
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  navigate("/receipt", {
+                                    state: { saleId: sale.saleId },
+                                  });
+                                }
+                              }}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <div className={styles.recentInfo}>
+                                <span className={styles.recentTime}>{sale.time}</span>
+                                <span className={styles.recentItems}>{sale.items}</span>
+                              </div>
+                              <div className={styles.recentRight}>
+                                <span className={`amount ${styles.recentTotal}`}>
+                                  {sale.total.toLocaleString("fr-FR")} F
+                                </span>
+                                <Tag
+                                  className={styles.recentMethod}
+                                  color={
+                                    sale.method === "Espèces"
+                                      ? "default"
+                                      : sale.method === "Wave"
+                                        ? "processing"
+                                        : "warning"
+                                  }
+                                >
+                                  {sale.method}
+                                </Tag>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    </Col>
+                  </Row>
+                </section>
+              </>
+            ),
+          },
+        ]}
+      />
+    </PageShell>
   );
 }

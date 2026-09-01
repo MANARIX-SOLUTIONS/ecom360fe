@@ -6,7 +6,6 @@ import {
   InputNumber,
   Select,
   Button,
-  Typography,
   Table,
   Tag,
   Drawer,
@@ -21,7 +20,8 @@ import {
 import dayjs from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
+import { PageHeader, PageShell } from "@/components/ui";
+import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2, Search } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
 import { useStore } from "@/hooks/useStore";
@@ -68,6 +68,7 @@ export default function Expenses() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
   const [summaryExpenses, setSummaryExpenses] = useState<ExpenseResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -76,13 +77,21 @@ export default function Expenses() {
   const [categories, setCategories] = useState<ExpenseCategoryResponse[]>([]);
 
   useEffect(() => {
+    setHasLoaded(false);
     setPage(0);
-  }, [activeStore?.id, filterMonth, filterYear, categoryFilter]);
+  }, [activeStore?.id]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filterMonth, filterYear, categoryFilter]);
 
   const fetchData = useCallback(
     async (isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
       if (!isCancelled?.()) setLoading(true);
@@ -103,12 +112,14 @@ export default function Expenses() {
         setTotal(expRes.totalElements ?? 0);
         setSummaryExpenses(summaryRes.content);
         setCategories(catRes);
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setExpenses([]);
         setSummaryExpenses([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
         if (!isCancelled?.()) setLoading(false);
       }
@@ -148,21 +159,21 @@ export default function Expenses() {
 
   const summaryStats = [
     {
-      label: "Total ce mois",
+      label: t.expenses.summaryMonth,
       value: formatFCFA(monthTotal),
       icon: Wallet,
       color: "var(--color-primary)",
-      bg: "rgba(31,58,95,0.08)",
+      bg: "var(--v2-primary-soft)",
     },
     {
-      label: "Top catégorie",
+      label: t.expenses.summaryTopCategory,
       value: topCatName,
       icon: TrendingUp,
       color: "var(--color-warning)",
       bg: "rgba(243,156,18,0.08)",
     },
     {
-      label: "Nb dépenses",
+      label: t.expenses.summaryCount,
       value: String(total),
       icon: BarChart3,
       color: "var(--color-success)",
@@ -219,24 +230,34 @@ export default function Expenses() {
     });
   };
 
-  const onCategoryDelete = async (c: ExpenseCategoryResponse) => {
-    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
-    try {
-      await deleteExpenseCategory(c.id);
-      message.success(t.common.categoryDeleted);
-      const refreshed = await listExpenseCategories();
-      setCategories(refreshed);
-      fetchData();
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const onCategoryDelete = (c: ExpenseCategoryResponse) => {
+    Modal.confirm({
+      title: t.expenses.deleteCategoryTitle,
+      content: t.expenses.deleteCategoryContent.replace("{name}", c.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteExpenseCategory(c.id);
+          message.success(t.common.categoryDeleted);
+          const refreshed = await listExpenseCategories();
+          setCategories(refreshed);
+          if (categoryFilter === c.id) setCategoryFilter("all");
+          void fetchData();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
   };
 
   const onExpenseDelete = (exp: ExpenseResponse) => {
     Modal.confirm({
-      title: "Supprimer cette dépense ?",
+      title: t.expenses.deleteConfirmTitle,
       content: `${exp.description ?? "Dépense"} — ${formatFCFA(exp.amount)}`,
-      okText: "Supprimer",
+      okText: t.common.delete,
       okButtonProps: { danger: true },
       cancelText: t.common.cancel,
       onOk: async () => {
@@ -293,93 +314,106 @@ export default function Expenses() {
     }
   };
 
-  if (loading) {
+  const headerActions = (
+    <div className={styles.toolbar}>
+      {matrixCan("EXPENSES_UPDATE", "expenses") && (
+        <Button
+          icon={<Tags size={18} />}
+          onClick={() => setCategoriesDrawerOpen(true)}
+          style={{ flexShrink: 0 }}
+        >
+          {t.expenses.manageCategories}
+        </Button>
+      )}
+      {matrixCan("EXPENSES_CREATE", "expenses") && (
+        <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
+          {t.expenses.addExpense}
+        </Button>
+      )}
+    </div>
+  );
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Select
+        value={filterMonth}
+        onChange={setFilterMonth}
+        options={Array.from({ length: 12 }, (_, i) => ({
+          value: i + 1,
+          label: new Date(2000, i, 1).toLocaleString("fr-FR", { month: "long" }),
+        }))}
+        className={styles.filterSelect}
+      />
+      <Select
+        value={filterYear}
+        onChange={setFilterYear}
+        options={Array.from({ length: 5 }, (_, i) => {
+          const y = new Date().getFullYear() - 2 + i;
+          return { value: y, label: String(y) };
+        })}
+        className={styles.filterSelect}
+      />
+      <Select
+        value={categoryFilter}
+        onChange={setCategoryFilter}
+        options={[
+          { value: "all", label: t.expenses.allCategories },
+          ...categories.map((c) => ({ value: c.id, label: c.name })),
+        ]}
+        className={styles.filterSelect}
+      />
+    </div>
+  );
+
+  const summaryRow = (
+    <Row gutter={[12, 12]} className={styles.summaryRow}>
+      {summaryStats.map(({ label, value, icon: Icon, color, bg }) => (
+        <Col xs={8} key={label}>
+          <Card variant="borderless" className={styles.summaryCard}>
+            <div className={styles.summaryInner}>
+              <span className={styles.summaryIcon} style={{ background: bg, color }}>
+                <Icon size={18} />
+              </span>
+              <span className={styles.summaryValue}>{value}</span>
+              <span className={styles.summaryLabel}>{label}</span>
+            </div>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  );
+
+  const isCatalogEmpty = expenses.length === 0 && categoryFilter === "all";
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 120, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 180, height: 44 }} />
-            <Skeleton.Button active style={{ width: 180, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.expenses.title} actions={headerActions} />
+        {filterBar}
+        <Row gutter={[12, 12]} className={styles.summaryRow}>
+          {[0, 1, 2].map((i) => (
+            <Col xs={8} key={i}>
+              <Card variant="borderless" className={styles.summaryCard}>
+                <Skeleton active paragraph={{ rows: 2 }} title={false} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 5 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.expenses.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Select
-            value={filterMonth}
-            onChange={setFilterMonth}
-            options={Array.from({ length: 12 }, (_, i) => ({
-              value: i + 1,
-              label: new Date(2000, i, 1).toLocaleString("fr-FR", { month: "long" }),
-            }))}
-            style={{ width: 140 }}
-          />
-          <Select
-            value={filterYear}
-            onChange={setFilterYear}
-            options={Array.from({ length: 5 }, (_, i) => {
-              const y = new Date().getFullYear() - 2 + i;
-              return { value: y, label: String(y) };
-            })}
-            style={{ width: 100 }}
-          />
-          {matrixCan("EXPENSES_UPDATE", "expenses") && (
-            <Button
-              icon={<Tags size={18} />}
-              onClick={() => setCategoriesDrawerOpen(true)}
-              style={{ flexShrink: 0 }}
-            >
-              {t.expenses.manageCategories}
-            </Button>
-          )}
-          <Select
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={[
-              { value: "all", label: t.expenses.allCategories },
-              ...categories.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-            style={{ width: 180 }}
-          />
-          {matrixCan("EXPENSES_CREATE", "expenses") && (
-            <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
-              {t.expenses.addExpense}
-            </Button>
-          )}
-        </div>
-      </header>
-
-      {/* Summary stats */}
-      <Row gutter={[12, 12]} className={styles.summaryRow}>
-        {summaryStats.map(({ label, value, icon: Icon, color, bg }) => (
-          <Col xs={8} key={label}>
-            <Card variant="borderless" className={styles.summaryCard}>
-              <div className={styles.summaryInner}>
-                <span className={styles.summaryIcon} style={{ background: bg, color }}>
-                  <Icon size={18} />
-                </span>
-                <span className={styles.summaryValue}>{value}</span>
-                <span className={styles.summaryLabel}>{label}</span>
-              </div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.expenses.title} actions={headerActions} />
+      {filterBar}
+      {summaryRow}
 
       <Card title={t.expenses.list} variant="borderless" className={`${styles.card} contentCard`}>
-        {expenses.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Wallet}
             title={t.expenses.emptyTitle}
@@ -398,12 +432,15 @@ export default function Expenses() {
               ) : null
             }
           />
+        ) : expenses.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.expenses.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
               dataSource={filtered}
               className="dataTable"
               rowKey="id"
+              loading={loading}
               scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
@@ -416,7 +453,7 @@ export default function Expenses() {
                   setPageSize(size);
                 },
               }}
-              locale={{ emptyText: "Aucune dépense trouvée" }}
+              locale={{ emptyText: t.expenses.emptySearch }}
               columns={[
                 { title: t.common.date, dataIndex: "expenseDate", width: 120 },
                 {
@@ -581,9 +618,12 @@ export default function Expenses() {
         }
       >
         {categories.length === 0 ? (
-          <Typography.Text type="secondary">
-            Aucune catégorie. Cliquez sur &quot;Ajouter une catégorie&quot; pour commencer.
-          </Typography.Text>
+          <EmptyState
+            compact
+            icon={Tags}
+            title={t.expenses.emptyCategoriesTitle}
+            description={t.expenses.emptyCategoriesDesc}
+          />
         ) : (
           <Space direction="vertical" style={{ width: "100%" }} size="middle">
             {categories.map((c) => (
@@ -652,11 +692,11 @@ export default function Expenses() {
           <Form.Item name="color" label={t.expenses.categoryColor} initialValue="default">
             <Select options={CATEGORY_COLOR_OPTIONS} />
           </Form.Item>
-          <Form.Item name="sortOrder" label="Ordre" initialValue={0}>
+          <Form.Item name="sortOrder" label={t.expenses.sortOrder} initialValue={0}>
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

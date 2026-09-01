@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { Card, Form, Input, Button, Typography, message } from "antd";
-import { ArrowLeft, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { t } from "@/i18n";
 import { changePassword } from "@/api";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Settings.module.css";
 
 export default function SettingsSecurity() {
@@ -20,20 +21,12 @@ export default function SettingsSecurity() {
   };
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <Typography.Title level={4} className={styles.settingsPageTitle}>
-          {t.settings.security}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          {t.settings.securityHint}
-        </Typography.Text>
-      </header>
+    <PageShell className={styles.settingsPage}>
+      <PageHeader
+        title={t.settings.security}
+        subtitle={t.settings.securityHint}
+        onBack={() => navigate("/settings")}
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         <Typography.Text
@@ -101,6 +94,6 @@ export default function SettingsSecurity() {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+    </PageShell>
   );
 }

@@ -13,8 +13,9 @@ import {
   Space,
   Upload,
 } from "antd";
-import { ArrowLeft, Upload as UploadIcon } from "lucide-react";
+import { Upload as UploadIcon } from "lucide-react";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import {
   getBusinessProfile,
   updateBusinessProfile,
@@ -106,29 +107,23 @@ export default function SettingsProfile() {
 
   if (loading) {
     return (
-      <div className={`${styles.settingsPage} pageWrapper`}>
+      <PageShell className={styles.settingsPage}>
         <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <Typography.Title level={4} className={styles.settingsPageTitle}>
-          {t.settings.companyProfile}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          {canEdit
+    <PageShell className={styles.settingsPage}>
+      <PageHeader
+        title={t.settings.companyProfile}
+        subtitle={
+          canEdit
             ? t.settings.companyProfileHint
-            : "Seul le propriétaire peut modifier les informations de l'entreprise."}
-        </Typography.Text>
-      </header>
+            : "Seul le propriétaire peut modifier les informations de l'entreprise."
+        }
+        onBack={() => navigate("/settings")}
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         {canEdit ? (
@@ -326,6 +321,6 @@ export default function SettingsProfile() {
           </Space>
         ) : null}
       </Card>
-    </div>
+    </PageShell>
   );
 }

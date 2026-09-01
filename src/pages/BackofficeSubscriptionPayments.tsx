@@ -15,12 +15,15 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { CreditCard, CheckCircle } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import dayjs from "dayjs";
 import {
   listAdminSubscriptionPayments,
   markAdminSubscriptionPaymentPaid,
   type AdminSubscriptionPayment,
 } from "@/api/backoffice";
+import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Backoffice.module.css";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -204,16 +207,11 @@ export default function BackofficeSubscriptionPayments() {
   ];
 
   return (
-    <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <Typography.Title level={4} className={styles.pageTitle}>
-          <CreditCard size={20} style={{ marginRight: 8, verticalAlign: -3 }} />
-          Paiements abonnements
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          Historique des intentions de paiement Wave / Orange Money (PayDunya)
-        </Typography.Text>
-      </header>
+    <PageShell className={styles.page}>
+      <PageHeader
+        title="Paiements abonnements"
+        subtitle="Historique des intentions de paiement Wave / Orange Money (PayDunya)"
+      />
 
       <Card variant="borderless" className={styles.tableCard}>
         <Space wrap style={{ marginBottom: 16 }}>
@@ -266,6 +264,11 @@ export default function BackofficeSubscriptionPayments() {
             className="dataTable"
             rowKey="intentId"
             loading={loading}
+            locale={{
+              emptyText: (
+                <EmptyState compact icon={CreditCard} title={t.backoffice.emptyPayments} />
+              ),
+            }}
             columns={columns}
             dataSource={rows}
             scroll={{ x: 1100 }}
@@ -282,6 +285,6 @@ export default function BackofficeSubscriptionPayments() {
           />
         </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }

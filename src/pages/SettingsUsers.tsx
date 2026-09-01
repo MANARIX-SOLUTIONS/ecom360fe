@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Table, Button, Typography, Modal, Form, Input, Select, message, Spin } from "antd";
-import { ArrowLeft, Plus, User, Store } from "lucide-react";
+import { Plus, User, Store, Users } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { t } from "@/i18n";
 import { ROLES } from "@/constants/roles";
 import { Link } from "react-router-dom";
@@ -114,37 +116,40 @@ export default function SettingsUsers() {
   };
 
   return (
-    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <div className={styles.toolbar}>
-          <div>
-            <Typography.Title level={4} className={styles.settingsPageTitle}>
-              {t.settings.usersAndRoles}
-            </Typography.Title>
-            <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-              {t.settings.usersAndRolesDesc}
-            </Typography.Text>
-          </div>
-          {usersAtLimit ? (
-            <Typography.Text type="secondary" style={{ marginRight: 8 }}>
+    <PageShell className={`${styles.settingsPage} ${styles.settingsPageWide}`}>
+      <PageHeader
+        title={t.settings.usersAndRoles}
+        subtitle={t.settings.usersAndRolesDesc}
+        onBack={() => navigate("/settings")}
+        actions={
+          usersAtLimit ? (
+            <Typography.Text type="secondary">
               Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
             </Typography.Text>
           ) : matrixCan("BUSINESS_USERS_CREATE", "settings:users") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={() => setInviteOpen(true)}>
               {t.settings.inviteUser}
             </Button>
-          ) : null}
-        </div>
-      </header>
+          ) : null
+        }
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         {loading ? (
           <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
+        ) : users.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={t.settings.emptyUsersTitle}
+            description={t.settings.emptyUsersDesc}
+            action={
+              !usersAtLimit && matrixCan("BUSINESS_USERS_CREATE", "settings:users") ? (
+                <Button type="primary" icon={<Plus size={18} />} onClick={() => setInviteOpen(true)}>
+                  {t.settings.inviteUser}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -278,6 +283,6 @@ export default function SettingsUsers() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

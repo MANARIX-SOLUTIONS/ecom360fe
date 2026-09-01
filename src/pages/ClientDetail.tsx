@@ -20,6 +20,7 @@ import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { PageShell } from "@/components/ui";
 import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 
@@ -113,14 +114,14 @@ export default function ClientDetail() {
 
   if (loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
         <div className={styles.backWrap}>
           <Skeleton.Button active style={{ width: 80 }} />
         </div>
         <Card variant="borderless" className={styles.heroCard}>
           <Skeleton active avatar paragraph={{ rows: 2 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -160,13 +161,23 @@ export default function ClientDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteClient(id)
-      .then(() => {
-        message.success(t.clients.msgDeleted);
-        navigate("/clients");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+    Modal.confirm({
+      title: t.clients.deleteConfirmTitle,
+      content: t.clients.deleteConfirmContent.replace("{name}", client?.name ?? ""),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteClient(id);
+          message.success(t.clients.msgDeleted);
+          navigate("/clients");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
   };
 
   const handlePayment = async () => {
@@ -208,7 +219,7 @@ export default function ClientDetail() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       <div className={styles.backWrap}>
         <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/clients")}>
           {t.common.back}
@@ -313,9 +324,7 @@ export default function ClientDetail() {
                 {
                   title: t.sales.remainingDue,
                   dataIndex: "remainingAmount",
-                  render: (v: number) => (
-                    <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>
-                  ),
+                  render: (v: number) => <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>,
                 },
                 {
                   title: t.sales.dueDate,
@@ -436,6 +445,6 @@ export default function ClientDetail() {
           </Form>
         </div>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

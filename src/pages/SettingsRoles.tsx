@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Table, Button, Typography, Modal, Form, Input, message, Spin } from "antd";
-import { ArrowLeft, Shield } from "lucide-react";
+import { Card, Table, Button, Modal, Form, Input, message, Spin } from "antd";
+import { Shield } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { t } from "@/i18n";
 import {
   listRoles,
@@ -89,33 +91,40 @@ export default function SettingsRoles() {
   const canEdit = matrixCan("BUSINESS_USERS_UPDATE", "settings:roles");
 
   return (
-    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <div className={styles.toolbar}>
-          <div>
-            <Typography.Title level={4} className={styles.settingsPageTitle}>
-              {t.settings.rolesPermissions}
-            </Typography.Title>
-            <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-              {t.settings.rolesPermissionsDesc}
-            </Typography.Text>
-          </div>
-          {canEdit ? (
+    <PageShell className={`${styles.settingsPage} ${styles.settingsPageWide}`}>
+      <PageHeader
+        title={t.settings.rolesPermissions}
+        subtitle={t.settings.rolesPermissionsDesc}
+        onBack={() => navigate("/settings")}
+        actions={
+          canEdit ? (
             <Button type="primary" icon={<Shield size={18} />} onClick={() => setCreateOpen(true)}>
               {t.settings.createCustomRole}
             </Button>
-          ) : null}
-        </div>
-      </header>
+          ) : null
+        }
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         {loading ? (
           <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
+        ) : roles.length === 0 ? (
+          <EmptyState
+            icon={Shield}
+            title={t.settings.emptyRolesTitle}
+            description={t.settings.emptyRolesDesc}
+            action={
+              canEdit ? (
+                <Button
+                  type="primary"
+                  icon={<Shield size={18} />}
+                  onClick={() => setCreateOpen(true)}
+                >
+                  {t.settings.createCustomRole}
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -160,7 +169,7 @@ export default function SettingsRoles() {
         {catalog.length > 0 ? (
           <PermissionCatalogPicker catalog={catalog} selected={selected} onChange={setSelected} />
         ) : (
-          <Typography.Text type="secondary">Aucune permission disponible.</Typography.Text>
+          <EmptyState compact icon={Shield} title={t.settings.emptyPermissionsTitle} />
         )}
       </Modal>
 
@@ -185,6 +194,6 @@ export default function SettingsRoles() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

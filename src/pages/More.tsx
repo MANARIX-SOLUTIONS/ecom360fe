@@ -11,11 +11,13 @@ import {
   ChevronRight,
   BarChart3,
   ClipboardList,
+  ListOrdered,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { t } from "@/i18n";
+import { PageShell } from "@/components/ui";
 import styles from "./More.module.css";
 
 type MenuLink = {
@@ -28,6 +30,14 @@ type MenuLink = {
 };
 
 const linkConfig: MenuLink[] = [
+  {
+    path: "/sales",
+    permission: "pos",
+    icon: ListOrdered,
+    label: t.sales.title,
+    desc: t.nav.salesHistory,
+    group: "commerce",
+  },
   {
     path: "/vue-globale",
     permission: "globalView",
@@ -133,7 +143,7 @@ export default function More() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       {/* Profile card */}
       <Card
         variant="borderless"
@@ -192,6 +202,6 @@ export default function More() {
           </Card>
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }

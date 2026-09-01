@@ -27,6 +27,7 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { PageShell } from "@/components/ui";
 import { ReceivePurchaseOrderModal } from "@/components/ReceivePurchaseOrderModal";
 import { RecordPurchaseOrderPaymentModal } from "@/components/RecordPurchaseOrderPaymentModal";
 
@@ -109,9 +110,9 @@ export default function PurchaseOrderDetail() {
 
   if (po === undefined) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
         <Skeleton active paragraph={{ rows: 6 }} />
-      </div>
+      </PageShell>
     );
   }
 
@@ -174,7 +175,7 @@ export default function PurchaseOrderDetail() {
   const canUpdate = matrixCan("PURCHASE_ORDERS_UPDATE", "purchaseOrders");
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       <Button
         type="text"
         icon={<ArrowLeft size={18} />}
@@ -201,42 +202,41 @@ export default function PurchaseOrderDetail() {
             </Tag>
           </div>
           {canUpdate &&
-            (actions.length > 0 ||
-              (po.status === "received" && (po.remainingAmount ?? 0) > 0)) && (
-            <Space wrap>
-              {actions.map((a) => (
-                <Button
-                  key={a.status}
-                  type={a.status === "received" || a.status === "ordered" ? "primary" : "default"}
-                  danger={a.danger}
-                  loading={acting}
-                  icon={
-                    a.status === "received" ? (
-                      <CheckCircle size={16} />
-                    ) : a.status === "ordered" ? (
-                      <Send size={16} />
-                    ) : (
-                      <XCircle size={16} />
-                    )
-                  }
-                  onClick={() =>
-                    a.status === "received" ? setReceiveOpen(true) : transition(a.status)
-                  }
-                >
-                  {t.purchaseOrders[a.labelKey]}
-                </Button>
-              ))}
-              {po.status === "received" && (po.remainingAmount ?? 0) > 0 && (
-                <Button
-                  type="primary"
-                  icon={<Wallet size={16} />}
-                  onClick={() => setPayOpen(true)}
-                >
-                  {t.purchaseOrders.recordPayment}
-                </Button>
-              )}
-            </Space>
-          )}
+            (actions.length > 0 || (po.status === "received" && (po.remainingAmount ?? 0) > 0)) && (
+              <Space wrap>
+                {actions.map((a) => (
+                  <Button
+                    key={a.status}
+                    type={a.status === "received" || a.status === "ordered" ? "primary" : "default"}
+                    danger={a.danger}
+                    loading={acting}
+                    icon={
+                      a.status === "received" ? (
+                        <CheckCircle size={16} />
+                      ) : a.status === "ordered" ? (
+                        <Send size={16} />
+                      ) : (
+                        <XCircle size={16} />
+                      )
+                    }
+                    onClick={() =>
+                      a.status === "received" ? setReceiveOpen(true) : transition(a.status)
+                    }
+                  >
+                    {t.purchaseOrders[a.labelKey]}
+                  </Button>
+                ))}
+                {po.status === "received" && (po.remainingAmount ?? 0) > 0 && (
+                  <Button
+                    type="primary"
+                    icon={<Wallet size={16} />}
+                    onClick={() => setPayOpen(true)}
+                  >
+                    {t.purchaseOrders.recordPayment}
+                  </Button>
+                )}
+              </Space>
+            )}
         </div>
 
         <Descriptions
@@ -373,6 +373,6 @@ export default function PurchaseOrderDetail() {
         onClose={() => setPayOpen(false)}
         onRecorded={() => void load()}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -9,10 +9,23 @@
 
 .toolbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--section-gap);
+}
+
+.filterSelect {
+  width: 160px;
+  min-width: 120px;
 }
 
 .card {
@@ -76,6 +89,15 @@
     align-items: stretch;
   }
 
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterSelect {
+    width: 100%;
+  }
+
   .summaryValue {
     font-size: 15px;
   }
@@ -102,7 +124,7 @@
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(27, 77, 122, 0.08), rgba(8, 145, 178, 0.08));
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.08), rgba(14, 165, 233, 0.08));
   color: var(--color-primary);
   display: flex;
   align-items: center;

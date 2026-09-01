@@ -17,6 +17,7 @@ import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { canRecordClientPayment, creditBalanceTagColor } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 
@@ -32,6 +33,7 @@ type Client = {
 function getInitials(name: string) {
   return name
     .split(" ")
+    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .toUpperCase()
@@ -56,6 +58,7 @@ export default function Clients() {
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [clientsAtLimit, setClientsAtLimit] = useState(false);
 
   useEffect(() => {
@@ -76,7 +79,10 @@ export default function Clients() {
   const fetchClients = useCallback(
     async (isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
       if (!isCancelled?.()) setLoading(true);
@@ -98,11 +104,13 @@ export default function Clients() {
           }))
         );
         setTotal(res.totalElements ?? 0);
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setClients([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
         if (!isCancelled?.()) setLoading(false);
       }
@@ -118,51 +126,74 @@ export default function Clients() {
     };
   }, [fetchClients]);
 
-  if (loading) {
+  const confirmDelete = (client: Client) => {
+    Modal.confirm({
+      title: t.clients.deleteConfirmTitle,
+      content: t.clients.deleteConfirmContent.replace("{name}", client.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteClient(client.id);
+          message.success(t.clients.msgDeleted);
+          void fetchClients();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
+  };
+
+  const isCatalogEmpty = total === 0 && !search.trim();
+
+  const headerActions = (
+    <div className={styles.toolbar}>
+      {clientsAtLimit ? (
+        <Typography.Text type="secondary">
+          {t.products.limitReached} <Link to="/settings/subscription">{t.pos.upgradePlanLink}</Link>
+        </Typography.Text>
+      ) : matrixCan("CLIENTS_CREATE", "clients") ? (
+        <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddClientOpen(true)}>
+          {t.clients.addClient}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Input
+        prefix={<Search size={18} />}
+        placeholder={t.clients.search}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        allowClear
+        className={styles.searchInput}
+      />
+    </div>
+  );
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 100, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 240, height: 44 }} />
-            <Skeleton.Button active style={{ width: 160, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.clients.title} actions={headerActions} />
+        {filterBar}
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 5 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.clients.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Input
-            prefix={<Search size={18} />}
-            placeholder={t.clients.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          {clientsAtLimit ? (
-            <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
-            </Typography.Text>
-          ) : matrixCan("CLIENTS_CREATE", "clients") ? (
-            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddClientOpen(true)}>
-              {t.clients.addClient}
-            </Button>
-          ) : null}
-        </div>
-      </header>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.clients.title} actions={headerActions} />
+      {filterBar}
+
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {clients.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Users}
             title={t.clients.emptyTitle}
@@ -181,11 +212,14 @@ export default function Clients() {
               ) : null
             }
           />
+        ) : clients.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.clients.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
               dataSource={clients}
               rowKey="id"
+              loading={loading}
               scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
@@ -211,7 +245,7 @@ export default function Clients() {
                 },
               })}
               className="dataTable"
-              locale={{ emptyText: "Aucun client trouvé" }}
+              locale={{ emptyText: t.clients.emptySearch }}
               columns={[
                 {
                   title: t.common.name,
@@ -223,8 +257,17 @@ export default function Clients() {
                     </span>
                   ),
                 },
-                { title: t.common.phone, dataIndex: "phone" },
-                { title: t.common.email, dataIndex: "email" },
+                {
+                  title: t.common.phone,
+                  dataIndex: "phone",
+                  render: (v: string) =>
+                    v ? <a href={`tel:${v.replace(/\s/g, "")}`}>{v}</a> : "—",
+                },
+                {
+                  title: t.common.email,
+                  dataIndex: "email",
+                  render: (v: string) => (v ? <a href={`mailto:${v}`}>{v}</a> : "—"),
+                },
                 { title: t.common.address, dataIndex: "address" },
                 {
                   title: t.clients.balance,
@@ -287,20 +330,7 @@ export default function Clients() {
                           danger
                           size="small"
                           icon={<Trash2 size={14} />}
-                          onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteClient(r.id)
-                                .then(() => {
-                                  message.success(t.clients.msgDeleted);
-                                  fetchClients();
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
-                          }}
+                          onClick={() => confirmDelete(r)}
                           aria-label={t.common.delete}
                         />
                       )}
@@ -345,6 +375,8 @@ export default function Clients() {
           }
         }}
         okText={t.products.save}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         {paymentModal && (
           <div style={{ marginTop: 16 }}>
@@ -401,6 +433,8 @@ export default function Clients() {
           addForm.resetFields();
         }}
         okText={t.products.save}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -408,7 +442,11 @@ export default function Clients() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder={t.clients.placeholderClientName} />
+            <Input
+              placeholder={t.clients.placeholderClientName}
+              autoComplete="name"
+              autoCapitalize="words"
+            />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -420,14 +458,22 @@ export default function Clients() {
               },
             ]}
           >
-            <Input placeholder={t.clients.placeholderPhoneExample} />
+            <Input
+              placeholder={t.clients.placeholderPhoneExample}
+              inputMode="tel"
+              autoComplete="tel"
+            />
           </Form.Item>
           <Form.Item
             name="email"
             label={t.common.email}
             rules={[{ type: "email", message: t.validation.email }]}
           >
-            <Input placeholder={t.validation.emailPlaceholder} />
+            <Input
+              placeholder={t.validation.emailPlaceholder}
+              inputMode="email"
+              autoComplete="email"
+            />
           </Form.Item>
           <Form.Item name="address" label={t.common.address}>
             <Input placeholder={t.clients.placeholderAddress} />
@@ -462,6 +508,8 @@ export default function Clients() {
           editForm.resetFields();
         }}
         okText={t.products.save}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -469,7 +517,11 @@ export default function Clients() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder={t.clients.placeholderClientName} />
+            <Input
+              placeholder={t.clients.placeholderClientName}
+              autoComplete="name"
+              autoCapitalize="words"
+            />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -481,20 +533,28 @@ export default function Clients() {
               },
             ]}
           >
-            <Input placeholder={t.clients.placeholderPhoneExample} />
+            <Input
+              placeholder={t.clients.placeholderPhoneExample}
+              inputMode="tel"
+              autoComplete="tel"
+            />
           </Form.Item>
           <Form.Item
             name="email"
             label={t.common.email}
             rules={[{ type: "email", message: t.validation.email }]}
           >
-            <Input placeholder={t.validation.emailPlaceholder} />
+            <Input
+              placeholder={t.validation.emailPlaceholder}
+              inputMode="email"
+              autoComplete="email"
+            />
           </Form.Item>
           <Form.Item name="address" label={t.common.address}>
             <Input placeholder={t.clients.placeholderAddress} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

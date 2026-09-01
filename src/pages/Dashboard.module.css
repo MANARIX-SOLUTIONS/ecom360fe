@@ -6,25 +6,6 @@
 }
 
 /* ========== Header ========== */
-.header {
-  margin-bottom: var(--section-gap);
-}
-
-.pageTitle {
-  margin: 0 0 6px !important;
-  font-weight: 600;
-  color: var(--color-text);
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-
-.headerMeta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .headerDate {
   font-size: 14px;
   color: var(--color-text-muted);
@@ -35,17 +16,27 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.1);
+  background: rgba(15, 52, 96, 0.1);
   padding: 4px 10px;
   border-radius: 999px;
 }
 
 /* ========== Quick Actions ========== */
 .quickActions {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: var(--section-gap);
+}
+
+.quickActionsSecondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.quickActionsSecondary:empty {
+  display: none;
 }
 
 .quickCard {
@@ -66,7 +57,7 @@
 .quickCard:hover {
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
-  border-color: rgba(27, 77, 122, 0.2);
+  border-color: rgba(15, 52, 96, 0.2);
 }
 
 .quickCard:active {
@@ -74,14 +65,40 @@
 }
 
 .quickCardPrimary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #0e3456 100%);
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 18px 20px;
+  gap: 14px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--v2-primary-hover) 100%);
   color: #fff;
   border-color: transparent;
 }
 
+.quickCardPrimary .quickCardLabel {
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.quickActionsSecondary .quickCard {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+.quickActionsSecondary .quickCardIcon {
+  width: 36px;
+  height: 36px;
+}
+
+.quickActionsSecondary .quickCardLabel {
+  text-align: left;
+}
+
 .quickCardPrimary:hover {
   border-color: transparent;
-  box-shadow: 0 8px 24px rgba(27, 77, 122, 0.3);
+  box-shadow: 0 8px 24px rgba(15, 52, 96, 0.3);
 }
 
 .quickCardPrimary .quickCardIcon {
@@ -97,7 +114,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(27, 77, 122, 0.08);
+  background: rgba(15, 52, 96, 0.08);
   color: var(--color-primary);
   display: flex;
   align-items: center;
@@ -162,6 +179,26 @@
   font-weight: 700 !important;
   font-size: 16px !important;
   line-height: 1.35 !important;
+  color: var(--color-text) !important;
+}
+
+.activityCollapse {
+  margin-top: var(--section-gap);
+  background: transparent;
+}
+
+.activityCollapse :global(.ant-collapse-item) {
+  border: none !important;
+}
+
+.activityCollapse :global(.ant-collapse-header) {
+  padding: 0 0 8px !important;
+}
+
+.activityCollapseHeading {
+  margin: 0 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
   color: var(--color-text) !important;
 }
 
@@ -277,7 +314,7 @@
 
 .statCard.sales {
   border-left-color: var(--color-primary);
-  background: linear-gradient(to right, rgba(27, 77, 122, 0.04) 0%, transparent 24px);
+  background: linear-gradient(to right, rgba(15, 52, 96, 0.04) 0%, transparent 24px);
 }
 
 .statCard.expenses {
@@ -313,7 +350,7 @@
 }
 
 .statCard.sales .statIconWrap {
-  background: rgba(27, 77, 122, 0.12);
+  background: rgba(15, 52, 96, 0.12);
 }
 
 .statCard.expenses .statIconWrap {
@@ -436,7 +473,7 @@
 }
 
 .dataTable :global(.ant-table-tbody > tr:hover > td) {
-  background: rgba(27, 77, 122, 0.03);
+  background: rgba(15, 52, 96, 0.03);
 }
 
 .dataTable :global(.ant-table-tbody > tr:not(:last-child) > td) {
@@ -586,10 +623,6 @@
 
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
-  .pageTitle {
-    font-size: 20px !important;
-  }
-
   .statValue {
     font-size: 24px;
   }
@@ -598,9 +631,8 @@
     min-height: 116px;
   }
 
-  .quickActions {
+  .quickActionsSecondary {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
   }
 
   .quickCard {
@@ -619,12 +651,12 @@
 }
 
 @media (max-width: 480px) {
-  .header {
-    margin-bottom: 20px;
-  }
-
   .quickActions {
     gap: 8px;
+  }
+
+  .quickActionsSecondary {
+    grid-template-columns: 1fr 1fr;
   }
 
   .quickCard {
@@ -686,10 +718,6 @@
 @media (max-width: 375px) {
   .statValue {
     font-size: 20px;
-  }
-
-  .pageTitle {
-    font-size: 18px !important;
   }
 
   .cardTitle {

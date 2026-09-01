@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   Table,
@@ -15,9 +15,10 @@ import {
   Select,
   Progress,
 } from "antd";
+import type { FormInstance } from "antd";
 import { Plus, Search, Bike, Pencil, Trash2, PackageCheck } from "lucide-react";
 import { t } from "@/i18n";
-import styles from "./Clients.module.css";
+import styles from "./Livreurs.module.css";
 import {
   listCouriers,
   createCourier,
@@ -26,143 +27,351 @@ import {
   getCouriersStats,
   createDelivery,
 } from "@/api";
-import type { CourierResponse, CourierStatsResponse } from "@/api";
+import type { CourierResponse, CourierStatsResponse, DeliveryStatus } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
+
+type CourierFormValues = {
+  name: string;
+  phone?: string;
+  email?: string;
+  isActive?: boolean;
+};
 
 function getInitials(name: string) {
   return name
     .split(" ")
+    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
 }
 
+function hasDeliveryActivity(stats?: CourierStatsResponse): stats is CourierStatsResponse {
+  if (!stats) return false;
+  return (stats.totalDeliveries ?? 0) > 0 || (stats.totalParcelsDelivered ?? 0) > 0;
+}
+
+function CourierFormFields({
+  form,
+  defaultActive,
+}: {
+  form: FormInstance<CourierFormValues>;
+  defaultActive?: boolean;
+}) {
+  return (
+    <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+      <Form.Item
+        name="name"
+        label={t.livreurs.name}
+        rules={[{ required: true, message: t.validation.nameRequired }]}
+      >
+        <Input
+          placeholder={t.livreurs.placeholderCourierName}
+          autoComplete="name"
+          autoCapitalize="words"
+        />
+      </Form.Item>
+      <Form.Item name="phone" label={t.livreurs.phone}>
+        <Input
+          placeholder={t.livreurs.placeholderPhoneExample}
+          inputMode="tel"
+          autoComplete="tel"
+        />
+      </Form.Item>
+      <Form.Item
+        name="email"
+        label={t.livreurs.email}
+        rules={[{ type: "email", message: t.validation.email }]}
+      >
+        <Input placeholder={t.validation.emailPlaceholder} inputMode="email" autoComplete="email" />
+      </Form.Item>
+      <Form.Item
+        name="isActive"
+        label={t.livreurs.status}
+        valuePropName="checked"
+        initialValue={defaultActive ?? true}
+      >
+        <Switch checkedChildren={t.livreurs.active} unCheckedChildren={t.livreurs.inactive} />
+      </Form.Item>
+    </Form>
+  );
+}
+
 export default function Livreurs() {
   const [search, setSearch] = useState("");
   const [couriers, setCouriers] = useState<CourierResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<CourierResponse | null>(null);
-  const [addForm] = Form.useForm();
-  const [editForm] = Form.useForm();
+  const [addForm] = Form.useForm<CourierFormValues>();
+  const [editForm] = Form.useForm<CourierFormValues>();
   const [deliveryForm] = Form.useForm();
   const [activeOnly, setActiveOnly] = useState(false);
   const [statsMap, setStatsMap] = useState<Record<string, CourierStatsResponse>>({});
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [addSaving, setAddSaving] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deliverySaving, setDeliverySaving] = useState(false);
   const { matrixCan } = useMatrixCan();
+  const canCreate = matrixCan("DELIVERY_COURIERS_CREATE", "livreurs");
+  const canUpdate = matrixCan("DELIVERY_COURIERS_UPDATE", "livreurs");
+  const canDelete = matrixCan("DELIVERY_COURIERS_DELETE", "livreurs");
 
-  const fetchCouriers = useCallback(async () => {
-    if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const [couriersRes, statsRes] = await Promise.all([
-        listCouriers(activeOnly),
-        getCouriersStats(),
-      ]);
-      setCouriers(couriersRes);
-      const map: Record<string, CourierStatsResponse> = {};
-      statsRes.forEach((s) => {
-        map[s.courierId] = s;
-      });
-      setStatsMap(map);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.msgLoadError);
-      setCouriers([]);
-      setStatsMap({});
-    } finally {
-      setLoading(false);
-    }
-  }, [activeOnly]);
-
-  useEffect(() => {
-    fetchCouriers();
-  }, [fetchCouriers]);
-
-  const filtered = couriers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.phone && c.phone.includes(search)) ||
-      (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+  const fetchCouriers = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!localStorage.getItem("ecom360_access_token")) {
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
+        return;
+      }
+      if (!isCancelled?.()) setLoading(true);
+      try {
+        const [couriersRes, statsRes] = await Promise.all([
+          listCouriers(activeOnly),
+          getCouriersStats(),
+        ]);
+        if (isCancelled?.()) return;
+        setCouriers(couriersRes);
+        const map: Record<string, CourierStatsResponse> = {};
+        statsRes.forEach((s) => {
+          map[s.courierId] = s;
+        });
+        setStatsMap(map);
+      } catch (e) {
+        if (isCancelled?.()) return;
+        message.error(e instanceof Error ? e.message : t.common.msgLoadError);
+        setCouriers([]);
+        setStatsMap({});
+      } finally {
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
+      }
+    },
+    [activeOnly]
   );
 
-  if (loading) {
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCouriers(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchCouriers]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return couriers;
+    return couriers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.email && c.email.toLowerCase().includes(q))
+    );
+  }, [couriers, search]);
+
+  const { totalParcels, avgEfficiency } = useMemo(() => {
+    const listedStats = couriers
+      .map((c) => statsMap[c.id])
+      .filter((s): s is CourierStatsResponse => Boolean(s));
+    const parcels = listedStats.reduce((sum, s) => sum + (s.totalParcelsDelivered ?? 0), 0);
+    const withActivity = listedStats.filter(hasDeliveryActivity);
+    if (withActivity.length === 0)
+      return { totalParcels: parcels, avgEfficiency: null as number | null };
+    const avg =
+      withActivity.reduce((sum, s) => sum + (s.successRatePercent ?? 0), 0) / withActivity.length;
+    return { totalParcels: parcels, avgEfficiency: Math.round(avg) };
+  }, [couriers, statsMap]);
+
+  const activeCouriers = useMemo(() => couriers.filter((c) => c.isActive), [couriers]);
+
+  const openAdd = () => {
+    addForm.resetFields();
+    setAddOpen(true);
+  };
+
+  const submitAdd = async () => {
+    const values = await addForm.validateFields();
+    setAddSaving(true);
+    try {
+      await createCourier({
+        name: values.name.trim(),
+        phone: values.phone?.trim() || undefined,
+        email: values.email?.trim() || undefined,
+        isActive: values.isActive !== false,
+      });
+      message.success(t.livreurs.msgAdded);
+      setAddOpen(false);
+      addForm.resetFields();
+      void fetchCouriers();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const submitEdit = async () => {
+    if (!editOpen) return;
+    const values = await editForm.validateFields();
+    setEditSaving(true);
+    try {
+      await updateCourier(editOpen.id, {
+        name: values.name.trim(),
+        phone: values.phone?.trim() || undefined,
+        email: values.email?.trim() || undefined,
+        isActive: values.isActive,
+      });
+      message.success(t.livreurs.msgUpdated);
+      setEditOpen(null);
+      editForm.resetFields();
+      void fetchCouriers();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const confirmDelete = (courier: CourierResponse) => {
+    Modal.confirm({
+      title: t.livreurs.deleteConfirmTitle,
+      content: t.livreurs.deleteConfirmContent.replace("{name}", courier.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteCourier(courier.id);
+          message.success(t.livreurs.msgDeleted);
+          void fetchCouriers();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
+  };
+
+  const submitDelivery = async () => {
+    const values = await deliveryForm.validateFields();
+    setDeliverySaving(true);
+    try {
+      await createDelivery({
+        courierId: values.courierId,
+        status: values.status as DeliveryStatus,
+        parcelsCount: values.parcelsCount ?? 1,
+        notes: values.notes?.trim() || undefined,
+      });
+      message.success(t.livreurs.deliveryRecorded);
+      setDeliveryModalOpen(false);
+      deliveryForm.resetFields();
+      void fetchCouriers();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+    } finally {
+      setDeliverySaving(false);
+    }
+  };
+
+  const canRecordDelivery = activeCouriers.length > 0;
+  const isCatalogEmpty = couriers.length === 0 && !activeOnly && !search.trim();
+  const filterEmptyTitle = search.trim() ? t.livreurs.emptySearch : t.livreurs.emptyActiveOnly;
+
+  const headerActions = canCreate ? (
+    <div className={styles.toolbar}>
+      <Button
+        icon={<PackageCheck size={18} />}
+        onClick={() => {
+          deliveryForm.resetFields();
+          setDeliveryModalOpen(true);
+        }}
+        disabled={!canRecordDelivery}
+        title={!canRecordDelivery ? t.livreurs.recordNeedsActive : undefined}
+      >
+        {t.livreurs.recordDelivery}
+      </Button>
+      <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
+        {t.livreurs.addCourier}
+      </Button>
+    </div>
+  ) : null;
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Input
+        prefix={<Search size={18} />}
+        placeholder={t.livreurs.search}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        allowClear
+        className={styles.searchInput}
+      />
+      <label className={styles.filterSwitch}>
+        <Switch size="small" checked={activeOnly} onChange={setActiveOnly} />
+        <span className={styles.filterSwitchLabel}>{t.livreurs.activeOnly}</span>
+      </label>
+    </div>
+  );
+
+  const header = (
+    <PageHeader
+      title={t.livreurs.title}
+      subtitle={t.livreurs.list}
+      meta={
+        couriers.length > 0 ? (
+          <>
+            <Typography.Text type="secondary">
+              {t.livreurs.metaParcels.replace("{count}", String(totalParcels))}
+            </Typography.Text>
+            {avgEfficiency != null ? (
+              <Typography.Text type="secondary">
+                {t.livreurs.metaEfficiency.replace("{pct}", String(avgEfficiency))}
+              </Typography.Text>
+            ) : null}
+          </>
+        ) : null
+      }
+      actions={headerActions}
+    />
+  );
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 130, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 240, height: 44 }} />
-            <Skeleton.Button active style={{ width: 180, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        {header}
+        {filterBar}
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 4 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.livreurs.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Input
-            prefix={<Search size={18} />}
-            placeholder={t.livreurs.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Switch
-              size="small"
-              checked={!activeOnly}
-              onChange={(checked) => setActiveOnly(!checked)}
-            />
-            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-              {activeOnly ? "Actifs uniquement" : "Tous"}
-            </Typography.Text>
-          </span>
-          {matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") && (
-            <>
-              <Button
-                icon={<PackageCheck size={18} />}
-                onClick={() => {
-                  deliveryForm.resetFields();
-                  setDeliveryModalOpen(true);
-                }}
-              >
-                {t.livreurs.recordDelivery}
-              </Button>
-              <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
-                {t.livreurs.addCourier}
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+    <PageShell className={styles.page}>
+      {header}
+      {filterBar}
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {couriers.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Bike}
             title={t.livreurs.emptyTitle}
             description={t.livreurs.emptyDesc}
             action={
-              matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") ? (
+              canCreate ? (
                 <Button
                   type="primary"
                   size="large"
                   icon={<Bike size={16} />}
-                  onClick={() => setAddOpen(true)}
+                  onClick={openAdd}
                   style={{ height: 48 }}
                 >
                   {t.livreurs.addCourier}
@@ -170,15 +379,18 @@ export default function Livreurs() {
               ) : null
             }
           />
+        ) : filtered.length === 0 ? (
+          <EmptyState compact icon={Search} title={filterEmptyTitle} />
         ) : (
           <div className="tableResponsive">
             <Table
               dataSource={filtered}
               rowKey="id"
-              pagination={{ pageSize: 10 }}
+              loading={loading}
+              pagination={{ pageSize: 10, hideOnSinglePage: true }}
+              locale={{ emptyText: filterEmptyTitle }}
               className="dataTable"
               scroll={{ x: "max-content" }}
-              locale={{ emptyText: "Aucun livreur trouvé" }}
               columns={[
                 {
                   title: t.livreurs.name,
@@ -193,12 +405,13 @@ export default function Livreurs() {
                 {
                   title: t.livreurs.phone,
                   dataIndex: "phone",
-                  render: (v: string | null) => v ?? "-",
+                  render: (v: string | null) =>
+                    v ? <a href={`tel:${v.replace(/\s/g, "")}`}>{v}</a> : "—",
                 },
                 {
                   title: t.livreurs.email,
                   dataIndex: "email",
-                  render: (v: string | null) => v ?? "-",
+                  render: (v: string | null) => (v ? <a href={`mailto:${v}`}>{v}</a> : "—"),
                 },
                 {
                   title: t.livreurs.status,
@@ -215,10 +428,10 @@ export default function Livreurs() {
                   key: "parcels",
                   width: 110,
                   sorter: (a: CourierResponse, b: CourierResponse) =>
-                    (statsMap[b.id]?.totalParcelsDelivered ?? 0) -
-                    (statsMap[a.id]?.totalParcelsDelivered ?? 0),
+                    (statsMap[a.id]?.totalParcelsDelivered ?? 0) -
+                    (statsMap[b.id]?.totalParcelsDelivered ?? 0),
                   render: (_: unknown, r: CourierResponse) => (
-                    <span style={{ fontWeight: 500 }}>
+                    <span className={styles.parcelsCell}>
                       {statsMap[r.id]?.totalParcelsDelivered ?? 0}
                     </span>
                   ),
@@ -227,11 +440,27 @@ export default function Livreurs() {
                   title: t.livreurs.efficiency,
                   key: "efficiency",
                   width: 140,
-                  sorter: (a: CourierResponse, b: CourierResponse) =>
-                    (statsMap[a.id]?.successRatePercent ?? 100) -
-                    (statsMap[b.id]?.successRatePercent ?? 100),
+                  sorter: (a: CourierResponse, b: CourierResponse) => {
+                    const aStats = statsMap[a.id];
+                    const bStats = statsMap[b.id];
+                    const aRate = hasDeliveryActivity(aStats)
+                      ? (aStats.successRatePercent ?? 0)
+                      : -1;
+                    const bRate = hasDeliveryActivity(bStats)
+                      ? (bStats.successRatePercent ?? 0)
+                      : -1;
+                    return aRate - bRate;
+                  },
                   render: (_: unknown, r: CourierResponse) => {
-                    const rate = statsMap[r.id]?.successRatePercent ?? 100;
+                    const stats = statsMap[r.id];
+                    if (!hasDeliveryActivity(stats)) {
+                      return (
+                        <Typography.Text type="secondary">
+                          {t.livreurs.noDeliveries}
+                        </Typography.Text>
+                      );
+                    }
+                    const rate = stats.successRatePercent ?? 0;
                     const status = rate >= 90 ? "success" : rate >= 70 ? "normal" : "exception";
                     return (
                       <Progress
@@ -244,11 +473,11 @@ export default function Livreurs() {
                   },
                 },
                 {
-                  title: "",
+                  title: t.common.actions,
                   width: 100,
                   render: (_, r: CourierResponse) => (
                     <div role="group">
-                      {matrixCan("DELIVERY_COURIERS_UPDATE", "livreurs") && (
+                      {canUpdate && (
                         <Button
                           type="text"
                           size="small"
@@ -266,7 +495,7 @@ export default function Livreurs() {
                           aria-label={t.common.edit}
                         />
                       )}
-                      {matrixCan("DELIVERY_COURIERS_DELETE", "livreurs") && (
+                      {canDelete && (
                         <Button
                           type="text"
                           danger
@@ -274,18 +503,7 @@ export default function Livreurs() {
                           icon={<Trash2 size={14} />}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm(`${t.common.delete} "${r.name}" ?`)) {
-                              deleteCourier(r.id)
-                                .then(() => {
-                                  message.success(t.livreurs.msgDeleted);
-                                  fetchCouriers();
-                                })
-                                .catch((err) =>
-                                  message.error(
-                                    err instanceof Error ? err.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
+                            confirmDelete(r);
                           }}
                           aria-label={t.common.delete}
                         />
@@ -302,137 +520,50 @@ export default function Livreurs() {
       <Modal
         title={t.livreurs.addCourier}
         open={addOpen}
-        onOk={() => {
-          addForm.validateFields().then(async (values) => {
-            try {
-              await createCourier({
-                name: values.name,
-                phone: values.phone || undefined,
-                email: values.email || undefined,
-                isActive: values.isActive !== false,
-              });
-              message.success(t.livreurs.msgAdded);
-              setAddOpen(false);
-              addForm.resetFields();
-              fetchCouriers();
-            } catch (e) {
-              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-            }
-          });
-        }}
+        onOk={() => void submitAdd()}
+        confirmLoading={addSaving}
         onCancel={() => {
           setAddOpen(false);
           addForm.resetFields();
         }}
         okText={t.common.save}
+        cancelText={t.common.cancel}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
-        <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="name"
-            label={t.livreurs.name}
-            rules={[{ required: true, message: t.validation.nameRequired }]}
-          >
-            <Input placeholder={t.livreurs.placeholderCourierName} />
-          </Form.Item>
-          <Form.Item name="phone" label={t.livreurs.phone}>
-            <Input placeholder={t.livreurs.placeholderPhoneExample} />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label={t.livreurs.email}
-            rules={[{ type: "email", message: t.validation.email }]}
-          >
-            <Input placeholder={t.validation.emailPlaceholder} />
-          </Form.Item>
-          <Form.Item
-            name="isActive"
-            label={t.livreurs.status}
-            valuePropName="checked"
-            initialValue={true}
-          >
-            <Switch checkedChildren={t.livreurs.active} unCheckedChildren={t.livreurs.inactive} />
-          </Form.Item>
-        </Form>
+        <CourierFormFields form={addForm} defaultActive />
       </Modal>
 
       <Modal
         title={t.livreurs.editCourier}
         open={!!editOpen}
-        onOk={() => {
-          if (!editOpen) return;
-          editForm.validateFields().then(async (values) => {
-            try {
-              await updateCourier(editOpen.id, {
-                name: values.name,
-                phone: values.phone || undefined,
-                email: values.email || undefined,
-                isActive: values.isActive,
-              });
-              message.success(t.livreurs.msgUpdated);
-              setEditOpen(null);
-              editForm.resetFields();
-              fetchCouriers();
-            } catch (e) {
-              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-            }
-          });
-        }}
+        onOk={() => void submitEdit()}
+        confirmLoading={editSaving}
         onCancel={() => {
           setEditOpen(null);
           editForm.resetFields();
         }}
         okText={t.common.save}
+        cancelText={t.common.cancel}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
-        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="name"
-            label={t.livreurs.name}
-            rules={[{ required: true, message: t.validation.nameRequired }]}
-          >
-            <Input placeholder={t.livreurs.placeholderCourierName} />
-          </Form.Item>
-          <Form.Item name="phone" label={t.livreurs.phone}>
-            <Input placeholder={t.livreurs.placeholderPhoneExample} />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label={t.livreurs.email}
-            rules={[{ type: "email", message: t.validation.email }]}
-          >
-            <Input placeholder={t.validation.emailPlaceholder} />
-          </Form.Item>
-          <Form.Item name="isActive" label={t.livreurs.status} valuePropName="checked">
-            <Switch checkedChildren={t.livreurs.active} unCheckedChildren={t.livreurs.inactive} />
-          </Form.Item>
-        </Form>
+        <CourierFormFields form={editForm} />
       </Modal>
 
       <Modal
         title={t.livreurs.recordDelivery}
         open={deliveryModalOpen}
-        onOk={() => {
-          deliveryForm.validateFields().then(async (values) => {
-            try {
-              await createDelivery({
-                courierId: values.courierId,
-                status: values.status,
-                parcelsCount: values.parcelsCount ?? 1,
-                notes: values.notes || undefined,
-              });
-              message.success(t.livreurs.deliveryRecorded);
-              setDeliveryModalOpen(false);
-              deliveryForm.resetFields();
-              fetchCouriers();
-            } catch (e) {
-              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-            }
-          });
-        }}
+        onOk={() => void submitDelivery()}
+        confirmLoading={deliverySaving}
         onCancel={() => {
           setDeliveryModalOpen(false);
           deliveryForm.resetFields();
         }}
         okText={t.common.save}
+        cancelText={t.common.cancel}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         <Form form={deliveryForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -444,19 +575,23 @@ export default function Livreurs() {
               placeholder={t.livreurs.placeholderSelectCourier}
               showSearch
               optionFilterProp="label"
-              options={couriers.map((c) => ({ value: c.id, label: c.name }))}
+              options={activeCouriers.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
             />
           </Form.Item>
           <Form.Item
             name="status"
             label={t.livreurs.deliveryStatus}
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: t.validation.requiredField }]}
             initialValue="delivered"
           >
             <Select
               options={[
                 { value: "delivered", label: t.livreurs.delivered },
                 { value: "failed", label: t.livreurs.failed },
+                { value: "cancelled", label: t.livreurs.cancelled },
               ]}
             />
           </Form.Item>
@@ -464,15 +599,18 @@ export default function Livreurs() {
             name="parcelsCount"
             label={t.livreurs.parcelsCount}
             initialValue={1}
-            rules={[{ required: true }, { type: "number", min: 1, message: "Min. 1" }]}
+            rules={[
+              { required: true, message: t.validation.requiredField },
+              { type: "number", min: 1, message: t.livreurs.parcelsMin },
+            ]}
           >
             <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item name="notes" label="Note">
+          <Form.Item name="notes" label={t.livreurs.note}>
             <Input.TextArea rows={2} placeholder={t.livreurs.optionalNotePlaceholder} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

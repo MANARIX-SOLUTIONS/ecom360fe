@@ -7,6 +7,7 @@ import { getUserProfile, updateUserProfile } from "@/api";
 import { setAuth } from "@/api/client";
 import { PROFILE_UPDATED_EVENT } from "@/hooks/useUserProfile";
 import { t } from "@/i18n";
+import { PageShell } from "@/components/ui";
 import styles from "./Profile.module.css";
 
 export default function Profile() {
@@ -107,14 +108,14 @@ export default function Profile() {
 
   if (loading || !profile) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
         <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       <Button
         type="text"
         icon={<ArrowLeft size={18} />}
@@ -233,6 +234,6 @@ export default function Profile() {
           </Form>
         )}
       </Card>
-    </div>
+    </PageShell>
   );
 }

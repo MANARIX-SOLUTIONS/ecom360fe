@@ -84,7 +84,7 @@ const A4_PRINT_STYLES = `
   .a4-page { width: 210mm; min-height: 257mm; margin: 0 auto; padding: 0; display: flex; flex-direction: column; }
   .a4-topbar {
     height: 5px;
-    background: linear-gradient(90deg, #1b4d7a 0%, #0e7490 50%, #1b4d7a 100%);
+    background: linear-gradient(90deg, #0f3460 0%, #0ea5e9 50%, #0f3460 100%);
     border-radius: 2px;
     margin-bottom: 22px;
   }
@@ -116,9 +116,9 @@ const A4_PRINT_STYLES = `
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #1b4d7a;
+    color: #0f3460;
     background: linear-gradient(180deg, #f0f7fc 0%, #e8f0f8 100%);
-    border: 1px solid rgba(27, 77, 122, 0.2);
+    border: 1px solid rgba(15, 52, 96, 0.2);
     padding: 5px 12px;
     border-radius: 999px;
     margin-bottom: 12px;
@@ -146,7 +146,7 @@ const A4_PRINT_STYLES = `
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
   }
   .a4-ref-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 6px; }
-  .a4-ref-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: #1b4d7a; letter-spacing: -0.02em; }
+  .a4-ref-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: #0f3460; letter-spacing: -0.02em; }
   .a4-meta {
     display: inline-flex;
     align-items: center;
@@ -165,7 +165,7 @@ const A4_PRINT_STYLES = `
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    border-left: 4px solid #1b4d7a;
+    border-left: 4px solid #0f3460;
   }
   .a4-client-kicker {
     display: block;
@@ -230,7 +230,7 @@ const A4_PRINT_STYLES = `
   .a4-totals {
     margin: 20px 0 22px;
     padding: 20px 0 0;
-    border-top: 2px solid #1b4d7a;
+    border-top: 2px solid #0f3460;
   }
   .a4-total-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 8px; max-width: 300px; margin-left: auto; }
   .a4-total-row span:first-child { color: #64748b; }
@@ -251,13 +251,13 @@ const A4_PRINT_STYLES = `
     margin-left: auto;
     color: #0f172a;
   }
-  .a4-total-final span:last-child { color: #1b4d7a; font-variant-numeric: tabular-nums; }
+  .a4-total-final span:last-child { color: #0f3460; font-variant-numeric: tabular-nums; }
   .a4-payment {
     font-size: 13px;
     margin-bottom: 28px;
     padding: 10px 14px;
     background: #fff;
-    border-left: 3px solid #0e7490;
+    border-left: 3px solid #0ea5e9;
     border-radius: 0 8px 8px 0;
   }
   .a4-payment-label { color: #64748b; margin-right: 10px; font-weight: 600; }

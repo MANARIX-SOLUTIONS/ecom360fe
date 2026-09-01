@@ -77,23 +77,23 @@ const PAYMENT_METHODS: {
     hint: t.pos.paymentHintCash,
     image: "/images/payments/cash.svg",
     color: "var(--color-success)",
-    bg: "rgba(46,204,113,0.12)",
+    bg: "rgba(5, 150, 105, 0.12)",
   },
   {
     key: "wave",
     label: t.pos.wave,
     hint: t.pos.paymentHintWave,
     image: "/images/payments/wave.png",
-    color: "#1BA3E8",
-    bg: "rgba(27,163,232,0.12)",
+    color: "var(--color-accent)",
+    bg: "var(--v2-accent-soft)",
   },
   {
     key: "orange_money",
     label: t.pos.orangeMoney,
     hint: t.pos.paymentHintOrange,
     image: "/images/payments/orange-money.png",
-    color: "#F39C12",
-    bg: "rgba(243,156,18,0.12)",
+    color: "var(--color-warning)",
+    bg: "rgba(217, 119, 6, 0.12)",
   },
   {
     key: "credit",
@@ -101,7 +101,7 @@ const PAYMENT_METHODS: {
     hint: t.pos.paymentHintCredit,
     image: "/images/payments/credit.svg",
     color: "var(--color-primary)",
-    bg: "rgba(31,58,95,0.12)",
+    bg: "var(--v2-primary-soft)",
   },
 ];
 

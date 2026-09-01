@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, Typography, Table, Select, Space, Button, message, Tag } from "antd";
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download, FileText } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Backoffice.module.css";
 
 const ENTITY_TYPES = [
@@ -101,25 +103,11 @@ export default function BackofficeAudit() {
   }, [entityFilter, businessFilter]);
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <div className={styles.pageHeader}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <div>
-            <Typography.Title level={4} className={styles.pageTitle}>
-              Journal d'audit
-            </Typography.Title>
-            <Typography.Text type="secondary" className={styles.pageSubtitle}>
-              Historique des actions sur la plateforme
-            </Typography.Text>
-          </div>
+    <PageShell className={styles.page}>
+      <PageHeader
+        title="Journal d'audit"
+        subtitle="Historique des actions sur la plateforme"
+        actions={
           <Space wrap>
             <Select
               placeholder="Type d'entité"
@@ -127,7 +115,7 @@ export default function BackofficeAudit() {
               style={{ minWidth: 140, maxWidth: "100%" }}
               value={entityFilter}
               onChange={setEntityFilter}
-              options={ENTITY_TYPES.map((t) => ({ label: t, value: t }))}
+              options={ENTITY_TYPES.map((et) => ({ label: et, value: et }))}
             />
             <Button
               icon={<RefreshCw size={16} />}
@@ -140,8 +128,8 @@ export default function BackofficeAudit() {
               Export CSV
             </Button>
           </Space>
-        </div>
-      </div>
+        }
+      />
 
       <Card variant="borderless" className={styles.card}>
         <div className="tableResponsive">
@@ -149,6 +137,9 @@ export default function BackofficeAudit() {
             className="dataTable"
             size="small"
             loading={loading}
+            locale={{
+              emptyText: <EmptyState compact icon={FileText} title={t.backoffice.emptyAudit} />,
+            }}
             dataSource={auditLogs}
             rowKey="id"
             scroll={{ x: "max-content" }}
@@ -258,6 +249,6 @@ export default function BackofficeAudit() {
           />
         </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }

@@ -60,6 +60,7 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { usePermissions } from "@/hooks/usePermissions";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { useStore } from "@/hooks/useStore";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
@@ -299,7 +300,7 @@ export default function Reports() {
         value: formatFCFA(data.periodRevenue),
         icon: Wallet,
         color: "var(--color-primary)",
-        bg: "rgba(31,58,95,0.08)",
+        bg: "var(--v2-primary-soft)",
         trendPct: pctChangeVsPrevious(data.periodRevenue, data.previousPeriodRevenue),
       },
       {
@@ -474,19 +475,18 @@ export default function Reports() {
 
   if (loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.reports.title} />
         <Skeleton active paragraph={{ rows: 8 }} />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <div className={styles.toolbar}>
-          <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
-            {t.reports.title}
-          </Typography.Title>
+    <PageShell className={styles.page}>
+      <PageHeader
+        title={t.reports.title}
+        actions={
           <Space wrap>
             <Button
               type="link"
@@ -515,8 +515,8 @@ export default function Reports() {
               </Button>
             )}
           </Space>
-        </div>
-      </header>
+        }
+      />
 
       <Tabs
         activeKey={activeTab}
@@ -922,6 +922,6 @@ export default function Reports() {
         <Typography.Paragraph>{t.reports.glossaryP6}</Typography.Paragraph>
         <Typography.Paragraph type="secondary">{t.reports.glossaryP7}</Typography.Paragraph>
       </Drawer>
-    </div>
+    </PageShell>
   );
 }

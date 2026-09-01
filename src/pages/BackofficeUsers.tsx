@@ -27,7 +27,9 @@ import {
   Mail,
   Calendar,
   Building2,
+  Users,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import styles from "./Backoffice.module.css";
 import {
   listAdminUsers,
@@ -37,6 +39,7 @@ import {
   type AdminUser,
 } from "@/api/backoffice";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 
 type PlatformUser = AdminUser & { lastLogin: string };
 
@@ -85,6 +88,7 @@ function timeAgo(d: string | null) {
 
 export default function BackofficeUsers() {
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -126,6 +130,7 @@ export default function BackofficeUsers() {
       message.error(e instanceof Error ? e.message : t.backoffice.platformUsersLoadError);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, [page, pageSize, searchDebounced, filterStatus, filterRole]);
 
@@ -215,66 +220,69 @@ export default function BackofficeUsers() {
     window.location.href = `mailto:${user.email}`;
   }, []);
 
-  if (loading) {
-    return (
-      <div className="pageWrapper">
-        <Skeleton active paragraph={{ rows: 8 }} />
+  const filterBar = (
+    <div className={styles.toolbar}>
+      <div className={styles.toolbarLeft}>
+        <Input
+          prefix={<Search size={16} />}
+          placeholder={t.backoffice.searchPlatformUsersPlaceholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          className={styles.toolbarSearch}
+        />
+        <Select
+          value={filterRole}
+          onChange={setFilterRole}
+          style={{ minWidth: 140 }}
+          options={[
+            { value: "all", label: t.backoffice.allRoles },
+            { value: "Propriétaire", label: t.backoffice.roleOwner },
+            { value: "Gestionnaire", label: t.backoffice.roleManager },
+            { value: "Caissier", label: t.backoffice.roleCashier },
+          ]}
+        />
+        <Select
+          value={filterStatus}
+          onChange={setFilterStatus}
+          style={{ minWidth: 120 }}
+          options={[
+            { value: "all", label: t.backoffice.allStatuses },
+            { value: "active", label: t.backoffice.statusActive },
+            { value: "inactive", label: t.backoffice.statusInactive },
+            { value: "disabled", label: t.backoffice.statusDisabled },
+          ]}
+        />
       </div>
+      <div className={styles.toolbarRight}>
+        <Button type="primary" icon={<UserPlus size={16} />} onClick={() => setInviteOpen(true)}>
+          {t.backoffice.invite}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (!hasLoaded && loading) {
+    return (
+      <PageShell className={styles.page}>
+        {contextHolder}
+        <PageHeader title={t.backoffice.users} />
+        {filterBar}
+        <Card variant="borderless" className={styles.tableCard}>
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </Card>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       {contextHolder}
-      <div className={styles.pageHeader}>
-        <Typography.Title level={4} className={styles.pageTitle}>
-          Utilisateurs plateforme
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          {total} compte{total > 1 ? "s" : ""} sur la plateforme
-        </Typography.Text>
-      </div>
-
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <Input
-            prefix={<Search size={16} />}
-            placeholder={t.backoffice.searchPlatformUsersPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <Select
-            value={filterRole}
-            onChange={setFilterRole}
-            style={{ minWidth: 140 }}
-            options={[
-              { value: "all", label: "Tous les rôles" },
-              { value: "Propriétaire", label: "Propriétaire" },
-              { value: "Gestionnaire", label: "Gestionnaire" },
-              { value: "Caissier", label: "Caissier" },
-            ]}
-          />
-          <Select
-            value={filterStatus}
-            onChange={setFilterStatus}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous statuts" },
-              { value: "active", label: "Actif" },
-              { value: "inactive", label: "Inactif" },
-              { value: "disabled", label: "Désactivé" },
-            ]}
-          />
-        </div>
-        <div className={styles.toolbarRight}>
-          <Button type="primary" icon={<UserPlus size={16} />} onClick={() => setInviteOpen(true)}>
-            Inviter
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t.backoffice.users}
+        subtitle={t.backoffice.accountsCount.replace("{count}", String(total))}
+      />
+      {filterBar}
 
       {/* Table */}
       <Card variant="borderless" className={styles.tableCard}>
@@ -282,6 +290,7 @@ export default function BackofficeUsers() {
           <Table
             dataSource={users}
             rowKey="id"
+            loading={loading}
             scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
@@ -296,6 +305,9 @@ export default function BackofficeUsers() {
               },
             }}
             className="dataTable"
+            locale={{
+              emptyText: <EmptyState compact icon={Users} title={t.backoffice.emptyUsers} />,
+            }}
             onRow={(record) => ({ onClick: () => setDetail(record), style: { cursor: "pointer" } })}
             columns={[
               {
@@ -555,6 +567,6 @@ export default function BackofficeUsers() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 
 type Supplier = {
   id: string;
@@ -26,6 +27,7 @@ type Supplier = {
 function getInitials(name: string) {
   return name
     .split(" ")
+    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .toUpperCase()
@@ -42,6 +44,7 @@ export default function Suppliers() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState<Supplier | null>(null);
   const [addForm] = Form.useForm();
@@ -68,7 +71,10 @@ export default function Suppliers() {
   const fetchSuppliers = useCallback(
     async (isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
       if (!isCancelled?.()) setLoading(true);
@@ -90,11 +96,13 @@ export default function Suppliers() {
           }))
         );
         setTotal(res.totalElements ?? 0);
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setSuppliers([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
         if (!isCancelled?.()) setLoading(false);
       }
@@ -110,51 +118,74 @@ export default function Suppliers() {
     };
   }, [fetchSuppliers]);
 
-  if (loading) {
+  const confirmDelete = (supplier: Supplier) => {
+    Modal.confirm({
+      title: t.suppliers.deleteConfirmTitle,
+      content: t.suppliers.deleteConfirmContent.replace("{name}", supplier.name),
+      okText: t.common.delete,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteSupplier(supplier.id);
+          message.success(t.suppliers.msgDeleted);
+          void fetchSuppliers();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+          return Promise.reject(e);
+        }
+      },
+    });
+  };
+
+  const isCatalogEmpty = total === 0 && !search.trim();
+
+  const headerActions = (
+    <div className={styles.toolbar}>
+      {suppliersAtLimit ? (
+        <Typography.Text type="secondary">
+          {t.products.limitReached} <Link to="/settings/subscription">{t.pos.upgradePlanLink}</Link>
+        </Typography.Text>
+      ) : matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
+        <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
+          {t.suppliers.addSupplier}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Input
+        prefix={<Search size={18} />}
+        placeholder={t.suppliers.search}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        allowClear
+        className={styles.searchInput}
+      />
+    </div>
+  );
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 130, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 240, height: 44 }} />
-            <Skeleton.Button active style={{ width: 180, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.suppliers.title} actions={headerActions} />
+        {filterBar}
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 4 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.suppliers.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Input
-            prefix={<Search size={18} />}
-            placeholder={t.suppliers.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          {suppliersAtLimit ? (
-            <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
-            </Typography.Text>
-          ) : matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
-            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
-              {t.suppliers.addSupplier}
-            </Button>
-          ) : null}
-        </div>
-      </header>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.suppliers.title} actions={headerActions} />
+      {filterBar}
+
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {suppliers.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Truck}
             title={t.suppliers.emptyTitle}
@@ -173,11 +204,14 @@ export default function Suppliers() {
               ) : null
             }
           />
+        ) : suppliers.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.suppliers.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
               dataSource={suppliers}
               rowKey="id"
+              loading={loading}
               scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
@@ -203,7 +237,7 @@ export default function Suppliers() {
                 },
               })}
               className="dataTable"
-              locale={{ emptyText: "Aucun fournisseur trouvé" }}
+              locale={{ emptyText: t.suppliers.emptySearch }}
               columns={[
                 {
                   title: t.common.name,
@@ -215,8 +249,17 @@ export default function Suppliers() {
                     </span>
                   ),
                 },
-                { title: t.common.phone, dataIndex: "phone" },
-                { title: t.common.email, dataIndex: "email" },
+                {
+                  title: t.common.phone,
+                  dataIndex: "phone",
+                  render: (v: string) =>
+                    v ? <a href={`tel:${v.replace(/\s/g, "")}`}>{v}</a> : "—",
+                },
+                {
+                  title: t.common.email,
+                  dataIndex: "email",
+                  render: (v: string) => (v ? <a href={`mailto:${v}`}>{v}</a> : "—"),
+                },
                 { title: t.common.zone, dataIndex: "zone" },
                 {
                   title: t.suppliers.balance,
@@ -258,20 +301,7 @@ export default function Suppliers() {
                           danger
                           size="small"
                           icon={<Trash2 size={14} />}
-                          onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteSupplier(r.id)
-                                .then(() => {
-                                  message.success(t.suppliers.msgDeleted);
-                                  fetchSuppliers();
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
-                          }}
+                          onClick={() => confirmDelete(r)}
                           aria-label={t.common.delete}
                         />
                       )}
@@ -310,6 +340,8 @@ export default function Suppliers() {
           addForm.resetFields();
         }}
         okText={t.products.save}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -317,7 +349,11 @@ export default function Suppliers() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder={t.suppliers.placeholderSupplierName} />
+            <Input
+              placeholder={t.suppliers.placeholderSupplierName}
+              autoComplete="name"
+              autoCapitalize="words"
+            />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -329,14 +365,22 @@ export default function Suppliers() {
               },
             ]}
           >
-            <Input placeholder={t.suppliers.placeholderPhoneExample} />
+            <Input
+              placeholder={t.suppliers.placeholderPhoneExample}
+              inputMode="tel"
+              autoComplete="tel"
+            />
           </Form.Item>
           <Form.Item
             name="email"
             label={t.common.email}
             rules={[{ type: "email", message: t.validation.email }]}
           >
-            <Input placeholder={t.validation.emailPlaceholder} />
+            <Input
+              placeholder={t.validation.emailPlaceholder}
+              inputMode="email"
+              autoComplete="email"
+            />
           </Form.Item>
           <Form.Item name="zone" label={t.common.zone}>
             <Input placeholder={t.suppliers.placeholderZoneExample} />
@@ -371,6 +415,8 @@ export default function Suppliers() {
           editForm.resetFields();
         }}
         okText={t.products.save}
+        width="min(440px, calc(100vw - 32px))"
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -378,7 +424,11 @@ export default function Suppliers() {
             label={t.common.name}
             rules={[{ required: true, message: t.validation.nameRequired }]}
           >
-            <Input placeholder={t.suppliers.placeholderSupplierName} />
+            <Input
+              placeholder={t.suppliers.placeholderSupplierName}
+              autoComplete="name"
+              autoCapitalize="words"
+            />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -390,20 +440,28 @@ export default function Suppliers() {
               },
             ]}
           >
-            <Input placeholder={t.suppliers.placeholderPhoneExample} />
+            <Input
+              placeholder={t.suppliers.placeholderPhoneExample}
+              inputMode="tel"
+              autoComplete="tel"
+            />
           </Form.Item>
           <Form.Item
             name="email"
             label={t.common.email}
             rules={[{ type: "email", message: t.validation.email }]}
           >
-            <Input placeholder={t.validation.emailPlaceholder} />
+            <Input
+              placeholder={t.validation.emailPlaceholder}
+              inputMode="email"
+              autoComplete="email"
+            />
           </Form.Item>
           <Form.Item name="zone" label={t.common.zone}>
             <Input placeholder={t.suppliers.placeholderZoneExample} />
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

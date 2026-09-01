@@ -16,6 +16,7 @@ import {
   Divider,
 } from "antd";
 import { CheckCircle, XCircle, Inbox, Eye } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import {
   listAdminDemoRequests,
   approveAdminDemoRequest,
@@ -23,6 +24,7 @@ import {
   type AdminDemoRequest,
 } from "@/api/backoffice";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Backoffice.module.css";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -113,15 +115,11 @@ export default function BackofficeDemoRequests() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <div className={styles.header}>
-        <Typography.Title level={2} className={styles.title}>
-          Demandes de démo
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          Validez ou refusez les inscriptions avant création du compte entreprise.
-        </Typography.Text>
-      </div>
+    <PageShell className={styles.page}>
+      <PageHeader
+        title="Demandes de démo"
+        subtitle="Validez ou refusez les inscriptions avant création du compte entreprise."
+      />
 
       <Card variant="borderless" className={styles.card}>
         <Space style={{ marginBottom: 16 }} wrap>
@@ -160,12 +158,7 @@ export default function BackofficeDemoRequests() {
             }}
             locale={{
               emptyText: (
-                <div style={{ padding: 32, textAlign: "center" }}>
-                  <Inbox size={40} strokeWidth={1.2} style={{ opacity: 0.35 }} />
-                  <Typography.Text type="secondary" style={{ display: "block", marginTop: 8 }}>
-                    Aucune demande
-                  </Typography.Text>
-                </div>
+                <EmptyState compact icon={Inbox} title={t.backoffice.emptyDemoRequests} />
               ),
             }}
             onRow={(record) => ({
@@ -389,6 +382,6 @@ export default function BackofficeDemoRequests() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

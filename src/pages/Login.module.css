@@ -72,6 +72,7 @@
 .brandTitle {
   color: #fff !important;
   margin: 0 0 12px !important;
+  font-family: var(--font-display) !important;
   font-size: 28px !important;
   font-weight: 700 !important;
   letter-spacing: -0.03em;
@@ -177,7 +178,8 @@
 .card {
   width: 100%;
   max-width: 420px;
-  border-radius: var(--radius-lg) !important;
+  border-radius: var(--v2-radius-lg) !important;
+  border: 1px solid var(--v2-border-subtle);
   box-shadow: var(--shadow-elevated);
   overflow: hidden;
   padding: 8px 4px;
@@ -224,6 +226,7 @@
 }
 
 .mobileBrandName {
+  font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
   color: var(--color-primary);
@@ -243,9 +246,10 @@
 
 .logoBlock :global(.ant-typography:first-child) {
   margin-bottom: 6px !important;
+  font-family: var(--font-display);
   color: var(--color-primary) !important;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .logoBlock :global(.ant-typography:last-child) {

@@ -9,10 +9,29 @@
 
 .toolbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
+  width: 100%;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--section-gap);
+}
+
+.searchInput {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.filterSelect {
+  width: 180px;
+  min-width: 140px;
 }
 
 .toolbarSearch {
@@ -59,7 +78,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #2c5282 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--v2-primary-hover) 100%);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -74,7 +93,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #2c5282 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--v2-primary-hover) 100%);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -147,7 +166,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #2c5282 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--v2-primary-hover) 100%);
   color: #fff;
   font-size: 20px;
   font-weight: 700;
@@ -232,8 +251,18 @@
     width: 100%;
   }
 
-  .toolbarSearch {
+  .toolbarSearch,
+  .searchInput {
     max-width: none;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterSelect {
+    width: 100%;
   }
 
   .poLineRow {
@@ -277,7 +306,7 @@
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(27, 77, 122, 0.08), rgba(8, 145, 178, 0.08));
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.08), rgba(14, 165, 233, 0.08));
   color: var(--color-primary);
   display: flex;
   align-items: center;

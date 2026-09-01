@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Settings.module.css";
 
 type SettingItem = {
@@ -159,15 +160,8 @@ export default function Settings() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className={styles.title}>
-          {t.settings.title}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.subtitle}>
-          {t.settings.subtitle}
-        </Typography.Text>
-      </header>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.settings.title} subtitle={t.settings.subtitle} />
 
       {organisationItems.length > 0 && (
         <section className={styles.section}>
@@ -238,6 +232,6 @@ export default function Settings() {
           </button>
         </Card>
       </section>
-    </div>
+    </PageShell>
   );
 }

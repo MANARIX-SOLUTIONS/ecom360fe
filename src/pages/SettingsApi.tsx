@@ -16,10 +16,11 @@ import {
   message,
   Skeleton,
 } from "antd";
-import { ArrowLeft, Plus, Trash2, Copy, KeyRound, Webhook, Send } from "lucide-react";
+import { Plus, Trash2, Copy, KeyRound, Webhook, Send } from "lucide-react";
 import dayjs from "dayjs";
 import { t } from "@/i18n";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import {
   listApiKeys,
@@ -219,20 +220,12 @@ export default function SettingsApi() {
   };
 
   return (
-    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <Typography.Title level={4} className={styles.settingsPageTitle}>
-          {t.settings.apiTitle}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          {t.settings.apiHint}
-        </Typography.Text>
-      </header>
+    <PageShell className={`${styles.settingsPage} ${styles.settingsPageWide}`}>
+      <PageHeader
+        title={t.settings.apiTitle}
+        subtitle={t.settings.apiHint}
+        onBack={() => navigate("/settings")}
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         <Tabs
@@ -570,6 +563,6 @@ export default function SettingsApi() {
           />
         </Space>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

@@ -3,7 +3,7 @@
 .page {
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(27, 77, 122, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(15, 52, 96, 0.45) 0%, transparent 55%),
     linear-gradient(180deg, #061018 0%, #0c1e30 18%, var(--color-bg-base) 34%);
   padding-bottom: 56px;
 }
@@ -21,7 +21,7 @@
   inset: 0;
   background:
     radial-gradient(circle at 20% 30%, rgba(8, 145, 178, 0.15) 0%, transparent 42%),
-    radial-gradient(circle at 80% 20%, rgba(27, 77, 122, 0.25) 0%, transparent 38%);
+    radial-gradient(circle at 80% 20%, rgba(15, 52, 96, 0.25) 0%, transparent 38%);
   opacity: 0.9;
 }
 
@@ -161,7 +161,7 @@
   border-radius: 22px;
   padding: 26px 28px 28px;
   background: linear-gradient(155deg, #ffffff 0%, #f6f9fc 48%, #eef3f9 100%);
-  border: 1px solid rgba(27, 77, 122, 0.12);
+  border: 1px solid rgba(15, 52, 96, 0.12);
   box-shadow:
     0 4px 7px rgba(15, 23, 42, 0.02),
     0 24px 56px -28px rgba(15, 23, 42, 0.18),
@@ -190,7 +190,7 @@
   width: 40px;
   height: 40px;
   border-radius: 14px;
-  background: linear-gradient(145deg, rgba(27, 77, 122, 0.14), rgba(8, 145, 178, 0.1));
+  background: linear-gradient(145deg, rgba(15, 52, 96, 0.14), rgba(8, 145, 178, 0.1));
   color: var(--color-primary);
 }
 
@@ -270,7 +270,7 @@
 }
 
 .execBarSegRemainder {
-  background: linear-gradient(90deg, rgba(27, 77, 122, 0.18), rgba(8, 145, 178, 0.12));
+  background: linear-gradient(90deg, rgba(15, 52, 96, 0.18), rgba(8, 145, 178, 0.12));
   transition: width 0.45s ease;
 }
 
@@ -309,7 +309,7 @@
   flex-direction: column;
   gap: 4px;
   padding-top: 16px;
-  border-top: 1px solid rgba(27, 77, 122, 0.1);
+  border-top: 1px solid rgba(15, 52, 96, 0.1);
 }
 
 .execLeaderLabel {
@@ -387,21 +387,21 @@
 .kpiCard:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-card-hover);
-  border-color: rgba(27, 77, 122, 0.18);
+  border-color: rgba(15, 52, 96, 0.18);
 }
 
 .kpiCardHero {
-  background: linear-gradient(165deg, rgba(27, 77, 122, 0.11) 0%, #ffffff 52%);
-  border: 2px solid rgba(27, 77, 122, 0.28);
+  background: linear-gradient(165deg, rgba(15, 52, 96, 0.11) 0%, #ffffff 52%);
+  border: 2px solid rgba(15, 52, 96, 0.28);
   box-shadow:
-    0 12px 40px -14px rgba(27, 77, 122, 0.22),
+    0 12px 40px -14px rgba(15, 52, 96, 0.22),
     var(--shadow-card);
 }
 
 .kpiCardHero:hover {
-  border-color: rgba(27, 77, 122, 0.4);
+  border-color: rgba(15, 52, 96, 0.4);
   box-shadow:
-    0 16px 48px -12px rgba(27, 77, 122, 0.28),
+    0 16px 48px -12px rgba(15, 52, 96, 0.28),
     var(--shadow-card-hover);
 }
 
@@ -448,7 +448,7 @@
 }
 
 .kpiIconPrimary {
-  background: rgba(27, 77, 122, 0.14);
+  background: rgba(15, 52, 96, 0.14);
   color: var(--color-primary);
 }
 
@@ -537,7 +537,7 @@
 }
 
 .kpiMoney.kpiValuePrimary .kpiMoneyCurrency {
-  background: rgba(27, 77, 122, 0.12);
+  background: rgba(15, 52, 96, 0.12);
   color: var(--color-primary);
 }
 
@@ -624,8 +624,8 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.08);
-  border: 1px solid rgba(27, 77, 122, 0.15);
+  background: rgba(15, 52, 96, 0.08);
+  border: 1px solid rgba(15, 52, 96, 0.15);
   border-radius: 999px;
   cursor: pointer;
   padding: 8px 14px;
@@ -635,8 +635,8 @@
 }
 
 .sectionLink:hover {
-  background: rgba(27, 77, 122, 0.14);
-  border-color: rgba(27, 77, 122, 0.28);
+  background: rgba(15, 52, 96, 0.14);
+  border-color: rgba(15, 52, 96, 0.28);
 }
 
 .sectionLinks {
@@ -694,8 +694,8 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--color-primary);
-  background: rgba(27, 77, 122, 0.12);
-  border: 1px solid rgba(27, 77, 122, 0.15);
+  background: rgba(15, 52, 96, 0.12);
+  border: 1px solid rgba(15, 52, 96, 0.15);
 }
 
 .storeBarName {
@@ -727,7 +727,7 @@
   border-radius: 999px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent, #0891b2));
   transition: width 0.55s cubic-bezier(0.33, 1, 0.68, 1);
-  box-shadow: 0 0 16px rgba(27, 77, 122, 0.25);
+  box-shadow: 0 0 16px rgba(15, 52, 96, 0.25);
 }
 
 .storeBarStats {
@@ -850,7 +850,7 @@
 }
 
 .dataTablePremium :global(.ant-table-thead > tr > th) {
-  background: rgba(27, 77, 122, 0.06) !important;
+  background: rgba(15, 52, 96, 0.06) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.06em !important;
@@ -864,7 +864,7 @@
 }
 
 .dataTablePremium :global(.ant-table-tbody > tr:hover > td) {
-  background: rgba(27, 77, 122, 0.04) !important;
+  background: rgba(15, 52, 96, 0.04) !important;
 }
 
 .dataTable .ant-table-cell {

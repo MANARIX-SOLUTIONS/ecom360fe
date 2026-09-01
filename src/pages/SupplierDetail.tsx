@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { t } from "@/i18n";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
+import { PageShell } from "@/components/ui";
 import styles from "./Clients.module.css";
 import {
   getSupplier,
@@ -188,7 +189,7 @@ export default function SupplierDetail() {
 
   if (loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
+      <PageShell className={styles.page}>
         <div className={styles.backWrap}>
           <Skeleton.Button active style={{ width: 80 }} />
         </div>
@@ -198,7 +199,7 @@ export default function SupplierDetail() {
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 3 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -292,7 +293,7 @@ export default function SupplierDetail() {
   };
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       <div className={styles.backWrap}>
         <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/suppliers")}>
           {t.common.back}
@@ -626,14 +627,14 @@ export default function SupplierDetail() {
         onClose={() => setPayPo(null)}
         onRecorded={() => void refreshAfterPayment()}
       />
-    </div>
+    </PageShell>
   );
 }
 
 const chipStyle: CSSProperties = {
   flex: 1,
   height: 32,
-  border: "1px solid #e8e8e8",
+  border: "1px solid var(--color-border)",
   borderRadius: 8,
   background: "#fff",
   fontSize: 12,

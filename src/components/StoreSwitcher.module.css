@@ -18,7 +18,7 @@
 
 .trigger:hover {
   border-color: var(--color-primary);
-  background: rgba(31, 58, 95, 0.04);
+  background: rgba(15, 52, 96, 0.04);
 }
 
 .trigger svg:first-child {

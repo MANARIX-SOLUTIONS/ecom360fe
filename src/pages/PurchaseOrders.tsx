@@ -15,7 +15,7 @@ import {
   DatePicker,
   message,
 } from "antd";
-import { Plus, ClipboardList, Trash2 } from "lucide-react";
+import { Plus, ClipboardList, Trash2, Search } from "lucide-react";
 import dayjs from "dayjs";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
@@ -33,6 +33,7 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "default",
@@ -68,6 +69,7 @@ export default function PurchaseOrders() {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
@@ -91,7 +93,10 @@ export default function PurchaseOrders() {
   const fetchList = useCallback(
     async (isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
       if (!isCancelled?.()) setLoading(true);
@@ -105,11 +110,13 @@ export default function PurchaseOrders() {
         if (isCancelled?.()) return;
         setRows(res.content ?? []);
         setTotal(res.totalElements ?? 0);
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.common.msgLoadError);
         setRows([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
         if (!isCancelled?.()) setLoading(false);
       }
@@ -129,12 +136,12 @@ export default function PurchaseOrders() {
     Promise.all([
       listSuppliers({ page: 0, size: 100 }),
       listStores(),
-      listProducts({ page: 0, size: 200 }),
+      listProducts({ page: 0, size: 200, isActive: true }),
     ])
       .then(([supRes, storeRes, prodRes]) => {
         setSuppliers(supRes.content ?? []);
         setStores(storeRes ?? []);
-        setProducts((prodRes.content ?? []).filter((p) => p.isActive));
+        setProducts(prodRes.content ?? []);
       })
       .catch(() => {
         /* ignore — create modal will show empty selects */
@@ -182,63 +189,66 @@ export default function PurchaseOrders() {
     }
   };
 
-  if (loading && rows.length === 0) {
+  const headerActions = matrixCan("PURCHASE_ORDERS_CREATE", "purchaseOrders") ? (
+    <div className={styles.toolbar}>
+      <Button type="primary" icon={<Plus size={18} />} onClick={openCreate}>
+        {t.purchaseOrders.create}
+      </Button>
+    </div>
+  ) : null;
+
+  const filterBar = (
+    <div className={styles.filterBar}>
+      <Select
+        allowClear
+        placeholder={t.purchaseOrders.filterStatus}
+        value={statusFilter}
+        onChange={(v) => {
+          setStatusFilter(v);
+          setPage(0);
+        }}
+        options={(["draft", "ordered", "received", "cancelled"] as PurchaseOrderStatus[]).map(
+          (s) => ({ value: s, label: statusLabel(s) })
+        )}
+        className={styles.filterSelect}
+      />
+    </div>
+  );
+
+  const supplierBanner = supplierFilter ? (
+    <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+      {t.purchaseOrders.filteredBySupplier}{" "}
+      <Link to={`/suppliers/${supplierFilter}`}>
+        {supplierNameById.get(supplierFilter) ?? supplierFilter.slice(0, 8)}
+      </Link>
+      {" · "}
+      <Link to="/purchase-orders">{t.purchaseOrders.clearFilter}</Link>
+    </Typography.Paragraph>
+  ) : null;
+
+  const isCatalogEmpty = rows.length === 0 && !statusFilter && !supplierFilter;
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 180, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Button active style={{ width: 160, height: 44 }} />
-          </div>
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.purchaseOrders.title} actions={headerActions} />
+        {filterBar}
+        {supplierBanner}
         <Card variant="borderless" className={`${styles.card} contentCard`}>
           <Skeleton active paragraph={{ rows: 4 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.purchaseOrders.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Select
-            allowClear
-            placeholder={t.purchaseOrders.filterStatus}
-            style={{ minWidth: 160, maxWidth: "100%" }}
-            value={statusFilter}
-            onChange={(v) => {
-              setStatusFilter(v);
-              setPage(0);
-            }}
-            options={(["draft", "ordered", "received", "cancelled"] as PurchaseOrderStatus[]).map(
-              (s) => ({ value: s, label: statusLabel(s) })
-            )}
-          />
-          {matrixCan("PURCHASE_ORDERS_CREATE", "purchaseOrders") && (
-            <Button type="primary" icon={<Plus size={18} />} onClick={openCreate}>
-              {t.purchaseOrders.create}
-            </Button>
-          )}
-        </div>
-      </header>
-
-      {supplierFilter && (
-        <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-          {t.purchaseOrders.filteredBySupplier}{" "}
-          <Link to={`/suppliers/${supplierFilter}`}>
-            {supplierNameById.get(supplierFilter) ?? supplierFilter.slice(0, 8)}
-          </Link>
-          {" · "}
-          <Link to="/purchase-orders">{t.purchaseOrders.clearFilter}</Link>
-        </Typography.Paragraph>
-      )}
+    <PageShell className={styles.page}>
+      <PageHeader title={t.purchaseOrders.title} actions={headerActions} />
+      {filterBar}
+      {supplierBanner}
 
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {rows.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={ClipboardList}
             title={t.purchaseOrders.emptyTitle}
@@ -251,6 +261,8 @@ export default function PurchaseOrders() {
               ) : undefined
             }
           />
+        ) : rows.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.purchaseOrders.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -452,6 +464,6 @@ export default function PurchaseOrders() {
           </Form.List>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

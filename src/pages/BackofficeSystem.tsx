@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import styles from "./Backoffice.module.css";
 
 const healthItems = (apiStatus: string | null, apiOk: boolean) => [
@@ -308,34 +309,21 @@ export default function BackofficeSystem() {
 
   if (loading) {
     return (
-      <div className="pageWrapper">
+      <PageShell>
+        <PageHeader title={t.backoffice.system} />
         <Skeleton active paragraph={{ rows: 10 }} />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
+    <PageShell className={styles.page}>
       {contextHolder}
-      <div className={styles.pageHeader}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <div>
-            <Typography.Title level={4} className={styles.pageTitle}>
-              Système
-            </Typography.Title>
-            <Typography.Text type="secondary" className={styles.pageSubtitle}>
-              Santé de la plateforme, ressources et configuration
-            </Typography.Text>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
+      <PageHeader
+        title={t.backoffice.system}
+        subtitle="Santé de la plateforme, ressources et configuration"
+        actions={
+          <Space wrap>
             <Button
               icon={<RefreshCw size={16} className={refreshing ? "spin-icon" : ""} />}
               onClick={handleRefresh}
@@ -346,9 +334,9 @@ export default function BackofficeSystem() {
             <Button icon={<Download size={16} />} onClick={handleExportAudit}>
               Export audit
             </Button>
-          </div>
-        </div>
-      </div>
+          </Space>
+        }
+      />
 
       {/* Resource usage cards (demo data) */}
       <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
@@ -594,6 +582,6 @@ export default function BackofficeSystem() {
           />
         </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }

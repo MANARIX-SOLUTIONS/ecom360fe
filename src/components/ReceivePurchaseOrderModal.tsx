@@ -183,7 +183,7 @@ export function ReceivePurchaseOrderModal({
 const chipStyle: CSSProperties = {
   flex: 1,
   height: 32,
-  border: "1px solid #e8e8e8",
+  border: "1px solid var(--color-border)",
   borderRadius: 8,
   background: "#fff",
   fontSize: 12,

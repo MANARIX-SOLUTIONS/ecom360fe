@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, Button, Typography, Tag, message, Modal, Spin, Radio, Space } from "antd";
-import { ArrowLeft, Star, Check, X as XIcon, Zap } from "lucide-react";
+import { Star, Check, X as XIcon, Zap } from "lucide-react";
 import { t } from "@/i18n";
+import { PageHeader, PageShell } from "@/components/ui";
 import {
   getSubscription,
   listPlans,
@@ -330,20 +331,33 @@ export default function SettingsSubscription() {
 
   if (loading) {
     return (
-      <div className={`${styles.settingsPage} pageWrapper`}>
+      <PageShell className={`${styles.settingsPage} ${styles.settingsPagePlans}`}>
         <Spin size="large" style={{ display: "block", margin: "48px auto" }} />
-      </div>
+      </PageShell>
     );
   }
 
   const displayPlans = plans.map(planToDisplay);
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`} style={{ maxWidth: 900 }}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
+    <PageShell className={`${styles.settingsPage} ${styles.settingsPagePlans}`}>
+      <PageHeader
+        title={t.settings.subscription}
+        subtitle={t.settings.subscriptionPageSubtitle}
+        onBack={() => navigate("/settings")}
+        meta={
+          pendingCheckoutId && !confirmingCheckout ? (
+            <div>
+              <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                {t.settings.planPayPending}
+              </Typography.Text>
+              <Button size="small" onClick={() => pollCheckout(pendingCheckoutId)}>
+                {t.settings.planPayRecheck}
+              </Button>
+            </div>
+          ) : null
+        }
+      />
 
       {/* Expired / no subscription banner */}
       {isExpired && (
@@ -363,25 +377,6 @@ export default function SettingsSubscription() {
           </Typography.Text>
         </Card>
       )}
-
-      <header className={styles.settingsPageHeader}>
-        <Typography.Title level={4} className={styles.settingsPageTitle}>
-          {t.settings.subscription}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          {t.settings.subscriptionPageSubtitle}
-        </Typography.Text>
-        {pendingCheckoutId && !confirmingCheckout && (
-          <div style={{ marginTop: 12 }}>
-            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
-              {t.settings.planPayPending}
-            </Typography.Text>
-            <Button size="small" onClick={() => pollCheckout(pendingCheckoutId)}>
-              {t.settings.planPayRecheck}
-            </Button>
-          </div>
-        )}
-      </header>
 
       {/* Usage summary */}
       {usage &&
@@ -720,6 +715,6 @@ export default function SettingsSubscription() {
             )}
           </div>
         )}
-    </div>
+    </PageShell>
   );
 }

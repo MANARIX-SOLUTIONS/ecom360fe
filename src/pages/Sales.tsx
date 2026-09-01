@@ -7,16 +7,16 @@ import {
   Select,
   DatePicker,
   Space,
-  Typography,
   Tag,
   Modal,
   message,
   Skeleton,
 } from "antd";
-import { FileDown, Ban, Pencil, ListOrdered, Banknote } from "lucide-react";
+import { FileDown, Ban, Pencil, ListOrdered, Banknote, Search } from "lucide-react";
 import type { SalePaymentStatus, SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { RecordSalePaymentModal } from "@/components/RecordSalePaymentModal";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
@@ -85,6 +85,7 @@ export default function Sales() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [voidingId, setVoidingId] = useState<string | null>(null);
 
   // Filtre boutique synchronisé avec la boutique active (une seule source de vérité)
@@ -107,7 +108,10 @@ export default function Sales() {
   const fetchSales = useCallback(
     async (isCancelled?: () => boolean) => {
       if (!localStorage.getItem("ecom360_access_token")) {
-        if (!isCancelled?.()) setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+          setHasLoaded(true);
+        }
         return;
       }
       if (!isCancelled?.()) setLoading(true);
@@ -125,11 +129,13 @@ export default function Sales() {
         if (isCancelled?.()) return;
         setSales(res.content ?? []);
         setTotal(res.totalElements ?? 0);
+        if (!isCancelled?.()) setHasLoaded(true);
       } catch (e) {
         if (isCancelled?.()) return;
         message.error(e instanceof Error ? e.message : t.sales.msgLoadError);
         setSales([]);
         setTotal(0);
+        setHasLoaded(true);
       } finally {
         if (!isCancelled?.()) setLoading(false);
       }
@@ -216,87 +222,90 @@ export default function Sales() {
     setPage(0);
   }, []);
 
-  if (loading && sales.length === 0) {
+  const headerActions = (
+    <Button icon={<FileDown size={16} />} onClick={exportCsv} disabled={sales.length === 0}>
+      {t.sales.exportCsv}
+    </Button>
+  );
+
+  const filterBar = (
+    <div className={styles.toolbar}>
+      <Space wrap size="middle">
+        <Select
+          placeholder={t.sales.filterByStore}
+          value={storeFilter}
+          onChange={(v) => {
+            setStoreFilter(v ?? undefined);
+            setPage(0);
+          }}
+          allowClear
+          style={{ width: 180 }}
+          options={stores.map((s) => ({ value: s.id, label: s.name }))}
+        />
+        <Select
+          placeholder={t.sales.filterByStatus}
+          value={statusFilter}
+          onChange={(v) => {
+            setStatusFilter(v ?? undefined);
+            setPage(0);
+          }}
+          allowClear
+          style={{ width: 140 }}
+          options={[
+            { value: "completed", label: t.sales.statusCompleted },
+            { value: "voided", label: t.sales.statusVoided },
+          ]}
+        />
+        <Select
+          placeholder={t.sales.filterByPaymentStatus}
+          value={paymentStatusFilter}
+          onChange={(v) => {
+            setPaymentStatusFilter((v as SalePaymentStatus | undefined) ?? undefined);
+            setPage(0);
+          }}
+          allowClear
+          style={{ width: 150 }}
+          options={[
+            { value: "paid", label: t.sales.paymentStatusPaid },
+            { value: "partial", label: t.sales.paymentStatusPartial },
+            { value: "unpaid", label: t.sales.paymentStatusUnpaid },
+          ]}
+        />
+        <DatePicker.RangePicker
+          value={dateRange ?? undefined}
+          onChange={(range) => {
+            setDateRange(range as [Dayjs | null, Dayjs | null] | null);
+            setPage(0);
+          }}
+          format="DD/MM/YYYY"
+        />
+        <Button onClick={resetFilters}>{t.sales.resetFilters}</Button>
+      </Space>
+    </div>
+  );
+
+  const isCatalogEmpty =
+    sales.length === 0 && !statusFilter && !paymentStatusFilter && !dateRange;
+
+  if (!hasLoaded && loading) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 120, height: 32 }} />
-          <Skeleton.Button active style={{ width: 200, height: 44 }} />
-        </div>
+      <PageShell className={styles.page}>
+        <PageHeader title={t.sales.title} actions={headerActions} />
+        {filterBar}
         <Card variant="borderless" className={styles.card}>
           <Skeleton active paragraph={{ rows: 8 }} />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
-          {t.sales.title}
-        </Typography.Title>
-      </header>
-
-      <div className={styles.toolbar}>
-        <Space wrap size="middle">
-          <Select
-            placeholder={t.sales.filterByStore}
-            value={storeFilter}
-            onChange={(v) => {
-              setStoreFilter(v ?? undefined);
-              setPage(0);
-            }}
-            allowClear
-            style={{ width: 180 }}
-            options={stores.map((s) => ({ value: s.id, label: s.name }))}
-          />
-          <Select
-            placeholder={t.sales.filterByStatus}
-            value={statusFilter}
-            onChange={(v) => {
-              setStatusFilter(v ?? undefined);
-              setPage(0);
-            }}
-            allowClear
-            style={{ width: 140 }}
-            options={[
-              { value: "completed", label: t.sales.statusCompleted },
-              { value: "voided", label: t.sales.statusVoided },
-            ]}
-          />
-          <Select
-            placeholder={t.sales.filterByPaymentStatus}
-            value={paymentStatusFilter}
-            onChange={(v) => {
-              setPaymentStatusFilter((v as SalePaymentStatus | undefined) ?? undefined);
-              setPage(0);
-            }}
-            allowClear
-            style={{ width: 150 }}
-            options={[
-              { value: "paid", label: t.sales.paymentStatusPaid },
-              { value: "partial", label: t.sales.paymentStatusPartial },
-              { value: "unpaid", label: t.sales.paymentStatusUnpaid },
-            ]}
-          />
-          <DatePicker.RangePicker
-            value={dateRange ?? undefined}
-            onChange={(range) => {
-              setDateRange(range as [Dayjs | null, Dayjs | null] | null);
-              setPage(0);
-            }}
-            format="DD/MM/YYYY"
-          />
-          <Button onClick={resetFilters}>{t.sales.resetFilters}</Button>
-        </Space>
-        <Button icon={<FileDown size={16} />} onClick={exportCsv} disabled={sales.length === 0}>
-          {t.sales.exportCsv}
-        </Button>
-      </div>
+    <PageShell className={styles.page}>
+      <PageHeader title={t.sales.title} actions={headerActions} />
+      {filterBar}
 
       <Card variant="borderless" className={styles.card}>
-        {sales.length === 0 ? (
+        {isCatalogEmpty ? (
           <EmptyState
             icon={ListOrdered}
             title={t.sales.emptyTitle}
@@ -312,6 +321,8 @@ export default function Sales() {
               </Button>
             }
           />
+        ) : sales.length === 0 ? (
+          <EmptyState compact icon={Search} title={t.sales.emptySearch} />
         ) : (
           <div className="tableResponsive">
             <Table
@@ -326,7 +337,7 @@ export default function Sales() {
                 total,
                 showSizeChanger: true,
                 pageSizeOptions: ["10", "20", "50"],
-                showTotal: (t) => `${t} vente${t > 1 ? "s" : ""}`,
+                showTotal: (n) => t.sales.showTotal.replace("{count}", String(n)),
                 onChange: (p, s) => {
                   setPage((p ?? 1) - 1);
                   setPageSize(s ?? 20);
@@ -483,6 +494,6 @@ export default function Sales() {
         onClose={() => setPaymentSale(null)}
         onRecorded={() => void fetchSales()}
       />
-    </div>
+    </PageShell>
   );
 }

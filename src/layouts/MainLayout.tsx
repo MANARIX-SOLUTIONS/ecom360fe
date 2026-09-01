@@ -113,6 +113,21 @@ const navConfig = [
     icon: <Settings size={20} />,
     label: "Paramètres",
   },
+] as const;
+
+const NAV_GROUPS: { key: string; label: string; children: readonly string[] }[] = [
+  { key: "sale", label: t.nav.groupSale, children: ["/pos", "/sales"] },
+  {
+    key: "stock",
+    label: t.nav.groupStock,
+    children: ["/products", "/suppliers", "/purchase-orders", "/livreurs"],
+  },
+  {
+    key: "pilotage",
+    label: t.nav.groupPilotage,
+    children: ["/dashboard", "/vue-globale", "/reports", "/expenses", "/clients"],
+  },
+  { key: "settings", label: t.nav.groupSettings, children: ["/settings"] },
 ];
 
 /** Highlight bottom nav « Plus » when user is on these sections. */
@@ -253,19 +268,47 @@ export default function MainLayout() {
   }, [notifications, markRead, navigate]);
 
   const navItems = useMemo(() => {
-    const items = navConfig
-      .filter((item) => {
-        const backendCan = canAccessBackend(item.permission);
-        const planAllows = canAccessPlan(item.permission, backendCan);
-        return backendCan && planAllows;
-      })
-      .map(({ key, icon, label }) => ({ key, icon, label }));
+    const allowed = new Map(
+      navConfig
+        .filter((item) => {
+          const backendCan = canAccessBackend(item.permission);
+          return backendCan && canAccessPlan(item.permission, backendCan);
+        })
+        .map((item) => [item.key, { key: item.key, icon: item.icon, label: item.label }])
+    );
+
+    const items = NAV_GROUPS.flatMap((group) => {
+      const children = group.children
+        .map((k) => allowed.get(k))
+        .filter((child): child is NonNullable<typeof child> => Boolean(child));
+      if (children.length === 0) return [];
+      return [
+        {
+          type: "group" as const,
+          key: group.key,
+          label: group.label,
+          children,
+        },
+      ];
+    });
+
     if (isSuperAdmin) {
-      items.push({
+      const backoffice = {
         key: "/backoffice",
         icon: <Shield size={20} />,
         label: t.backoffice.title,
-      });
+      };
+      const settingsGroup = items.find((item) => item.key === "settings");
+      if (settingsGroup) {
+        settingsGroup.children.push(backoffice);
+      } else {
+        items.push({
+          type: "group" as const,
+          key: "settings",
+          label: t.nav.groupSettings,
+          children: [backoffice],
+        });
+      }
     }
     return items;
   }, [canAccessBackend, canAccessPlan, isSuperAdmin]);
@@ -380,20 +423,20 @@ export default function MainLayout() {
           type="button"
           className={location.pathname === "/dashboard" ? styles.navActive : ""}
           onClick={() => navigate("/dashboard")}
-          aria-label="Dashboard"
+          aria-label={t.nav.dashboard}
         >
           <LayoutDashboard size={22} />
-          <span>Dashboard</span>
+          <span>{t.nav.dashboard}</span>
           {location.pathname === "/dashboard" && <span className={styles.navDot} />}
         </button>
         <button
           type="button"
           className={location.pathname === "/products" ? styles.navActive : ""}
           onClick={() => navigate("/products")}
-          aria-label="Produits"
+          aria-label={t.nav.products}
         >
           <Package size={22} />
-          <span>Produits</span>
+          <span>{t.nav.products}</span>
           {location.pathname === "/products" && <span className={styles.navDot} />}
         </button>
         {/* Center POS FAB */}
@@ -401,7 +444,7 @@ export default function MainLayout() {
           type="button"
           className={`${styles.navFab} ${location.pathname === "/pos" ? styles.navFabActive : ""}`}
           onClick={() => navigate("/pos")}
-          aria-label="POS"
+          aria-label={t.nav.pos}
         >
           <ShoppingCart size={24} />
         </button>
@@ -410,10 +453,10 @@ export default function MainLayout() {
             type="button"
             className={location.pathname === "/reports" ? styles.navActive : ""}
             onClick={() => navigate("/reports")}
-            aria-label={t.reports.title}
+            aria-label={t.nav.reports}
           >
             <TrendingUp size={22} />
-            <span>{t.reports.title}</span>
+            <span>{t.nav.reports}</span>
             {location.pathname === "/reports" && <span className={styles.navDot} />}
           </button>
         )}
@@ -421,10 +464,10 @@ export default function MainLayout() {
           type="button"
           className={moreNavActive ? styles.navActive : ""}
           onClick={() => navigate("/more")}
-          aria-label="Plus"
+          aria-label={t.nav.more}
         >
           <MoreHorizontal size={22} />
-          <span>Plus</span>
+          <span>{t.nav.more}</span>
           {moreNavActive && <span className={styles.navDot} />}
         </button>
       </nav>

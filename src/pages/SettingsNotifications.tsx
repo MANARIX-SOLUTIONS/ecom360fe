@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography, Switch, Button, Table, message, Spin } from "antd";
-import { ArrowLeft, Bell, CheckCheck, Package, Wallet, CreditCard, Info } from "lucide-react";
+import { Bell, CheckCheck, Package, Wallet, CreditCard, Info } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader, PageShell } from "@/components/ui";
 import { t } from "@/i18n";
 import {
   getNotificationPreferences,
@@ -116,20 +117,12 @@ export default function SettingsNotifications() {
   };
 
   return (
-    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
-      <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
-        <ArrowLeft size={18} />
-        {t.common.back}
-      </button>
-
-      <header className={styles.settingsPageHeader}>
-        <Typography.Title level={4} className={styles.settingsPageTitle}>
-          {t.settings.notifications}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
-          {t.settings.notificationsDesc}
-        </Typography.Text>
-      </header>
+    <PageShell className={`${styles.settingsPage} ${styles.settingsPageWide}`}>
+      <PageHeader
+        title={t.settings.notifications}
+        subtitle={t.settings.notificationsDesc}
+        onBack={() => navigate("/settings")}
+      />
 
       <Card variant="borderless" className={styles.settingsCard}>
         <Typography.Text
@@ -165,7 +158,7 @@ export default function SettingsNotifications() {
                         width: 40,
                         height: 40,
                         borderRadius: 10,
-                        background: "rgba(31, 58, 95, 0.08)",
+                        background: "var(--v2-primary-soft)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -276,6 +269,6 @@ export default function SettingsNotifications() {
           </div>
         )}
       </Card>
-    </div>
+    </PageShell>
   );
 }
