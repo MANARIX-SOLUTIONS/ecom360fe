@@ -12,6 +12,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import MainLayout from "./layouts/MainLayout";
 import { BusinessProfileProvider } from "./contexts/BusinessProfileContext";
+import { BusinessThemeProvider } from "./contexts/BusinessThemeContext";
 import NotFound from "./pages/NotFound";
 
 const BackofficeLayout = lazy(() => import("./layouts/BackofficeLayout"));
@@ -124,7 +125,9 @@ export default function App() {
           element={
             <ProtectedRoute>
               <BusinessProfileProvider>
-                <MainLayout />
+                <BusinessThemeProvider>
+                  <MainLayout />
+                </BusinessThemeProvider>
               </BusinessProfileProvider>
             </ProtectedRoute>
           }

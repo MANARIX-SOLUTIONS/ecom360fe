@@ -26,6 +26,7 @@ import { ROLES } from "@/constants/roles";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import { SettingsThemeCard } from "./SettingsThemeCard";
 import styles from "./Settings.module.css";
 
 export default function SettingsProfile() {
@@ -44,6 +45,8 @@ export default function SettingsProfile() {
     phone?: string;
     address?: string;
     logoUrl?: string | null;
+    themePrimaryColor?: string | null;
+    themeAccentColor?: string | null;
   } | null>(null);
 
   const canEdit = role === ROLES.PROPRIETAIRE || isSuperAdmin;
@@ -57,6 +60,8 @@ export default function SettingsProfile() {
           phone: data.phone ?? undefined,
           address: data.address ?? undefined,
           logoUrl: data.logoUrl ?? null,
+          themePrimaryColor: data.themePrimaryColor ?? null,
+          themeAccentColor: data.themeAccentColor ?? null,
         });
         setLogoDraft(data.logoUrl?.trim() ?? "");
         form.setFieldsValue({
@@ -93,6 +98,8 @@ export default function SettingsProfile() {
               phone: values.phone,
               address: values.address,
               logoUrl: prev.logoUrl,
+              themePrimaryColor: prev.themePrimaryColor,
+              themeAccentColor: prev.themeAccentColor,
             }
           : null
       );
@@ -326,6 +333,19 @@ export default function SettingsProfile() {
           </Space>
         ) : null}
       </Card>
+
+      <SettingsThemeCard
+        canEdit={canEdit}
+        canCustomBranding={canCustomBranding}
+        savedPrimary={profile?.themePrimaryColor ?? null}
+        savedAccent={profile?.themeAccentColor ?? null}
+        onSaved={(primary, accent) => {
+          setProfile((prev) =>
+            prev ? { ...prev, themePrimaryColor: primary, themeAccentColor: accent } : prev
+          );
+          void refreshBusinessProfile();
+        }}
+      />
     </div>
   );
 }

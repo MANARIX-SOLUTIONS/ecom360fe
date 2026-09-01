@@ -11,6 +11,8 @@ export type BusinessProfile = {
   phone?: string;
   address?: string;
   logoUrl?: string | null;
+  themePrimaryColor?: string | null;
+  themeAccentColor?: string | null;
   /** ISO-8601 — présent lorsque l’API expose la date de création (nouvelles entreprises / guide). */
   createdAt?: string;
 };
@@ -37,4 +39,11 @@ export async function uploadBusinessLogoFile(file: File): Promise<BusinessProfil
   const formData = new FormData();
   formData.append("file", file);
   return api.post<BusinessProfile>("/business/me/logo/upload", formData);
+}
+
+export async function updateBusinessTheme(data: {
+  themePrimaryColor: string | null;
+  themeAccentColor: string | null;
+}): Promise<BusinessProfile> {
+  return api.patch<BusinessProfile>("/business/me/theme", data);
 }
