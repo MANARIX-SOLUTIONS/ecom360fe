@@ -661,7 +661,7 @@ export default function Products() {
           resetImageState();
         }}
         okText={t.products.save}
-        width={440}
+        width="min(440px, calc(100vw - 32px))"
         destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>

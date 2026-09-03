@@ -490,11 +490,11 @@ export default function BackofficeSystem() {
         }
         style={{ marginTop: 16 }}
         extra={
-          <Space>
+          <Space wrap>
             <Select
               placeholder="Filtrer par type"
               allowClear
-              style={{ width: 140 }}
+              style={{ minWidth: 140, maxWidth: "100%" }}
               value={auditEntityFilter}
               onChange={setAuditEntityFilter}
               options={ENTITY_TYPES.map((t) => ({ label: t, value: t }))}
@@ -508,84 +508,91 @@ export default function BackofficeSystem() {
           </Space>
         }
       >
-        <Table
-          size="small"
-          loading={auditLoading}
-          dataSource={auditLogs}
-          rowKey="id"
-          pagination={{
-            current: auditPage + 1,
-            pageSize: auditSize,
-            total: auditTotal,
-            showSizeChanger: false,
-            showTotal: (t) => `${t} entrées`,
-            onChange: (p) => setAuditPage(p - 1),
-          }}
-          columns={[
-            {
-              title: "Date",
-              dataIndex: "createdAt",
-              key: "createdAt",
-              width: 180,
-              render: (v: string) =>
-                v
-                  ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" })
-                  : "—",
-            },
-            {
-              title: "Action",
-              dataIndex: "action",
-              key: "action",
-              width: 120,
-              render: (v: string) => (
-                <Tag color={v === "DELETE" ? "error" : v === "CREATE" ? "success" : "default"}>
-                  {formatAuditAction(v)}
-                </Tag>
-              ),
-            },
-            {
-              title: "Type",
-              dataIndex: "entityType",
-              key: "entityType",
-              width: 100,
-            },
-            {
-              title: "Entité",
-              dataIndex: "entityId",
-              key: "entityId",
-              ellipsis: true,
-              render: (v: string | null) =>
-                v ? (
-                  <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {v.slice(0, 8)}…
-                  </Typography.Text>
-                ) : (
-                  "—"
+        <div className="tableResponsive">
+          <Table
+            className="dataTable"
+            size="small"
+            loading={auditLoading}
+            dataSource={auditLogs}
+            rowKey="id"
+            scroll={{ x: "max-content" }}
+            pagination={{
+              current: auditPage + 1,
+              pageSize: auditSize,
+              total: auditTotal,
+              showSizeChanger: false,
+              showTotal: (totalCount) => `${totalCount} entrées`,
+              onChange: (p) => setAuditPage(p - 1),
+            }}
+            columns={[
+              {
+                title: "Date",
+                dataIndex: "createdAt",
+                key: "createdAt",
+                width: 180,
+                render: (v: string) =>
+                  v
+                    ? new Date(v).toLocaleString("fr-FR", {
+                        dateStyle: "short",
+                        timeStyle: "medium",
+                      })
+                    : "—",
+              },
+              {
+                title: "Action",
+                dataIndex: "action",
+                key: "action",
+                width: 120,
+                render: (v: string) => (
+                  <Tag color={v === "DELETE" ? "error" : v === "CREATE" ? "success" : "default"}>
+                    {formatAuditAction(v)}
+                  </Tag>
                 ),
-            },
-            {
-              title: "Business",
-              dataIndex: "businessId",
-              key: "businessId",
-              ellipsis: true,
-              render: (v: string | null) =>
-                v ? (
-                  <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
-                    {v.slice(0, 8)}…
-                  </Typography.Text>
-                ) : (
-                  "—"
-                ),
-            },
-            {
-              title: "IP",
-              dataIndex: "ipAddress",
-              key: "ipAddress",
-              width: 110,
-              render: (v: string | null) => v ?? "—",
-            },
-          ]}
-        />
+              },
+              {
+                title: "Type",
+                dataIndex: "entityType",
+                key: "entityType",
+                width: 100,
+              },
+              {
+                title: "Entité",
+                dataIndex: "entityId",
+                key: "entityId",
+                ellipsis: true,
+                render: (v: string | null) =>
+                  v ? (
+                    <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
+                      {v.slice(0, 8)}…
+                    </Typography.Text>
+                  ) : (
+                    "—"
+                  ),
+              },
+              {
+                title: "Business",
+                dataIndex: "businessId",
+                key: "businessId",
+                ellipsis: true,
+                render: (v: string | null) =>
+                  v ? (
+                    <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 11 }}>
+                      {v.slice(0, 8)}…
+                    </Typography.Text>
+                  ) : (
+                    "—"
+                  ),
+              },
+              {
+                title: "IP",
+                dataIndex: "ipAddress",
+                key: "ipAddress",
+                width: 110,
+                render: (v: string | null) => v ?? "—",
+              },
+            ]}
+          />
+        </div>
       </Card>
     </div>
   );

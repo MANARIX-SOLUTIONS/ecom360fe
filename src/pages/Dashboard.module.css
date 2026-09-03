@@ -387,7 +387,7 @@
 .card {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.2s ease;
 }
 
@@ -599,28 +599,40 @@
   }
 
   .quickActions {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
 
   .quickCard {
-    padding: 16px 8px;
+    padding: 16px 12px;
     gap: 8px;
   }
 
   .quickCardIcon {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
   }
 
   .quickCardLabel {
-    font-size: 11px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 480px) {
   .header {
     margin-bottom: 20px;
+  }
+
+  .quickActions {
+    gap: 8px;
+  }
+
+  .quickCard {
+    padding: 14px 10px;
+  }
+
+  .quickCardLabel {
+    font-size: 12px;
   }
 
   .statCard {

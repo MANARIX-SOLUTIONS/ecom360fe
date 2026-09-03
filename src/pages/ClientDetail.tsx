@@ -12,13 +12,16 @@ import {
   deleteClient,
   recordClientPayment,
   listClientPayments,
+  listSales,
   ApiError,
 } from "@/api";
+import type { ClientResponse, SaleResponse } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
-import type { ClientResponse } from "@/api";
+import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
+import { isWalkInClientName } from "@/utils/clientWalkIn";
 
 function getInitials(name: string) {
   return name
@@ -37,6 +40,7 @@ export default function ClientDetail() {
   const { matrixCan } = useMatrixCan();
   const [client, setClient] = useState<ClientResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
+  const [outstandingSales, setOutstandingSales] = useState<SaleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -84,13 +88,26 @@ export default function ClientDetail() {
     }
   }, [id]);
 
+  const fetchOutstandingSales = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await listSales({ clientId: id, status: "completed", size: 50 });
+      setOutstandingSales((res.content ?? []).filter((s) => (s.remainingAmount ?? 0) > 0));
+    } catch {
+      setOutstandingSales([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchClient();
   }, [fetchClient]);
 
   useEffect(() => {
-    if (client) fetchPayments();
-  }, [client, fetchPayments]);
+    if (client) {
+      fetchPayments();
+      fetchOutstandingSales();
+    }
+  }, [client, fetchPayments, fetchOutstandingSales]);
 
   if (!id) return <Navigate to="/clients" replace />;
 
@@ -117,12 +134,12 @@ export default function ClientDetail() {
     );
   if (!client) return <Navigate to="/clients" replace />;
 
-  const balanceColor =
-    client.creditBalance > 0
-      ? "var(--color-success)"
-      : client.creditBalance < 0
-        ? "var(--color-danger)"
-        : "var(--color-text)";
+  const balanceColor = creditBalanceCssVar(client.creditBalance);
+  const canPay = canRecordClientPayment({
+    canClientCredits,
+    balance: client.creditBalance,
+    isWalkIn: isWalkInClientName(client.name),
+  });
 
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
@@ -157,8 +174,20 @@ export default function ClientDetail() {
       message.error(t.clients.paymentNeedsActiveStore);
       return;
     }
+    if (isWalkInClientName(client.name)) {
+      message.error(t.clients.walkInNoCreditPayment);
+      return;
+    }
+    if (client.creditBalance <= 0) {
+      message.error(t.clients.noOutstandingBalance);
+      return;
+    }
     if (paymentAmount <= 0) {
       message.error(t.validation.amountMin);
+      return;
+    }
+    if (paymentAmount > client.creditBalance) {
+      message.error(t.clients.paymentExceedsBalance);
       return;
     }
     try {
@@ -172,6 +201,7 @@ export default function ClientDetail() {
       setPaymentAmount(Math.abs(client.creditBalance));
       fetchClient();
       fetchPayments();
+      fetchOutstandingSales();
     } catch (e) {
       message.error(e instanceof Error ? e.message : t.common.errorGeneric);
     }
@@ -221,13 +251,13 @@ export default function ClientDetail() {
               {client.creditBalance.toLocaleString("fr-FR")} F
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {canClientCredits && matrixCan("CLIENTS_UPDATE", "clients") && (
+          <div className={styles.heroActions}>
+            {canPay && matrixCan("CLIENTS_UPDATE", "clients") && (
               <Button
                 type="primary"
                 icon={<Plus size={18} />}
                 onClick={() => {
-                  setPaymentAmount(Math.abs(client.creditBalance));
+                  setPaymentAmount(client.creditBalance);
                   setPaymentOpen(true);
                 }}
               >
@@ -246,6 +276,57 @@ export default function ClientDetail() {
             )}
           </div>
         </div>
+      </Card>
+
+      <Card
+        title={t.clients.outstandingSales}
+        variant="borderless"
+        className={`${styles.card} contentCard`}
+      >
+        {outstandingSales.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Wallet}
+            title={t.clients.noOutstandingSales}
+            description={t.clients.outstandingSalesDesc}
+          />
+        ) : (
+          <div className="tableResponsive">
+            <Table
+              dataSource={outstandingSales}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              className="dataTable"
+              scroll={{ x: "max-content" }}
+              onRow={(record) => ({
+                style: { cursor: "pointer" },
+                onClick: () => navigate("/receipt", { state: { saleId: record.id } }),
+              })}
+              columns={[
+                { title: t.sales.receiptNumber, dataIndex: "receiptNumber" },
+                {
+                  title: t.common.total,
+                  dataIndex: "total",
+                  render: (v: number) => `${v.toLocaleString("fr-FR")} F`,
+                },
+                {
+                  title: t.sales.remainingDue,
+                  dataIndex: "remainingAmount",
+                  render: (v: number) => (
+                    <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>
+                  ),
+                },
+                {
+                  title: t.sales.dueDate,
+                  dataIndex: "dueDate",
+                  render: (v: string | null) =>
+                    v ? new Date(`${v}T00:00:00`).toLocaleDateString("fr-FR") : "—",
+                },
+              ]}
+            />
+          </div>
+        )}
       </Card>
 
       <Card
@@ -268,6 +349,7 @@ export default function ClientDetail() {
               pagination={false}
               size="small"
               className="dataTable"
+              scroll={{ x: "max-content" }}
               columns={[
                 { title: t.common.date, dataIndex: "date" },
                 {
@@ -345,6 +427,7 @@ export default function ClientDetail() {
             <Form.Item label={t.expenses.amount}>
               <CurrencyInput
                 min={1}
+                max={client.creditBalance}
                 value={paymentAmount}
                 onChange={(v) => setPaymentAmount(Number(v) || 0)}
                 style={{ width: "100%" }}

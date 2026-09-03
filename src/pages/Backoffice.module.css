@@ -94,7 +94,7 @@
 .card {
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.2s;
 }
 
@@ -345,7 +345,7 @@
 .tableCard {
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .tableCard :global(.ant-card-body) {

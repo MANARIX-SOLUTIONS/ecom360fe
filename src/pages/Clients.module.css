@@ -22,8 +22,26 @@
 .card {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  /* Keep tables scrollable on narrow viewports */
+  overflow: visible;
   transition: box-shadow 0.2s ease;
+}
+
+/* Purchase order create modal — line editors */
+.poLineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 120px auto;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: start;
+  width: 100%;
+}
+
+.poLineProduct,
+.poLineQty,
+.poLineCost {
+  margin-bottom: 0 !important;
+  min-width: 0;
 }
 
 .card:hover {
@@ -187,14 +205,43 @@
   line-height: 1.1;
 }
 
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .poLineRow {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .poLineProduct {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 480px) {
   .toolbar {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .toolbar > :global(.ant-select),
+  .toolbar > :global(.ant-btn) {
+    width: 100%;
+  }
+
   .toolbarSearch {
     max-width: none;
+  }
+
+  .poLineRow {
+    grid-template-columns: 1fr;
+  }
+
+  .poLineProduct {
+    grid-column: auto;
   }
 
   .heroInner {
@@ -207,6 +254,14 @@
     width: 100%;
     padding-top: 12px;
     border-top: 1px solid #f0f0f0;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions :global(.ant-btn) {
+    flex: 1 1 auto;
   }
 }
 

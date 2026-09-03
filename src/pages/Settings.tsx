@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Bell,
   BadgeCheck,
+  ShoppingBag,
+  KeyRound,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +49,23 @@ const organisationConfig: SettingItem[] = [
     desc: t.settings.subscriptionDesc,
     path: "/settings/subscription",
     permission: "settings:subscription",
+  },
+];
+
+const integrationsConfig: SettingItem[] = [
+  {
+    icon: ShoppingBag,
+    title: t.settings.commerceTitle,
+    desc: t.settings.commerceDesc,
+    path: "/settings/commerce",
+    permission: "settings:commerce",
+  },
+  {
+    icon: KeyRound,
+    title: t.settings.apiTitle,
+    desc: t.settings.apiDesc,
+    path: "/settings/api",
+    permission: "settings:api",
   },
 ];
 
@@ -90,6 +109,16 @@ export default function Settings() {
   const organisationItems = useMemo(
     () =>
       organisationConfig.filter((item) => {
+        const backendCan = canAccessBackend(
+          item.permission as Parameters<typeof canAccessBackend>[0]
+        );
+        return backendCan && canAccessPlan(item.permission, backendCan);
+      }),
+    [canAccessBackend, canAccessPlan]
+  );
+  const integrationsItems = useMemo(
+    () =>
+      integrationsConfig.filter((item) => {
         const backendCan = canAccessBackend(
           item.permission as Parameters<typeof canAccessBackend>[0]
         );
@@ -151,6 +180,24 @@ export default function Settings() {
                 <div key={item.path}>
                   {renderItem(item)}
                   {i < organisationItems.length - 1 && <div className={styles.itemDivider} />}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {integrationsItems.length > 0 && (
+        <section className={styles.section}>
+          <Typography.Text type="secondary" className={styles.sectionTitle}>
+            {t.settings.sectionIntegrations}
+          </Typography.Text>
+          <Card variant="borderless" className={styles.card}>
+            <div className={styles.itemList}>
+              {integrationsItems.map((item, i) => (
+                <div key={item.path}>
+                  {renderItem(item)}
+                  {i < integrationsItems.length - 1 && <div className={styles.itemDivider} />}
                 </div>
               ))}
             </div>
