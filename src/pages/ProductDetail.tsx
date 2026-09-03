@@ -11,6 +11,7 @@ import {
   Input,
   InputNumber,
   Select,
+  TreeSelect,
   message,
   Skeleton,
   Upload,
@@ -27,6 +28,8 @@ import {
   Upload as UploadIcon,
 } from "lucide-react";
 import { t } from "@/i18n";
+import type { CategoryResponse } from "@/api/categories";
+import { getCategoryTreeSelectOptions, getCategoryLabel } from "@/api/categories";
 import styles from "./Products.module.css";
 import {
   getProduct,
@@ -70,7 +73,7 @@ export default function ProductDetail() {
   const { activeStore, stores } = useStore();
   const { matrixCan } = useMatrixCan();
   const [product, setProduct] = useState<ProductResponse | null>(null);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [stockLevels, setStockLevels] = useState<StockLevelResponse[]>([]);
   const [movements, setMovements] = useState<StockMovementResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +121,7 @@ export default function ProductDetail() {
         listCategoriesWithDefaults(),
       ]);
       setProduct(productRes);
-      setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
+      setCategories(categoriesRes);
       editForm.setFieldsValue({
         name: productRes.name,
         categoryId: productRes.categoryId || undefined,
@@ -218,8 +221,9 @@ export default function ProductDetail() {
     );
   if (!product) return <Navigate to="/products" replace />;
 
-  const categoryName =
-    product.categoryId && categories.find((c) => c.id === product.categoryId)?.name;
+  const categoryName = product.categoryId
+    ? getCategoryLabel(categories, product.categoryId)
+    : undefined;
   const activeStock = stockLevels.find((s) => s.storeId === activeStore?.id);
   const productImageSrc = sanitizeExternalImageUrl(product.imageUrl);
 
@@ -634,10 +638,13 @@ export default function ProductDetail() {
             </>
           </Form.Item>
           <Form.Item name="categoryId" label={t.products.category}>
-            <Select
+            <TreeSelect
               placeholder={t.products.category}
               allowClear
-              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              showSearch
+              treeDefaultExpandAll
+              treeNodeFilterProp="title"
+              treeData={getCategoryTreeSelectOptions(categories)}
             />
           </Form.Item>
           <Form.Item

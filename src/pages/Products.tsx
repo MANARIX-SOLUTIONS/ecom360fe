@@ -10,6 +10,7 @@ import {
   Form,
   InputNumber,
   Select,
+  TreeSelect,
   Typography,
   Skeleton,
   message,
@@ -39,6 +40,10 @@ import {
   initStock,
   getSubscriptionUsage,
   getStockForProducts,
+  buildCategoryTree,
+  getCategoryTreeSelectOptions,
+  getCategoryLabel,
+  hasChildCategories,
 } from "@/api";
 import type { StockLevelResponse, CategoryResponse } from "@/api";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
@@ -178,7 +183,7 @@ export default function Products() {
               id: p.id,
               storeId: p.storeId,
               name: p.name,
-              category: cat?.name || "-",
+              category: getCategoryLabel(categoriesRes, p.categoryId),
               categoryColor: cat?.color || "default",
               salePrice: p.salePrice,
               costPrice: p.costPrice,
@@ -235,9 +240,10 @@ export default function Products() {
     setCategoriesDrawerOpen(true);
   };
 
-  const openAddCategory = () => {
+  const openAddCategory = (parentId: string | null = null) => {
     setEditingCategory(null);
     categoryForm.resetFields();
+    categoryForm.setFieldsValue({ parentId: parentId ?? undefined, sortOrder: 0, color: "default" });
     setCategoryModalOpen(true);
   };
 
@@ -247,6 +253,7 @@ export default function Products() {
       name: c.name,
       color: c.color || "default",
       sortOrder: c.sortOrder ?? 0,
+      parentId: c.parentId ?? undefined,
     });
     setCategoryModalOpen(true);
   };
@@ -260,6 +267,7 @@ export default function Products() {
             name: values.name,
             color: values.color,
             sortOrder: values.sortOrder ?? 0,
+            parentId: values.parentId ?? null,
           });
           message.success(t.common.categoryUpdated);
         } else {
@@ -267,6 +275,7 @@ export default function Products() {
             name: values.name,
             color: values.color,
             sortOrder: values.sortOrder ?? 0,
+            parentId: values.parentId ?? null,
           });
           createdId = created.id;
           message.success(t.common.categoryAdded);
@@ -724,15 +733,13 @@ export default function Products() {
             <Input placeholder={t.products.placeholderProductName} />
           </Form.Item>
           <Form.Item name="categoryId" label={t.products.category}>
-            <Select
+            <TreeSelect
               placeholder={t.products.category}
               allowClear
               showSearch
-              optionFilterProp="label"
-              options={categories.map((c) => ({
-                value: c.id,
-                label: c.name,
-              }))}
+              treeDefaultExpandAll
+              treeNodeFilterProp="title"
+              treeData={getCategoryTreeSelectOptions(categories)}
               dropdownRender={(menu) => (
                 <>
                   {menu}
@@ -742,11 +749,7 @@ export default function Products() {
                         type="text"
                         block
                         icon={<Plus size={14} />}
-                        onClick={() => {
-                          setEditingCategory(null);
-                          categoryForm.resetFields();
-                          setCategoryModalOpen(true);
-                        }}
+                        onClick={() => openAddCategory(null)}
                       >
                         {t.products.addCategory}
                       </Button>
@@ -833,7 +836,7 @@ export default function Products() {
         open={categoriesDrawerOpen}
         extra={
           matrixCan("CATEGORIES_CREATE", "products") ? (
-            <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
+            <Button type="primary" icon={<Plus size={16} />} onClick={() => openAddCategory(null)}>
               {t.products.addCategory}
             </Button>
           ) : null
@@ -848,42 +851,87 @@ export default function Products() {
           />
         ) : (
           <Space direction="vertical" style={{ width: "100%" }} size="middle">
-            {categories.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  background: "var(--color-bg-secondary)",
-                  borderRadius: 8,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Tag color={c.color || "default"}>{c.name}</Tag>
+            {buildCategoryTree(categories).map((root) => (
+              <div key={root.id}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 16px",
+                    background: "var(--color-bg-secondary)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Tag color={root.color || "default"}>{root.name}</Tag>
+                  <Space>
+                    {matrixCan("CATEGORIES_CREATE", "products") && (
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<Plus size={14} />}
+                        onClick={() => openAddCategory(root.id)}
+                        aria-label={t.products.addSubCategory}
+                      />
+                    )}
+                    {matrixCan("CATEGORIES_UPDATE", "products") && (
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<Pencil size={14} />}
+                        onClick={() => openEditCategory(root)}
+                        aria-label={t.common.edit}
+                      />
+                    )}
+                    {matrixCan("CATEGORIES_DELETE", "products") && (
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<Trash2 size={14} />}
+                        onClick={() => onCategoryDelete(root)}
+                        aria-label={t.common.delete}
+                      />
+                    )}
+                  </Space>
                 </div>
-                <Space>
-                  {matrixCan("CATEGORIES_UPDATE", "products") && (
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<Pencil size={14} />}
-                      onClick={() => openEditCategory(c)}
-                      aria-label={t.common.edit}
-                    />
-                  )}
-                  {matrixCan("CATEGORIES_DELETE", "products") && (
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<Trash2 size={14} />}
-                      onClick={() => onCategoryDelete(c)}
-                      aria-label={t.common.delete}
-                    />
-                  )}
-                </Space>
+                {root.children.map((child) => (
+                  <div
+                    key={child.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 16px 10px 32px",
+                      marginTop: 4,
+                      background: "var(--color-bg-secondary)",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Tag color={child.color || "default"}>{child.name}</Tag>
+                    <Space>
+                      {matrixCan("CATEGORIES_UPDATE", "products") && (
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<Pencil size={14} />}
+                          onClick={() => openEditCategory(child)}
+                          aria-label={t.common.edit}
+                        />
+                      )}
+                      {matrixCan("CATEGORIES_DELETE", "products") && (
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={14} />}
+                          onClick={() => onCategoryDelete(child)}
+                          aria-label={t.common.delete}
+                        />
+                      )}
+                    </Space>
+                  </div>
+                ))}
               </div>
             ))}
           </Space>
@@ -904,6 +952,18 @@ export default function Products() {
         destroyOnHidden
       >
         <Form form={categoryForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="parentId" label={t.products.parentCategory}>
+            <Select
+              allowClear
+              placeholder={t.products.noParentCategory}
+              disabled={
+                !!editingCategory && hasChildCategories(categories, editingCategory.id)
+              }
+              options={categories
+                .filter((c) => !c.parentId && c.id !== editingCategory?.id)
+                .map((c) => ({ value: c.id, label: c.name }))}
+            />
+          </Form.Item>
           <Form.Item
             name="name"
             label={t.products.categoryName}

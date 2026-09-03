@@ -40,6 +40,12 @@ import {
 } from "@/api";
 import type { SaleResponse } from "@/api";
 import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
+import type { CategoryResponse } from "@/api/categories";
+import {
+  buildCategoryTree,
+  getChildCategories,
+  resolveCategoryFilterIds,
+} from "@/api/categories";
 import { loadPosCart, savePosCart, clearPosCart, type PosCartLine } from "@/utils/posCartStorage";
 
 type CartLine = PosCartLine;
@@ -51,6 +57,7 @@ type ProductForPOS = {
   name: string;
   price: number;
   category: string;
+  categoryId: string | null;
   stock: number;
   minStock: number;
   imageUrl: string | null;
@@ -675,7 +682,8 @@ export default function POS() {
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [category, setCategory] = useState("Tous");
+  const [categoryFilterId, setCategoryFilterId] = useState<string | null>(null);
+  const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
 
   const posBreakpoint = usePosBreakpoint();
   const productPageSize = PRODUCTS_PAGE_SIZE[posBreakpoint];
@@ -690,12 +698,12 @@ export default function POS() {
 
   useEffect(() => {
     setProductVisibleLimit(productPageSize);
-  }, [category, search, productPageSize]);
+  }, [categoryFilterId, search, productPageSize]);
 
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<ProductForPOS[]>([]);
-  const [categories, setCategories] = useState<string[]>(["Tous"]);
+  const [categoryList, setCategoryList] = useState<CategoryResponse[]>([]);
   const [clients, setClients] = useState<ClientForPOS[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -820,7 +828,9 @@ export default function POS() {
   useEffect(() => {
     if (!localStorage.getItem("ecom360_access_token") || !activeStore?.id) {
       setProducts([]);
-      setCategories(["Tous"]);
+      setCategoryList([]);
+      setCategoryFilterId(null);
+      setSelectedRootId(null);
       setClients([]);
       return;
     }
@@ -839,8 +849,7 @@ export default function POS() {
         if (cancelled) return;
 
         const stockList = Array.isArray(stockRes) ? stockRes : stockRes.content;
-        const catNames = catsRes.map((c) => c.name);
-        setCategories(["Tous", ...catNames]);
+        setCategoryList(catsRes);
         let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({
           id: c.id,
           name: c.name,
@@ -881,6 +890,7 @@ export default function POS() {
           name: s.productName,
           price: s.salePrice ?? 0,
           category: (s.categoryId && byCat[s.categoryId]) || "Divers",
+          categoryId: s.categoryId ?? null,
           stock: s.quantity,
           minStock: s.minStock,
           imageUrl: s.imageUrl ?? null,
@@ -914,12 +924,27 @@ export default function POS() {
   }, [handleKeyDown]);
 
   const filteredProducts = useMemo(() => {
+    const allowedCategoryIds = categoryFilterId
+      ? resolveCategoryFilterIds(categoryList, categoryFilterId)
+      : null;
     return products.filter((p) => {
-      const matchCat = category === "Tous" || p.category === category;
+      const matchCat =
+        !allowedCategoryIds ||
+        (p.categoryId != null && allowedCategoryIds.has(p.categoryId));
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [category, search, products]);
+  }, [categoryFilterId, search, products, categoryList]);
+
+  const posCategoryTree = useMemo(
+    () => buildCategoryTree(categoryList),
+    [categoryList]
+  );
+
+  const posSubCategories = useMemo(() => {
+    if (!selectedRootId) return [];
+    return getChildCategories(categoryList, selectedRootId);
+  }, [categoryList, selectedRootId]);
 
   const displayedProducts = useMemo(
     () => filteredProducts.slice(0, productVisibleLimit),
@@ -1341,17 +1366,64 @@ export default function POS() {
             autoFocus
           />
           <div className={styles.categories}>
-            {categories.map((c) => (
+            <Button
+              type={categoryFilterId === null ? "primary" : "default"}
+              onClick={() => {
+                setCategoryFilterId(null);
+                setSelectedRootId(null);
+              }}
+              className={styles.catBtn}
+            >
+              Tous
+            </Button>
+            {posCategoryTree.map((root) => {
+              const hasChildren = root.children.length > 0;
+              const isActive =
+                categoryFilterId === root.id ||
+                (hasChildren && selectedRootId === root.id);
+              return (
+                <Button
+                  key={root.id}
+                  type={isActive ? "primary" : "default"}
+                  onClick={() => {
+                    if (hasChildren) {
+                      setSelectedRootId(root.id);
+                      setCategoryFilterId(root.id);
+                    } else {
+                      setSelectedRootId(null);
+                      setCategoryFilterId(root.id);
+                    }
+                  }}
+                  className={styles.catBtn}
+                >
+                  {root.name}
+                </Button>
+              );
+            })}
+          </div>
+          {posSubCategories.length > 0 && (
+            <div className={styles.categories}>
               <Button
-                key={c}
-                type={category === c ? "primary" : "default"}
-                onClick={() => setCategory(c)}
+                type={
+                  categoryFilterId === selectedRootId ? "primary" : "default"
+                }
+                onClick={() => setCategoryFilterId(selectedRootId)}
                 className={styles.catBtn}
               >
-                {c}
+                Tous
               </Button>
-            ))}
-          </div>
+              {posSubCategories.map((sub) => (
+                <Button
+                  key={sub.id}
+                  type={categoryFilterId === sub.id ? "primary" : "default"}
+                  onClick={() => setCategoryFilterId(sub.id)}
+                  className={styles.catBtn}
+                >
+                  {sub.name}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className={styles.productGridWrap}>
             <div className={styles.productGrid}>
               {displayedProducts.map((p) => {
