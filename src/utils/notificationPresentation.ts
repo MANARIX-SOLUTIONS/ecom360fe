@@ -11,7 +11,11 @@ const NOTIFICATION_PRESENTATION: Record<string, NotificationPresentation> = {
   low_stock: { label: "Alertes stock faible", icon: Package, tone: "warning" },
   payment_received: { label: "Paiements reçus", icon: Wallet, tone: "success" },
   sale: { label: "Ventes", icon: ShoppingCart, tone: "success" },
-  subscription: { label: "Abonnement — rappels d’échéance", icon: CreditCard, tone: "warning" },
+  subscription: {
+    label: "Abonnement — échéances et cycle de vie",
+    icon: CreditCard,
+    tone: "warning",
+  },
   billing: { label: "Facturation — factures et paiement", icon: FileText, tone: "warning" },
   system: { label: "Système — compte et accueil", icon: Info, tone: "info" },
 };
