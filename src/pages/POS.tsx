@@ -12,7 +12,12 @@ import {
   Form,
   Spin,
   Result,
+  Drawer,
+  Switch,
+  DatePicker,
 } from "antd";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
 import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
@@ -307,6 +312,15 @@ type PosCheckoutPanelProps = {
   discount: number;
   onDiscountChange: (value: number) => void;
   total: number;
+  showPartialSection: boolean;
+  partialLocked: boolean;
+  partialEnabled: boolean;
+  onPartialEnabledChange: (enabled: boolean) => void;
+  amountPaid: number;
+  onAmountPaidChange: (value: number) => void;
+  minAmountPaid: number;
+  dueDate: Dayjs | null;
+  onDueDateChange: (value: Dayjs | null) => void;
   editSaleId?: string;
   salesAtLimit: boolean;
   loading: boolean;
@@ -327,6 +341,15 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
   discount,
   onDiscountChange,
   total,
+  showPartialSection,
+  partialLocked,
+  partialEnabled,
+  onPartialEnabledChange,
+  amountPaid,
+  onAmountPaidChange,
+  minAmountPaid,
+  dueDate,
+  onDueDateChange,
   editSaleId,
   salesAtLimit,
   loading,
@@ -334,6 +357,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
   cartEmpty,
   onValidate,
 }: PosCheckoutPanelProps) {
+  const remainingToPay = Math.max(0, total - amountPaid);
   return (
     <div className={styles.right}>
       <Card className={styles.totalCard} variant="borderless">
@@ -404,6 +428,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             options={clients.map((c) => ({
               value: c.id,
               label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
+              disabled: paymentMethod === "credit" && c.isWalkIn,
             }))}
             style={{ width: "100%" }}
             size="large"
@@ -413,7 +438,12 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
               <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
             }
           />
-          {paymentMethod === "credit" && selectedClientId && (
+          {paymentMethod === "credit" && (!selectedClientId || selectedClient?.isWalkIn) && (
+            <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+              {t.pos.warnCreditNeedsNamedClient}
+            </Typography.Text>
+          )}
+          {paymentMethod === "credit" && selectedClientId && !selectedClient?.isWalkIn && (
             <Typography.Text
               type="secondary"
               style={{ display: "block", marginTop: 8, fontSize: 13 }}
@@ -426,7 +456,93 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
               </strong>
             </Typography.Text>
           )}
+          {partialEnabled &&
+            remainingToPay > 0 &&
+            selectedClientId &&
+            !selectedClient?.isWalkIn && (
+              <Typography.Text
+                type="secondary"
+                style={{ display: "block", marginTop: 8, fontSize: 13 }}
+              >
+                {t.pos.currentDebtLabel} :{" "}
+                {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
+                {t.pos.afterThisSaleLabel}{" "}
+                <strong>
+                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")} F
+                </strong>
+              </Typography.Text>
+            )}
         </div>
+
+        {showPartialSection && (
+          <div className={styles.partialSection}>
+            <div className={styles.partialToggleRow}>
+              <div>
+                <Typography.Text strong>{t.pos.partialPayment}</Typography.Text>
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", fontSize: 12, marginTop: 2 }}
+                >
+                  {partialLocked ? t.pos.depositNeedsNamedClient : t.pos.partialPaymentHint}
+                </Typography.Text>
+              </div>
+              <Switch
+                checked={partialEnabled}
+                onChange={onPartialEnabledChange}
+                disabled={partialLocked}
+                aria-label={t.pos.partialPayment}
+              />
+            </div>
+
+            {partialEnabled && !partialLocked && (
+              <>
+                <div className={styles.discountRow}>
+                  <Typography.Text type="secondary">{t.pos.amountPaidNow}</Typography.Text>
+                  <CurrencyInput
+                    min={minAmountPaid}
+                    max={total}
+                    value={amountPaid}
+                    onChange={(v) => onAmountPaidChange(Number(v) || 0)}
+                    style={{ width: 160 }}
+                  />
+                </div>
+                <div className={styles.quickPayRow}>
+                  <button
+                    type="button"
+                    className={styles.quickPayChip}
+                    onClick={() =>
+                      onAmountPaidChange(
+                        Math.min(total, Math.max(minAmountPaid, Math.round(total / 2)))
+                      )
+                    }
+                  >
+                    {t.pos.payHalf}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.quickPayChip}
+                    onClick={() => onAmountPaidChange(total)}
+                  >
+                    {t.pos.payInFull}
+                  </button>
+                </div>
+                {remainingToPay > 0 && (
+                  <div className={styles.discountRow}>
+                    <Typography.Text type="secondary">{t.pos.dueDate}</Typography.Text>
+                    <DatePicker
+                      value={dueDate}
+                      onChange={onDueDateChange}
+                      format="DD/MM/YYYY"
+                      placeholder={t.pos.dueDateOptional}
+                      disabledDate={(d) => d.isBefore(dayjs().startOf("day"))}
+                      style={{ width: 160 }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className={styles.totalDivider} />
 
@@ -446,6 +562,14 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             {total.toLocaleString("fr-FR")} F
           </Typography.Title>
         </div>
+        {partialEnabled && remainingToPay > 0 && (
+          <div className={`${styles.discountRow} ${styles.remainingRow}`}>
+            <Typography.Text type="secondary">{t.pos.remainingToPay}</Typography.Text>
+            <Typography.Text strong className={styles.remainingAmount}>
+              {remainingToPay.toLocaleString("fr-FR")} F
+            </Typography.Text>
+          </div>
+        )}
 
         {!editSaleId && salesAtLimit && (
           <div
@@ -471,9 +595,20 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
           className={styles.validateBtn}
           onClick={onValidate}
           loading={loading}
-          disabled={cartEmpty || (!!editSaleId && !editHydrated) || (!editSaleId && salesAtLimit)}
+          disabled={
+            cartEmpty ||
+            (!!editSaleId && !editHydrated) ||
+            (!editSaleId && salesAtLimit) ||
+            (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn)) ||
+            (partialEnabled && remainingToPay > 0 && (!selectedClientId || !!selectedClient?.isWalkIn))
+          }
         >
           {editSaleId ? t.pos.updateSale : t.pos.validateSale}
+          {partialEnabled && remainingToPay > 0 && (
+            <span className={styles.validateBtnHint}>
+              {t.pos.remainingToPay} {remainingToPay.toLocaleString("fr-FR")} F
+            </span>
+          )}
         </Button>
       </Card>
     </div>
@@ -537,6 +672,7 @@ export default function POS() {
   );
 
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("Tous");
@@ -568,6 +704,9 @@ export default function POS() {
   const [creatingClient, setCreatingClient] = useState(false);
   const [quickClientForm] = Form.useForm<{ name: string; phone?: string }>();
   const searchRef = useRef<ReturnType<(typeof Input)["prototype"]["input"]>>(null);
+  const [partialEnabled, setPartialEnabled] = useState(false);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [dueDate, setDueDate] = useState<Dayjs | null>(null);
   const [saleToEdit, setSaleToEdit] = useState<SaleResponse | null>(null);
   const [editLoadError, setEditLoadError] = useState<string | null>(null);
   const [editHydrated, setEditHydrated] = useState(false);
@@ -666,6 +805,10 @@ export default function POS() {
     setDiscount(saleToEdit.discountAmount);
     setPaymentMethod((saleToEdit.paymentMethod as PaymentMethod) || "cash");
     setSelectedClientId(saleToEdit.clientId);
+    const hasBalance = saleToEdit.remainingAmount > 0;
+    setPartialEnabled(hasBalance && saleToEdit.paymentMethod !== "credit");
+    setAmountPaid(saleToEdit.amountPaid ?? 0);
+    setDueDate(saleToEdit.dueDate ? dayjs(saleToEdit.dueDate) : null);
     setEditHydrated(true);
   }, [editSaleId, saleToEdit, activeStore?.id, products, editHydrated]);
 
@@ -791,6 +934,50 @@ export default function POS() {
   const selectedClient = useMemo(
     () => clients.find((c) => c.id === selectedClientId) ?? null,
     [clients, selectedClientId]
+  );
+
+  // L'acompte est proposé dès qu'un encaissement immédiat est choisi.
+  // Le client comptoir voit le bloc, mais le switch reste verrouillé.
+  const showPartialSection = canClientCredits && paymentMethod !== "credit";
+  const partialLocked = !selectedClientId || !!selectedClient?.isWalkIn;
+  const alreadyCollected = editSaleId ? (saleToEdit?.amountPaid ?? 0) : 0;
+
+  useEffect(() => {
+    if ((partialLocked || !showPartialSection) && partialEnabled) setPartialEnabled(false);
+  }, [partialLocked, showPartialSection, partialEnabled]);
+
+  useEffect(() => {
+    setAmountPaid((prev) => Math.min(Math.max(prev, alreadyCollected), total));
+  }, [total, alreadyCollected]);
+
+  const effectiveAmountPaid = useMemo(() => {
+    const base = partialEnabled ? amountPaid : paymentMethod === "credit" ? 0 : total;
+    return Math.min(Math.max(base, alreadyCollected), total);
+  }, [partialEnabled, amountPaid, paymentMethod, total, alreadyCollected]);
+
+  const handlePaymentMethodChange = useCallback(
+    (method: PaymentMethod) => {
+      setPaymentMethod(method);
+      if (method !== "credit") return;
+      setSelectedClientId((prev) => {
+        const current = clients.find((c) => c.id === prev);
+        if (current?.isWalkIn) return null;
+        return prev;
+      });
+    },
+    [clients]
+  );
+
+  const handleClientChange = useCallback(
+    (id: string) => {
+      const next = clients.find((c) => c.id === id);
+      setSelectedClientId(id);
+      if (next?.isWalkIn && paymentMethod === "credit") {
+        setPaymentMethod("cash");
+        message.warning(t.pos.warnCreditNeedsNamedClient);
+      }
+    },
+    [clients, paymentMethod]
   );
 
   const originalQtyByProduct = useMemo(() => {
@@ -943,6 +1130,27 @@ export default function POS() {
     }
     const totalAfterDiscount = Math.max(0, subtotalRounded - discountRounded);
 
+    if (totalAfterDiscount < alreadyCollected) {
+      message.warning(t.sales.paymentExceedsRemaining);
+      return;
+    }
+    const paidNow = Math.min(
+      Math.max(
+        partialEnabled
+          ? Math.round(amountPaid)
+          : paymentMethod === "credit"
+            ? 0
+            : totalAfterDiscount,
+        alreadyCollected
+      ),
+      totalAfterDiscount
+    );
+    const remainingAfterSale = totalAfterDiscount - paidNow;
+    if (remainingAfterSale > 0 && selectedClient?.isWalkIn) {
+      message.warning(t.pos.depositNeedsNamedClient);
+      return;
+    }
+
     setLoading(true);
     try {
       const body = {
@@ -952,12 +1160,24 @@ export default function POS() {
         discountAmount: discountRounded,
         amountReceived:
           paymentMethod === "cash" || paymentMethod === "wave" || paymentMethod === "orange_money"
-            ? totalAfterDiscount
+            ? paidNow
             : undefined,
+        amountPaid: paidNow,
+        dueDate: remainingAfterSale > 0 && dueDate ? dueDate.format("YYYY-MM-DD") : null,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
+      if (!editSaleId && sale.remainingAmount > 0 && selectedClientId) {
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === selectedClientId
+              ? { ...c, creditBalance: (c.creditBalance ?? 0) + sale.remainingAmount }
+              : c
+          )
+        );
+      }
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
+      setCartSheetOpen(false);
       setCart([]);
       if (!editSaleId) {
         clearPosCart(activeStore.id);
@@ -968,6 +1188,9 @@ export default function POS() {
         const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
         setSelectedClientId(defaultClient?.id ?? null);
       }
+      setPartialEnabled(false);
+      setAmountPaid(0);
+      setDueDate(null);
       navigate("/receipt", {
         state: {
           sale,
@@ -994,10 +1217,23 @@ export default function POS() {
     discount,
     clients,
     navigate,
+    partialEnabled,
+    amountPaid,
+    dueDate,
+    alreadyCollected,
   ]);
 
   const openQuickClient = useCallback(() => setQuickClientOpen(true), []);
   const onDiscountChange = useCallback((value: number) => setDiscount(value), []);
+  const onAmountPaidChange = useCallback((value: number) => setAmountPaid(value), []);
+  const onDueDateChange = useCallback((value: Dayjs | null) => setDueDate(value), []);
+  const onPartialEnabledChange = useCallback(
+    (enabled: boolean) => {
+      setPartialEnabled(enabled);
+      if (enabled) setAmountPaid((prev) => Math.min(Math.max(prev, alreadyCollected), total));
+    },
+    [alreadyCollected, total]
+  );
 
   const editSaleLoading = Boolean(editSaleId && !editLoadError && (!saleToEdit || !editHydrated));
 
@@ -1044,9 +1280,52 @@ export default function POS() {
     );
   }
 
+  const isMobilePos = posBreakpoint === "mobile";
+
+  const cartPanel = (
+    <PosCartPanel
+      cart={cart}
+      itemCount={itemCount}
+      onUpdateQty={updateQty}
+      onRemoveLine={removeLine}
+      onClear={clearCart}
+    />
+  );
+
+  const checkoutPanel = (
+    <PosCheckoutPanel
+      paymentMethods={paymentMethods}
+      paymentMethod={paymentMethod}
+      onPaymentMethodChange={handlePaymentMethodChange}
+      clients={clients}
+      selectedClientId={selectedClientId}
+      onClientChange={handleClientChange}
+      onQuickAddClient={openQuickClient}
+      selectedClient={selectedClient}
+      discount={discount}
+      onDiscountChange={onDiscountChange}
+      total={total}
+      showPartialSection={showPartialSection}
+      partialLocked={partialLocked}
+      partialEnabled={partialEnabled}
+      onPartialEnabledChange={onPartialEnabledChange}
+      amountPaid={effectiveAmountPaid}
+      onAmountPaidChange={onAmountPaidChange}
+      minAmountPaid={alreadyCollected}
+      dueDate={dueDate}
+      onDueDateChange={onDueDateChange}
+      editSaleId={editSaleId}
+      salesAtLimit={salesAtLimit}
+      loading={loading}
+      editHydrated={editHydrated}
+      cartEmpty={cart.length === 0}
+      onValidate={validateSale}
+    />
+  );
+
   return (
     <>
-      <div className={styles.pos}>
+      <div className={`${styles.pos} ${isMobilePos ? styles.posMobile : ""}`}>
         {/* Left: search + categories + product grid */}
         <div className={styles.left}>
           <Input
@@ -1101,34 +1380,62 @@ export default function POS() {
           </div>
         </div>
 
-        <PosCartPanel
-          cart={cart}
-          itemCount={itemCount}
-          onUpdateQty={updateQty}
-          onRemoveLine={removeLine}
-          onClear={clearCart}
-        />
-
-        <PosCheckoutPanel
-          paymentMethods={paymentMethods}
-          paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
-          clients={clients}
-          selectedClientId={selectedClientId}
-          onClientChange={setSelectedClientId}
-          onQuickAddClient={openQuickClient}
-          selectedClient={selectedClient}
-          discount={discount}
-          onDiscountChange={onDiscountChange}
-          total={total}
-          editSaleId={editSaleId}
-          salesAtLimit={salesAtLimit}
-          loading={loading}
-          editHydrated={editHydrated}
-          cartEmpty={cart.length === 0}
-          onValidate={validateSale}
-        />
+        {!isMobilePos && (
+          <>
+            {cartPanel}
+            {checkoutPanel}
+          </>
+        )}
       </div>
+
+      {isMobilePos && (
+        <>
+          <div className={styles.mobileCartBar} role="region" aria-label={t.pos.cartTitle}>
+            <div className={styles.mobileCartBarInfo}>
+              <span className={styles.mobileCartBarCount}>
+                {t.pos.cartBarItems.replace("{count}", String(itemCount))}
+              </span>
+              <span className={`amount ${styles.mobileCartBarTotal}`}>
+                {total.toLocaleString("fr-FR")} F
+              </span>
+              {partialEnabled && total - effectiveAmountPaid > 0 && (
+                <span className={styles.mobileCartBarRemaining}>
+                  {t.pos.remainingToPay}{" "}
+                  {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
+                </span>
+              )}
+            </div>
+            <Button
+              type="primary"
+              size="large"
+              className={styles.mobileCartBarBtn}
+              icon={<ShoppingBag size={18} />}
+              disabled={cart.length === 0}
+              onClick={() => setCartSheetOpen(true)}
+            >
+              {t.pos.openCart}
+            </Button>
+          </div>
+
+          <Drawer
+            title={t.pos.cartSheetTitle}
+            placement="bottom"
+            open={cartSheetOpen}
+            onClose={() => setCartSheetOpen(false)}
+            height="92%"
+            destroyOnClose={false}
+            styles={{
+              body: { padding: 12, paddingBottom: 24, overflowY: "auto" },
+              wrapper: { maxWidth: "100%" },
+            }}
+          >
+            <div className={styles.mobileSheetStack}>
+              {cartPanel}
+              {checkoutPanel}
+            </div>
+          </Drawer>
+        </>
+      )}
 
       <Modal
         title={t.pos.quickAddClientTitle}

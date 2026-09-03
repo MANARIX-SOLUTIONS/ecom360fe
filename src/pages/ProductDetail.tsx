@@ -339,14 +339,7 @@ export default function ProductDetail() {
               )}
             </div>
           </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              minWidth: 140,
-            }}
-          >
+          <div className={styles.heroPriceBlock}>
             <div>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 {t.products.salePrice}
@@ -374,7 +367,7 @@ export default function ProductDetail() {
               </div>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className={styles.heroActions}>
             {matrixCan("STOCK_ADJUST", "products") && (
               <Button
                 icon={<Layers size={18} />}
@@ -458,6 +451,7 @@ export default function ProductDetail() {
               pagination={false}
               size="small"
               className="dataTable"
+              scroll={{ x: "max-content" }}
               columns={[
                 { title: t.products.tableStoreColumn, dataIndex: "storeName" },
                 {
@@ -508,6 +502,7 @@ export default function ProductDetail() {
                 pagination={false}
                 size="small"
                 className="dataTable"
+                scroll={{ x: "max-content" }}
                 columns={[
                   {
                     title: t.common.date,
@@ -558,7 +553,7 @@ export default function ProductDetail() {
           resetImageState();
         }}
         okText={t.products.save}
-        width={440}
+        width="min(440px, calc(100vw - 32px))"
         destroyOnHidden
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
@@ -671,7 +666,7 @@ export default function ProductDetail() {
         onOk={handleStockSave}
         onCancel={() => setStockOpen(false)}
         okText={t.products.save}
-        width={400}
+        width="min(400px, calc(100vw - 32px))"
       >
         <Form form={stockForm} layout="vertical" style={{ marginTop: 16 }}>
           <Typography.Text type="secondary">{product.name}</Typography.Text>

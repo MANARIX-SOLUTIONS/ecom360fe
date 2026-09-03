@@ -1,6 +1,7 @@
 .page {
   max-width: 560px;
   margin: 0 auto;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
 /* ========== Profile card ========== */

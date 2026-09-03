@@ -64,6 +64,40 @@ export async function changePlan(
   return api.post<SubscriptionResponse>("/subscription/change", { planSlug, billingCycle });
 }
 
+export type PaymentChannel = "wave" | "orange_money";
+
+export type SubscriptionCheckoutResponse = {
+  intentId: string;
+  status: string;
+  checkoutUrl?: string;
+  amount: number;
+  currency: string;
+  planSlug: string;
+  billingCycle: string;
+  channel: string;
+  provider: string;
+  subscriptionId?: string;
+  invoiceId?: string;
+  failureReason?: string;
+  paidAt?: string;
+};
+
+export async function createSubscriptionCheckout(
+  planSlug: string,
+  billingCycle: "monthly" | "yearly",
+  channel: PaymentChannel
+): Promise<SubscriptionCheckoutResponse> {
+  return api.post<SubscriptionCheckoutResponse>("/subscription/checkout", {
+    planSlug,
+    billingCycle,
+    channel,
+  });
+}
+
+export async function getCheckoutStatus(intentId: string): Promise<SubscriptionCheckoutResponse> {
+  return api.get<SubscriptionCheckoutResponse>(`/subscription/checkout/${intentId}`);
+}
+
 export async function cancelSubscription(atPeriodEnd = true): Promise<void> {
   return api.post("/subscription/cancel", { atPeriodEnd });
 }

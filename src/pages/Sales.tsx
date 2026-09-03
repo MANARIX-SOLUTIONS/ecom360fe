@@ -13,10 +13,11 @@ import {
   message,
   Skeleton,
 } from "antd";
-import { FileDown, Ban, Pencil, ListOrdered } from "lucide-react";
-import type { SaleResponse } from "@/api";
+import { FileDown, Ban, Pencil, ListOrdered, Banknote } from "lucide-react";
+import type { SalePaymentStatus, SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
 import { EmptyState } from "@/components/EmptyState";
+import { RecordSalePaymentModal } from "@/components/RecordSalePaymentModal";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { t } from "@/i18n";
@@ -29,6 +30,18 @@ const PAYMENT_LABELS: Record<string, string> = {
   orange_money: "Orange Money",
   credit: "Crédit",
 };
+
+const PAYMENT_STATUS_COLORS: Record<SalePaymentStatus, string> = {
+  paid: "green",
+  partial: "gold",
+  unpaid: "purple",
+};
+
+function paymentStatusLabel(status: SalePaymentStatus | string | undefined): string {
+  if (status === "partial") return t.sales.paymentStatusPartial;
+  if (status === "unpaid") return t.sales.paymentStatusUnpaid;
+  return t.sales.paymentStatusPaid;
+}
 
 function formatTime(iso: string) {
   try {
@@ -85,7 +98,11 @@ export default function Sales() {
   }, [activeStore?.id]);
 
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<SalePaymentStatus | undefined>(
+    undefined
+  );
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [paymentSale, setPaymentSale] = useState<SaleResponse | null>(null);
 
   const fetchSales = useCallback(
     async (isCancelled?: () => boolean) => {
@@ -101,6 +118,7 @@ export default function Sales() {
           periodStart: start?.format("YYYY-MM-DD"),
           periodEnd: end?.format("YYYY-MM-DD"),
           status: statusFilter || undefined,
+          paymentStatus: paymentStatusFilter,
           page,
           size: pageSize,
         });
@@ -116,7 +134,7 @@ export default function Sales() {
         if (!isCancelled?.()) setLoading(false);
       }
     },
-    [storeFilter, statusFilter, dateRange, page, pageSize]
+    [storeFilter, statusFilter, paymentStatusFilter, dateRange, page, pageSize]
   );
 
   useEffect(() => {
@@ -155,14 +173,28 @@ export default function Sales() {
   );
 
   const exportCsv = useCallback(() => {
-    const headers = ["N° ticket", "Date", "Heure", "Boutique", "Montant (F)", "Paiement", "Statut"];
+    const headers = [
+      "N° ticket",
+      "Date",
+      "Heure",
+      "Boutique",
+      "Montant (F)",
+      "Encaissé (F)",
+      "Reste dû (F)",
+      "Paiement",
+      "Règlement",
+      "Statut",
+    ];
     const rows = sales.map((s) => [
       escapeCsvCell(s.receiptNumber),
       escapeCsvCell(formatDate(s.createdAt)),
       escapeCsvCell(formatTime(s.createdAt)),
       escapeCsvCell(s.storeName ?? ""),
       escapeCsvCell(s.total),
+      escapeCsvCell(s.amountPaid ?? 0),
+      escapeCsvCell(s.remainingAmount ?? 0),
       escapeCsvCell(PAYMENT_LABELS[s.paymentMethod] ?? s.paymentMethod),
+      escapeCsvCell(paymentStatusLabel(s.paymentStatus)),
       escapeCsvCell(s.status === "voided" ? "Annulée" : "Terminée"),
     ]);
     const csv = [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
@@ -179,6 +211,7 @@ export default function Sales() {
   const resetFilters = useCallback(() => {
     setStoreFilter(undefined);
     setStatusFilter(undefined);
+    setPaymentStatusFilter(undefined);
     setDateRange(null);
     setPage(0);
   }, []);
@@ -232,6 +265,21 @@ export default function Sales() {
               { value: "voided", label: t.sales.statusVoided },
             ]}
           />
+          <Select
+            placeholder={t.sales.filterByPaymentStatus}
+            value={paymentStatusFilter}
+            onChange={(v) => {
+              setPaymentStatusFilter((v as SalePaymentStatus | undefined) ?? undefined);
+              setPage(0);
+            }}
+            allowClear
+            style={{ width: 150 }}
+            options={[
+              { value: "paid", label: t.sales.paymentStatusPaid },
+              { value: "partial", label: t.sales.paymentStatusPartial },
+              { value: "unpaid", label: t.sales.paymentStatusUnpaid },
+            ]}
+          />
           <DatePicker.RangePicker
             value={dateRange ?? undefined}
             onChange={(range) => {
@@ -267,9 +315,11 @@ export default function Sales() {
         ) : (
           <div className="tableResponsive">
             <Table
+              className="dataTable"
               dataSource={sales}
               rowKey="id"
               loading={loading}
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
                 pageSize,
@@ -316,6 +366,18 @@ export default function Sales() {
                   ),
                 },
                 {
+                  title: t.sales.remainingDue,
+                  dataIndex: "remainingAmount",
+                  width: 110,
+                  align: "right",
+                  render: (v: number, r: SaleResponse) =>
+                    r.status === "completed" && v > 0 ? (
+                      <span className={styles.amount}>{v.toLocaleString("fr-FR")} F</span>
+                    ) : (
+                      <span className={styles.amount}>—</span>
+                    ),
+                },
+                {
                   title: "Paiement",
                   dataIndex: "paymentMethod",
                   width: 110,
@@ -336,6 +398,19 @@ export default function Sales() {
                   ),
                 },
                 {
+                  title: t.sales.filterByPaymentStatus,
+                  dataIndex: "paymentStatus",
+                  width: 110,
+                  render: (status: SalePaymentStatus, r: SaleResponse) =>
+                    r.status === "voided" ? (
+                      <Tag>{t.sales.statusVoided}</Tag>
+                    ) : (
+                      <Tag color={PAYMENT_STATUS_COLORS[status] ?? "default"}>
+                        {paymentStatusLabel(status)}
+                      </Tag>
+                    ),
+                },
+                {
                   title: t.sales.filterByStatus,
                   dataIndex: "status",
                   width: 100,
@@ -350,10 +425,23 @@ export default function Sales() {
                       {
                         title: "",
                         key: "actions",
-                        width: canUpdateSales && canDeleteSales ? 200 : 120,
+                        width: 280,
                         render: (_: unknown, r: SaleResponse) =>
                           r.status === "completed" ? (
-                            <Space size={4}>
+                            <Space size={4} wrap>
+                              {canUpdateSales && r.remainingAmount > 0 && (
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<Banknote size={14} />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPaymentSale(r);
+                                  }}
+                                >
+                                  {t.sales.recordPayment}
+                                </Button>
+                              )}
                               {canUpdateSales && (
                                 <Button
                                   type="text"
@@ -389,6 +477,12 @@ export default function Sales() {
           </div>
         )}
       </Card>
+      <RecordSalePaymentModal
+        open={!!paymentSale}
+        sale={paymentSale}
+        onClose={() => setPaymentSale(null)}
+        onRecorded={() => void fetchSales()}
+      />
     </div>
   );
 }

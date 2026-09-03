@@ -5,7 +5,8 @@ import { createSharedStore } from "@/hooks/createSharedStore";
 
 /**
  * Plan-based feature gating.
- * Fetches plan features from backend when authenticated; falls back to pro (trial) when not.
+ * Fetches plan features from backend when authenticated.
+ * Until the first fetch completes, plan-gated routes should wait (see RequirePermission).
  */
 
 type FeatureFlags = {
@@ -25,20 +26,21 @@ type FeatureFlags = {
   customBranding: boolean;
 };
 
+/** Fail-closed defaults until subscription/plan is loaded. */
 const DEFAULT_FEATURES: FeatureFlags = {
-  expenses: true,
-  reports: true,
-  suppliers: true,
-  livreurs: true,
+  expenses: false,
+  reports: false,
+  suppliers: false,
+  livreurs: false,
   globalView: false,
-  multiPayment: true,
-  clientCredits: true,
-  settingsUsers: true,
+  multiPayment: false,
+  clientCredits: false,
+  settingsUsers: false,
   advancedReports: false,
   api: false,
-  stockAlerts: true,
-  exportPdf: true,
-  exportExcel: true,
+  stockAlerts: false,
+  exportPdf: false,
+  exportExcel: false,
   customBranding: false,
 };
 
@@ -64,11 +66,14 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
 type PlanState = {
   planSlug: string | null;
   features: FeatureFlags;
+  /** True after the first fetch attempt finished (success or error). */
+  ready: boolean;
 };
 
 const planStore = createSharedStore<PlanState>({
   planSlug: typeof window !== "undefined" ? localStorage.getItem("ecom360_plan_slug") : null,
   features: DEFAULT_FEATURES,
+  ready: false,
 });
 
 /** Chargé une fois par session ; l'évènement plan-updated force un refetch. */
@@ -77,7 +82,11 @@ let planLoaded = false;
 async function fetchPlanFeatures(force = false): Promise<void> {
   if (!localStorage.getItem("ecom360_access_token")) {
     planLoaded = false;
-    planStore.setState((s) => ({ ...s, features: DEFAULT_FEATURES }));
+    planStore.setState({
+      planSlug: null,
+      features: DEFAULT_FEATURES,
+      ready: true,
+    });
     return;
   }
   if (!force && planLoaded) return;
@@ -90,9 +99,15 @@ async function fetchPlanFeatures(force = false): Promise<void> {
       planStore.setState({
         planSlug: slug ?? null,
         features: plan ? planToFeatures(plan) : DEFAULT_FEATURES,
+        ready: true,
       });
     } catch {
-      planStore.setState((s) => ({ ...s, features: DEFAULT_FEATURES }));
+      planLoaded = true;
+      planStore.setState((s) => ({
+        ...s,
+        features: DEFAULT_FEATURES,
+        ready: true,
+      }));
     }
   });
 }
@@ -102,15 +117,35 @@ if (typeof window !== "undefined") {
     void fetchPlanFeatures(true);
   });
   window.addEventListener("ecom360:auth-set", () => {
+    planLoaded = false;
+    planStore.setState((s) => ({ ...s, ready: false, features: DEFAULT_FEATURES }));
     void fetchPlanFeatures(true);
   });
   window.addEventListener("ecom360:auth-expired", () => {
+    planLoaded = false;
     void fetchPlanFeatures();
   });
 }
 
+const PLAN_GATED = new Set([
+  "expenses",
+  "reports",
+  "suppliers",
+  "purchaseOrders",
+  "livreurs",
+  "globalView",
+  "settings:users",
+  "settings:roles",
+  "settings:commerce",
+  "settings:api",
+]);
+
+export function isPlanGatedPermission(permission: string): boolean {
+  return PLAN_GATED.has(permission);
+}
+
 export function usePlanFeatures() {
-  const { planSlug, features } = useSyncExternalStore(
+  const { planSlug, features, ready } = useSyncExternalStore(
     planStore.subscribe,
     planStore.getSnapshot,
     planStore.getSnapshot
@@ -122,6 +157,7 @@ export function usePlanFeatures() {
 
   return {
     planSlug,
+    ready,
     canExpenses: features.expenses,
     canReports: features.reports,
     canSuppliers: features.suppliers,
@@ -142,11 +178,12 @@ export function usePlanFeatures() {
       if (permission === "expenses") return features.expenses;
       if (permission === "reports") return features.reports;
       if (permission === "suppliers") return features.suppliers;
-      /** Menu : la présence d’une permission livreurs suffit ; le plan est encore vérifié par l’API. */
-      if (permission === "livreurs") return true;
+      if (permission === "purchaseOrders") return features.suppliers;
+      if (permission === "livreurs") return features.livreurs;
       if (permission === "globalView") return features.globalView;
       if (permission === "settings:users" || permission === "settings:roles")
         return features.settingsUsers;
+      if (permission === "settings:commerce" || permission === "settings:api") return features.api;
       return true;
     },
   };

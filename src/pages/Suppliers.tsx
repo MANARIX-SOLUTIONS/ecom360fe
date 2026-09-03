@@ -178,6 +178,7 @@ export default function Suppliers() {
             <Table
               dataSource={suppliers}
               rowKey="id"
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
                 pageSize,

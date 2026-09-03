@@ -327,6 +327,61 @@ export async function rejectAdminDemoRequest(id: string, reason?: string): Promi
   await api.post(`/admin/demo-requests/${id}/reject`, { reason: reason ?? null });
 }
 
+export type AdminSubscriptionPayment = {
+  intentId: string;
+  businessId: string;
+  businessName?: string;
+  planId: string;
+  planSlug?: string;
+  planName?: string;
+  billingCycle: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  channel: string;
+  status: string;
+  externalToken?: string;
+  externalRef?: string;
+  checkoutUrl?: string;
+  subscriptionId?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  failureReason?: string;
+  paidAt?: string;
+  createdAt: string;
+  createdByUserId?: string;
+};
+
+export async function listAdminSubscriptionPayments(params?: {
+  page?: number;
+  size?: number;
+  businessId?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+}): Promise<PageResponse<AdminSubscriptionPayment>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.size != null) searchParams.set("size", String(params.size));
+  if (params?.businessId) searchParams.set("businessId", params.businessId);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  const q = searchParams.toString();
+  return api.get<PageResponse<AdminSubscriptionPayment>>(
+    `/admin/subscription-payments${q ? `?${q}` : ""}`
+  );
+}
+
+export async function markAdminSubscriptionPaymentPaid(
+  intentId: string,
+  note?: string
+): Promise<AdminSubscriptionPayment> {
+  return api.post<AdminSubscriptionPayment>(`/admin/subscription-payments/${intentId}/mark-paid`, {
+    note: note ?? null,
+  });
+}
+
 export async function listAdminAuditLogs(params?: {
   page?: number;
   size?: number;

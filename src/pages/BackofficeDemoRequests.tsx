@@ -143,9 +143,11 @@ export default function BackofficeDemoRequests() {
 
         <div className="tableResponsive">
           <Table<AdminDemoRequest>
+            className="dataTable"
             rowKey="id"
             loading={loading}
             dataSource={rows}
+            scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
               pageSize,

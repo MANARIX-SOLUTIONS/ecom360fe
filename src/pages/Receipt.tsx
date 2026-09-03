@@ -13,12 +13,14 @@ import {
   Home,
   Pencil,
   User,
+  Banknote,
 } from "lucide-react";
 import { t } from "@/i18n";
 import { printA4Receipt, type PrintedReceiptClient } from "@/utils/printA4Receipt";
 import { useStore } from "@/hooks/useStore";
 import { getSale, getClient, ApiError } from "@/api";
 import type { SaleResponse, ClientResponse } from "@/api";
+import { RecordSalePaymentModal } from "@/components/RecordSalePaymentModal";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
@@ -43,6 +45,12 @@ const METHOD_LABELS: Record<string, string> = {
 
 function formatPrice(n: number): string {
   return n.toLocaleString("fr-FR") + " F";
+}
+
+function formatDueDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR");
 }
 
 function handleShare(
@@ -108,6 +116,7 @@ export default function Receipt() {
   );
   const [invoiceClient, setInvoiceClient] = useState<ClientResponse | null>(null);
   const [invoiceClientResolved, setInvoiceClientResolved] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const printStateRef = useRef<{ originalTitle: string } | null>(null);
 
   useEffect(() => {
@@ -141,7 +150,7 @@ export default function Receipt() {
     }
   }, [state?.saleId, state?.sale, navigate]);
 
-  const sale = state?.sale ?? fetchedSale ?? null;
+  const sale = fetchedSale ?? state?.sale ?? null;
   const now = sale?.createdAt ? new Date(sale.createdAt) : new Date();
   const receiptId = state
     ? (sale?.receiptNumber ?? `T${now.getTime().toString(36).toUpperCase()}`)
@@ -220,6 +229,9 @@ export default function Receipt() {
         total: displayTotal,
         discount: displayDiscount,
         method,
+        amountPaid: sale?.amountPaid,
+        remainingAmount: sale?.remainingAmount,
+        dueDate: sale?.dueDate,
         printedClient: printedClientForA4,
         i18n: {
           invoiceRef: t.receipt.invoiceRef,
@@ -235,6 +247,9 @@ export default function Receipt() {
           legalNotice: t.receipt.legalNotice,
           docTypeBadge: t.receipt.docTypeBadge,
           detailLinesTitle: t.receipt.detailLinesTitle,
+          amountPaid: t.receipt.amountPaid,
+          remainingToPay: t.receipt.remainingToPay,
+          dueDate: t.receipt.dueDate,
         },
       });
       return;
@@ -307,6 +322,9 @@ export default function Receipt() {
   const subtotal = sale?.subtotal ?? cart.reduce((sum, line) => sum + line.price * line.qty, 0);
   const displayTotal = sale?.total ?? total;
   const displayDiscount = sale?.discountAmount ?? discount;
+  const amountPaid = sale?.amountPaid ?? displayTotal;
+  const remainingAmount = sale?.remainingAmount ?? 0;
+  const dueDate = sale?.dueDate ?? null;
   const shopName =
     sale?.storeName || activeStore?.name || businessProfile?.name || "360 PME Commerce";
   const shopAddress = sale?.storeAddress || activeStore?.address || businessProfile?.address;
@@ -456,6 +474,24 @@ export default function Receipt() {
             <span>{t.common.total}</span>
             <span>{formatPrice(displayTotal)}</span>
           </div>
+          {remainingAmount > 0 && (
+            <>
+              <div className={styles.row}>
+                <span>{t.receipt.amountPaid}</span>
+                <span>{formatPrice(amountPaid)}</span>
+              </div>
+              <div className={styles.row}>
+                <span>{t.receipt.remainingToPay}</span>
+                <span className={styles.remaining}>{formatPrice(remainingAmount)}</span>
+              </div>
+              {dueDate && (
+                <div className={styles.row}>
+                  <span>{t.receipt.dueDate}</span>
+                  <span>{formatDueDate(dueDate)}</span>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <hr className={styles.divider} aria-hidden />
@@ -568,6 +604,24 @@ export default function Receipt() {
                 <span>{t.common.total}</span>
                 <span>{formatPrice(displayTotal)}</span>
               </div>
+              {remainingAmount > 0 && (
+                <>
+                  <div className={styles.a4TotalRow}>
+                    <span>{t.receipt.amountPaid}</span>
+                    <span>{formatPrice(amountPaid)}</span>
+                  </div>
+                  <div className={styles.a4TotalRow}>
+                    <span>{t.receipt.remainingToPay}</span>
+                    <span className={styles.remaining}>{formatPrice(remainingAmount)}</span>
+                  </div>
+                  {dueDate && (
+                    <div className={styles.a4TotalRow}>
+                      <span>{t.receipt.dueDate}</span>
+                      <span>{formatDueDate(dueDate)}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </section>
 
             <div className={styles.a4Payment}>
@@ -616,6 +670,21 @@ export default function Receipt() {
       </div>
 
       <div className={styles.actions}>
+        {sale?.id &&
+          sale.status === "completed" &&
+          remainingAmount > 0 &&
+          matrixCan("SALES_UPDATE", "pos") && (
+            <Button
+              size="large"
+              icon={<Banknote size={20} />}
+              onClick={() => setPaymentOpen(true)}
+              aria-label={t.sales.recordPayment}
+              className={styles.actionBtnMain}
+              type="primary"
+            >
+              {t.sales.recordPayment}
+            </Button>
+          )}
         {sale?.id && sale.status === "completed" && matrixCan("SALES_UPDATE", "pos") && (
           <Button
             size="large"
@@ -684,6 +753,19 @@ export default function Receipt() {
           Retour au tableau de bord
         </Button>
       </div>
+      <RecordSalePaymentModal
+        open={paymentOpen}
+        sale={sale}
+        onClose={() => setPaymentOpen(false)}
+        onRecorded={() => {
+          if (!sale?.id) return;
+          getSale(sale.id)
+            .then(setFetchedSale)
+            .catch((e) =>
+              message.error(e instanceof Error ? e.message : t.receipt.msgLoadError)
+            );
+        }}
+      />
     </main>
   );
 }
