@@ -21,7 +21,7 @@ import { useStore } from "@/hooks/useStore";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
-  getStockByStore,
+  getAllStockByStore,
   listClients,
   createSale,
   getSale,
@@ -293,7 +293,7 @@ export default function POS() {
     const load = async () => {
       try {
         const [stockList, catsRes, clientsRes] = await Promise.all([
-          getStockByStore(activeStore.id),
+          getAllStockByStore(activeStore.id),
           listCategories(),
           listClients({ page: 0, size: 200 }),
         ]);

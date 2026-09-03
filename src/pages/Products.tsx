@@ -28,7 +28,7 @@ import {
   updateProduct,
   deleteProduct,
   adjustStock,
-  getStockByStore,
+  getStockByStoreAndProducts,
   listCategoriesWithDefaults,
   listCategories,
   createCategory,
@@ -126,7 +126,7 @@ export default function Products() {
       if (!silent && isInitialLoad) setLoading(true);
       const searchToUse = searchOverride !== undefined ? searchOverride : debouncedSearch;
       try {
-        const [productsRes, categoriesRes, stockList] = await Promise.all([
+        const [productsRes, categoriesRes] = await Promise.all([
           listProducts({
             page: 0,
             size: 200,
@@ -134,8 +134,14 @@ export default function Products() {
             storeId: activeStore?.id,
           }),
           fetchCategories(),
-          activeStore?.id ? getStockByStore(activeStore.id) : Promise.resolve([]),
         ]);
+        const stockList =
+          activeStore?.id && productsRes.content.length > 0
+            ? await getStockByStoreAndProducts(
+                activeStore.id,
+                productsRes.content.map((p) => p.id)
+              )
+            : [];
         setCategories(categoriesRes);
         const catById = Object.fromEntries(
           categoriesRes.map((c) => [c.id, { name: c.name, color: c.color }])
