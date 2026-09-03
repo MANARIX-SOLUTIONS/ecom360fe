@@ -1,0 +1,70 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.select {
+  min-width: 180px;
+}
+
+/* Hero sombre (VueGlobale) */
+.onDark {
+  margin-top: 20px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.onDark .icon {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.onDark .select :global(.ant-select-selector) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 0 !important;
+}
+
+.onDark .select :global(.ant-select-arrow) {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.onDark .select :global(.ant-select-selection-item) {
+  color: #fff !important;
+}
+
+/* Toolbar claire (Rapports) */
+.default {
+  padding: 4px 12px 4px 10px;
+  border-radius: var(--radius, 10px);
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border, rgba(15, 23, 42, 0.08));
+}
+
+.default .icon {
+  color: var(--color-text-muted, #64748b);
+}
+
+.default .select {
+  min-width: 160px;
+}
+
+.default .select :global(.ant-select-selector) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 0 !important;
+}

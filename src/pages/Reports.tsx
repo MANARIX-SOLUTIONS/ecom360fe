@@ -60,8 +60,9 @@ import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { usePermissions } from "@/hooks/usePermissions";
 import { EmptyState } from "@/components/EmptyState";
+import { StoreScopeSelect } from "@/components/StoreScopeSelect";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
-import { useStore } from "@/hooks/useStore";
+import { useStoreScopeSelection } from "@/hooks/useStoreScopeSelection";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
 import {
   buildPaymentRowsFromSales,
@@ -114,7 +115,7 @@ export default function Reports() {
   const { canExportPdf, canExportExcel, canAdvancedReports } = usePlanFeatures();
   const { canAccess } = usePermissions();
   const { profile } = useBusinessProfile();
-  const { activeStore } = useStore();
+  const { selectedStoreId, setSelectedStoreId, storesReady, stores } = useStoreScopeSelection();
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [exportPdfLoading, setExportPdfLoading] = useState(false);
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
@@ -141,6 +142,14 @@ export default function Reports() {
     [activeTab, periodAnchors]
   );
 
+  const selectedStoreName = useMemo(
+    () =>
+      selectedStoreId
+        ? (stores.find((s) => s.id === selectedStoreId)?.name ?? t.globalView.storeSelectorAll)
+        : t.globalView.storeSelectorAll,
+    [stores, selectedStoreId]
+  );
+
   /** Plage effective renvoyée par l’API (rétention plan, etc.). */
   const effectivePeriodRange = useMemo(() => {
     if (data?.periodStart && data?.periodEnd) {
@@ -154,13 +163,16 @@ export default function Reports() {
       setLoading(false);
       return;
     }
+    if (!storesReady) {
+      return;
+    }
     const { start, end } = resolveReportsPeriodRange(activeTab, periodAnchors);
     const fetchId = ++dashboardFetchIdRef.current;
     setLoading(true);
     getDashboard({
       periodStart: start,
       periodEnd: end,
-      storeId: activeStore?.id,
+      storeId: selectedStoreId ?? undefined,
     })
       .then((res) => {
         if (fetchId !== dashboardFetchIdRef.current) return;
@@ -175,7 +187,7 @@ export default function Reports() {
         if (fetchId !== dashboardFetchIdRef.current) return;
         setLoading(false);
       });
-  }, [activeTab, periodAnchors, activeStore?.id]);
+  }, [activeTab, periodAnchors, selectedStoreId, storesReady]);
 
   useEffect(() => {
     loadData();
@@ -361,7 +373,7 @@ export default function Reports() {
         phone: profile?.phone,
         logoUrl: profile?.logoUrl,
       },
-      storeName: activeStore?.name,
+      storeName: selectedStoreName,
       labels: {
         kpiRevenue: t.reports.kpiRevenue,
         kpiExpenses: t.reports.kpiExpenses,
@@ -378,7 +390,7 @@ export default function Reports() {
     activeTab,
     periodAnchors,
     profile,
-    activeStore?.name,
+    selectedStoreName,
     canAdvancedReports,
   ]);
 
@@ -484,9 +496,12 @@ export default function Reports() {
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
         <div className={styles.toolbar}>
-          <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
-            {t.reports.title}
-          </Typography.Title>
+          <Space wrap align="center" size="middle">
+            <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
+              {t.reports.title}
+            </Typography.Title>
+            <StoreScopeSelect value={selectedStoreId} onChange={setSelectedStoreId} />
+          </Space>
           <Space wrap>
             <Button
               type="link"

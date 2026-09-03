@@ -18,8 +18,10 @@ import {
   Sparkles,
   ChevronRight,
 } from "lucide-react";
-import { getGlobalView } from "@/api/dashboard";
-import type { GlobalViewResponse } from "@/api/dashboard";
+import { StoreScopeSelect } from "@/components/StoreScopeSelect";
+import { getGlobalView, getDashboard } from "@/api/dashboard";
+import type { GlobalViewResponse, DashboardResponse } from "@/api/dashboard";
+import { useStoreScopeSelection } from "@/hooks/useStoreScopeSelection";
 import { EmptyState } from "@/components/EmptyState";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
@@ -211,6 +213,186 @@ function ExecutiveSummary({ data }: { data: GlobalViewResponse }) {
   );
 }
 
+/** Vue spécifique à une boutique — affiche les KPIs de DashboardResponse */
+function StoreDashboardView({
+  data,
+  storeName,
+  navigate,
+  canStockAlerts,
+}: {
+  data: DashboardResponse;
+  storeName: string;
+  navigate: (to: string) => void;
+  canStockAlerts: boolean;
+}) {
+  const rev = data.periodRevenue;
+  const profitPositive = data.periodProfit >= 0;
+  const hasSales = data.periodSalesCount > 0;
+
+  return (
+    <>
+      {/* KPI Grid boutique */}
+      <section className={styles.section} aria-labelledby="store-kpi-heading">
+        <div className={styles.sectionIntroPremium}>
+          <h2 id="store-kpi-heading" className={styles.sectionIntroTitle}>
+            {t.globalView.storeSynthesisTitle.replace("{name}", storeName)}
+          </h2>
+          <p className={styles.sectionIntroDesc}>{t.globalView.storeSynthesisDesc}</p>
+        </div>
+        <div className={styles.kpiGrid}>
+          <KpiCard
+            className={`${styles.kpiCard} ${styles.kpiCardHero} ${styles.kpiSpan2}`}
+            icon={CircleDollarSign}
+            iconWrapClass={styles.kpiIconPrimary}
+            label={t.globalView.kpiRevenue}
+          >
+            <KpiMoney value={rev} large className={styles.kpiValuePrimary} />
+          </KpiCard>
+          <KpiCard
+            className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
+            icon={Receipt}
+            iconWrapClass={styles.kpiIconNeutral}
+            label={t.globalView.kpiSalesCount}
+          >
+            <div className={styles.kpiValue}>{frInteger.format(data.periodSalesCount)}</div>
+          </KpiCard>
+          <KpiCard
+            className={`${styles.kpiCard} ${styles.kpiCardToneAccent}`}
+            icon={ShoppingBag}
+            iconWrapClass={styles.kpiIconAccent}
+            label={t.globalView.kpiAvgBasket}
+          >
+            <KpiMoney value={hasSales ? Math.round(rev / data.periodSalesCount) : 0} />
+          </KpiCard>
+          <KpiCard
+            className={`${styles.kpiCard} ${styles.kpiCardToneExpense}`}
+            icon={Wallet}
+            iconWrapClass={styles.kpiIconWarning}
+            label={t.globalView.kpiExpenses}
+          >
+            <KpiMoney value={data.periodExpenses} className={styles.kpiValueWarning} />
+          </KpiCard>
+          <KpiCard
+            className={`${styles.kpiCard} ${
+              profitPositive ? styles.kpiCardToneProfit : styles.kpiCardToneLoss
+            }`}
+            icon={profitPositive ? TrendingUp : TrendingDown}
+            iconWrapClass={profitPositive ? styles.kpiIconSuccess : styles.kpiIconWarning}
+            label={t.globalView.kpiProfit}
+          >
+            <KpiMoney
+              value={data.periodProfit}
+              className={profitPositive ? styles.kpiValueSuccess : styles.kpiValueWarning}
+            />
+          </KpiCard>
+          {data.periodGrossMargin != null && (
+            <KpiCard
+              className={`${styles.kpiCard} ${styles.kpiCardToneSurface}`}
+              icon={Sparkles}
+              iconWrapClass={styles.kpiIconAccent}
+              label={t.globalView.kpiGrossMargin}
+            >
+              <KpiMoney value={data.periodGrossMargin} />
+            </KpiCard>
+          )}
+        </div>
+      </section>
+
+      {/* Top produits + Alertes stock */}
+      <div className={styles.twoCol}>
+        <section className={styles.section} aria-labelledby="store-top-products-heading">
+          <h2 id="store-top-products-heading" className={styles.sectionTitle}>
+            <TrendingUp size={22} className={styles.sectionTitleIcon} aria-hidden />
+            {t.dashboard.topProducts}
+          </h2>
+          <div className={styles.panel}>
+            {data.topProducts.length === 0 ? (
+              <EmptyState
+                compact
+                icon={Package}
+                title={t.globalView.emptyProductsTitle}
+                description={t.globalView.emptyProductsDesc}
+              />
+            ) : (
+              <Table
+                dataSource={data.topProducts.map((p) => ({
+                  key: p.productId,
+                  name: p.productName,
+                  qty: p.totalQuantity,
+                  revenue: p.totalRevenue,
+                }))}
+                pagination={false}
+                size="small"
+                className={styles.dataTablePremium}
+                onRow={(r) => ({
+                  onClick: () => navigate(`/products/${r.key}`),
+                  style: { cursor: "pointer" },
+                })}
+                columns={[
+                  { title: t.globalView.columnProduct, dataIndex: "name", ellipsis: true },
+                  {
+                    title: t.globalView.columnQtyShort,
+                    dataIndex: "qty",
+                    width: 64,
+                    align: "center",
+                  },
+                  {
+                    title: t.globalView.columnRevenueShort,
+                    dataIndex: "revenue",
+                    width: 100,
+                    align: "right",
+                    render: (v: number) => (
+                      <span className={styles.tableAmount}>{formatFCFA(v)}</span>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </div>
+        </section>
+
+        {canStockAlerts && (
+          <section className={styles.section} aria-labelledby="store-low-stock-heading">
+            <h2 id="store-low-stock-heading" className={styles.sectionTitle}>
+              <AlertTriangle size={22} className={styles.sectionTitleIcon} aria-hidden />
+              {t.dashboard.lowStockAlerts}
+            </h2>
+            <div className={styles.panel}>
+              {data.lowStockItems.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={AlertTriangle}
+                  title={t.globalView.emptyStockTitle}
+                  description={t.globalView.emptyStockDesc}
+                />
+              ) : (
+                <ul className={styles.lowStockList}>
+                  {data.lowStockItems.map((item) => (
+                    <li key={`${item.productId}-${item.storeName}`} className={styles.lowStockItem}>
+                      <a
+                        href={`/products/${item.productId}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(`/products/${item.productId}`);
+                        }}
+                      >
+                        {item.productName}
+                      </a>
+                      <span className={styles.lowStockBadge}>
+                        {item.quantity} / {item.minStock}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+      </div>
+    </>
+  );
+}
+
 function ContentSkeleton() {
   return (
     <>
@@ -236,6 +418,7 @@ function ContentSkeleton() {
 export default function VueGlobale() {
   const navigate = useNavigate();
   const { canAdvancedReports, canStockAlerts } = usePlanFeatures();
+  const { selectedStoreId, setSelectedStoreId, storesReady, stores } = useStoreScopeSelection();
   const [period, setPeriod] = useState<PeriodKey>("thisMonth");
   const [selectedMonth, setSelectedMonth] = useState<Dayjs>(() => dayjs());
   const [selectedQuarter, setSelectedQuarter] = useState<Dayjs>(() => dayjs());
@@ -243,9 +426,15 @@ export default function VueGlobale() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<GlobalViewResponse | null>(null);
+  const [storeData, setStoreData] = useState<DashboardResponse | null>(null);
   const fetchIdRef = useRef(0);
   /** Premier chargement : skeleton plein écran ; ensuite on garde le hero. */
   const hasLoadedOnceRef = useRef(false);
+
+  const selectedStoreName = useMemo(
+    () => stores.find((s) => s.id === selectedStoreId)?.name ?? "",
+    [stores, selectedStoreId]
+  );
 
   const periodTabKeys = useMemo(
     () =>
@@ -275,26 +464,44 @@ export default function VueGlobale() {
       setLoading(false);
       return;
     }
+    if (!storesReady) {
+      return;
+    }
     const fetchId = ++fetchIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const { start, end } = resolveGlobalViewPeriodRange(period, periodAnchors);
-      const res = await getGlobalView({ periodStart: start, periodEnd: end });
-      if (fetchId !== fetchIdRef.current) return;
-      setData(res);
+      if (selectedStoreId) {
+        // Mode boutique spécifique
+        const res = await getDashboard({
+          periodStart: start,
+          periodEnd: end,
+          storeId: selectedStoreId,
+        });
+        if (fetchId !== fetchIdRef.current) return;
+        setStoreData(res);
+        setData(null);
+      } else {
+        // Mode global (toutes boutiques)
+        const res = await getGlobalView({ periodStart: start, periodEnd: end });
+        if (fetchId !== fetchIdRef.current) return;
+        setData(res);
+        setStoreData(null);
+      }
       hasLoadedOnceRef.current = true;
     } catch (e) {
       if (fetchId !== fetchIdRef.current) return;
       setError(e instanceof Error ? e.message : t.globalView.loadError);
       setData(null);
+      setStoreData(null);
       hasLoadedOnceRef.current = true;
     } finally {
       if (fetchId === fetchIdRef.current) {
         setLoading(false);
       }
     }
-  }, [period, periodAnchors]);
+  }, [period, periodAnchors, selectedStoreId, storesReady]);
 
   useEffect(() => {
     load();
@@ -315,14 +522,21 @@ export default function VueGlobale() {
     (data?.totalExpenses ?? 0) > 0;
 
   const showFullPageSkeleton = loading && !hasLoadedOnceRef.current;
+  const periodRangeStart = data?.periodStart ?? storeData?.periodStart;
+  const periodRangeEnd = data?.periodEnd ?? storeData?.periodEnd;
 
   const hero = (
     <header className={styles.hero}>
       <div className={styles.heroBackdrop} aria-hidden />
       <div className={styles.heroContent}>
         <p className={styles.heroBadge}>{t.globalView.heroBadge}</p>
-        <h1 className={styles.heroTitle}>{t.globalView.title}</h1>
-        <p className={styles.heroSubtitle}>{t.globalView.subtitle}</p>
+        <h1 className={styles.heroTitle}>
+          {selectedStoreId && selectedStoreName ? selectedStoreName : t.globalView.title}
+        </h1>
+        <p className={styles.heroSubtitle}>
+          {selectedStoreId ? t.globalView.storeSubtitle : t.globalView.subtitle}
+        </p>
+        <StoreScopeSelect value={selectedStoreId} onChange={setSelectedStoreId} variant="onDark" />
         <div className={styles.periodTabs} role="tablist" aria-label={t.globalView.periodTabsAria}>
           {periodTabKeys.map((key) => (
             <button
@@ -397,9 +611,9 @@ export default function VueGlobale() {
             />
           </div>
         )}
-        {data && !loading && (
+        {!loading && periodRangeStart && periodRangeEnd && (
           <p className={styles.periodSummary}>
-            {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
+            {formatRangeSummaryFr(periodRangeStart, periodRangeEnd)}
           </p>
         )}
       </div>
@@ -451,6 +665,13 @@ export default function VueGlobale() {
 
         {loading ? (
           <ContentSkeleton />
+        ) : selectedStoreId && storeData ? (
+          <StoreDashboardView
+            data={storeData}
+            storeName={selectedStoreName}
+            navigate={navigate}
+            canStockAlerts={canStockAlerts}
+          />
         ) : data ? (
           <>
             <ExecutiveSummary data={data} />
@@ -731,8 +952,12 @@ export default function VueGlobale() {
           !error && (
             <EmptyState
               icon={BarChart3}
-              title={t.globalView.emptyPageTitle}
-              description={t.globalView.emptyPageDesc}
+              title={
+                selectedStoreId ? t.globalView.emptyStorePageTitle : t.globalView.emptyPageTitle
+              }
+              description={
+                selectedStoreId ? t.globalView.emptyStorePageDesc : t.globalView.emptyPageDesc
+              }
               action={
                 <Button type="primary" onClick={() => void load()}>
                   {t.globalView.retry}
