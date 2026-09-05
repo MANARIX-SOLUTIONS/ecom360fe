@@ -19,6 +19,46 @@
   padding: 0 !important;
 }
 
+.catalogCard {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--section-gap);
+  padding: 20px !important;
+}
+
+.catalogTitle {
+  margin: 0 0 4px !important;
+  font-size: 16px;
+}
+
+.catalogDesc {
+  margin-bottom: 16px !important;
+  font-size: 13px;
+}
+
+.catalogOption {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: normal;
+  padding-top: 2px;
+}
+
+.catalogOptionTitle {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.catalogOptionDesc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.catalogWarning {
+  margin: 14px 0 0 !important;
+  font-size: 13px;
+}
+
 .storeList {
   list-style: none;
   margin: 0;

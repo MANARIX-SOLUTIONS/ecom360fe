@@ -4,6 +4,8 @@
 
 import { api } from "./client";
 
+export type CatalogMode = "PER_STORE" | "SHARED";
+
 export type BusinessProfile = {
   id: string;
   name: string;
@@ -13,7 +15,12 @@ export type BusinessProfile = {
   logoUrl?: string | null;
   /** ISO-8601 — présent lorsque l’API expose la date de création (nouvelles entreprises / guide). */
   createdAt?: string;
+  catalogMode?: CatalogMode;
 };
+
+export function isSharedCatalog(profile: BusinessProfile | null | undefined): boolean {
+  return profile?.catalogMode === "SHARED";
+}
 
 export async function getBusinessProfile(): Promise<BusinessProfile> {
   return api.get<BusinessProfile>("/business/me");
@@ -26,6 +33,12 @@ export async function updateBusinessProfile(data: {
   address?: string;
 }): Promise<BusinessProfile> {
   return api.put<BusinessProfile>("/business/me", data);
+}
+
+export async function updateBusinessCatalogMode(
+  catalogMode: CatalogMode
+): Promise<BusinessProfile> {
+  return api.patch<BusinessProfile>("/business/me/catalog-mode", { catalogMode });
 }
 
 export async function updateBusinessLogo(logoUrl: string): Promise<BusinessProfile> {

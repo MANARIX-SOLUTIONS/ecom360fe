@@ -24,6 +24,8 @@ import { t } from "@/i18n";
 import styles from "./Products.module.css";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { isSharedCatalog } from "@/api/business";
 import {
   listProducts,
   createProduct,
@@ -78,6 +80,8 @@ export default function Products() {
   const navigate = useNavigate();
   const { activeStore } = useStore();
   const { matrixCan } = useMatrixCan();
+  const { profile } = useBusinessProfile();
+  const sharedCatalog = isSharedCatalog(profile);
   const [search, setSearch] = useState("");
   const [filterStock, setFilterStock] = useState<"all" | "low" | "ok">("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -150,7 +154,7 @@ export default function Products() {
             page,
             size: pageSize,
             search: searchToUse || undefined,
-            storeId: activeStore?.id,
+            storeId: sharedCatalog ? undefined : activeStore?.id,
           }),
           fetchCategories(),
         ]);
@@ -199,7 +203,7 @@ export default function Products() {
         if (!silent && isInitialLoad && !isCancelled?.()) setLoading(false);
       }
     },
-    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize]
+    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize, sharedCatalog]
   );
 
   useEffect(() => {
@@ -343,7 +347,7 @@ export default function Products() {
             costPrice: values.costPrice,
             salePrice: values.salePrice,
             isActive: true,
-            storeId: activeStore.id,
+            storeId: sharedCatalog ? editing.storeId : activeStore.id,
             imageUrl: imageUrlForUpdate,
           });
           productId = editing.id;
@@ -356,9 +360,15 @@ export default function Products() {
             salePrice: values.salePrice,
             isActive: true,
             storeId: activeStore.id,
+            initialStock: values.initialStock ?? 0,
+            minStock: values.minStockAlert ?? 0,
           });
           productId = created.id;
-          if (values.initialStock != null && values.initialStock > 0) {
+          if (
+            !sharedCatalog &&
+            values.initialStock != null &&
+            values.initialStock > 0
+          ) {
             await initStock({
               productId: created.id,
               storeId: activeStore.id,

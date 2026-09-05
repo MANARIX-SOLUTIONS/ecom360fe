@@ -644,6 +644,19 @@ export const t = {
     emptyDesc:
       "Créez votre premier point de vente pour commencer à utiliser 360 PME. Gérez vos stocks, enregistrez des ventes et suivez votre activité.",
     emptyCta: "Créer ma première boutique",
+    catalogModeTitle: "Catalogue produits",
+    catalogModeDesc:
+      "Choisissez si toutes les boutiques vendent les mêmes produits, ou si chaque point de vente a son propre catalogue.",
+    catalogModePerStore: "Catalogue par boutique",
+    catalogModePerStoreDesc:
+      "Un produit créé dans une boutique n’apparaît pas dans les autres. Le stock reste local.",
+    catalogModeShared: "Catalogue partagé",
+    catalogModeSharedDesc:
+      "Un produit créé une fois apparaît dans toutes les boutiques. Le stock reste indépendant par magasin.",
+    catalogModeSharedConfirmTitle: "Activer le catalogue partagé ?",
+    catalogModeSharedWarning:
+      "Les produits déjà créés en double dans plusieurs boutiques ne seront pas fusionnés automatiquement.",
+    catalogModeUpdated: "Mode catalogue mis à jour",
   },
   profile: {
     myProfile: "Mon profil",
