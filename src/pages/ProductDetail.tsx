@@ -4,7 +4,6 @@ import {
   Card,
   Button,
   Typography,
-  Table,
   Tag,
   Modal,
   Form,
@@ -258,13 +257,22 @@ export default function ProductDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteProduct(id)
-      .then(() => {
-        message.success(t.products.msgDeleted);
-        navigate("/products");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+    Modal.confirm({
+      title: t.common.delete,
+      content: t.list.deleteConfirm.replace("{name}", product.name),
+      okText: t.list.deleteOk,
+      okType: "danger",
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteProduct(id);
+          message.success(t.products.msgDeleted);
+          navigate("/products");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        }
+      },
+    });
   };
 
   const handleStockSave = () => {
@@ -444,40 +452,36 @@ export default function ProductDetail() {
             description={t.products.emptyStockByStoreDesc}
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={stockLevels}
-              rowKey="storeId"
-              pagination={false}
-              size="small"
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              columns={[
-                { title: t.products.tableStoreColumn, dataIndex: "storeName" },
-                {
-                  title: t.products.stockQtyColumn,
-                  dataIndex: "quantity",
-                  render: (v: number, r: StockLevelResponse) => (
-                    <Tag
-                      color={
-                        stockStatus(v, r.minStock) === "critical"
-                          ? "error"
-                          : stockStatus(v, r.minStock) === "low"
-                            ? "warning"
-                            : "success"
-                      }
+          <ul className={styles.list}>
+            {stockLevels.map((level) => {
+              const status = stockStatus(level.quantity, level.minStock);
+              return (
+                <li key={level.storeId} className={styles.row}>
+                  <div className={`${styles.identity} ${styles.identityStatic}`}>
+                    <span className={styles.identityText}>
+                      <span className={styles.name}>{level.storeName}</span>
+                      <span className={styles.meta}>
+                        {t.products.minStockHint.replace("{n}", String(level.minStock))}
+                      </span>
+                    </span>
+                  </div>
+                  <div className={styles.statusCol}>
+                    <span
+                      className={`${styles.pill} ${
+                        status === "critical"
+                          ? styles.pillOut
+                          : status === "low"
+                            ? styles.pillLow
+                            : styles.pillOk
+                      }`}
                     >
-                      {v}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: t.products.minStockAlert,
-                  dataIndex: "minStock",
-                },
-              ]}
-            />
-          </div>
+                      {level.quantity}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </Card>
 
@@ -495,51 +499,37 @@ export default function ProductDetail() {
               description={t.products.emptyMovementsDesc}
             />
           ) : (
-            <div className="tableResponsive">
-              <Table
-                dataSource={movements}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                className="dataTable"
-                scroll={{ x: "max-content" }}
-                columns={[
-                  {
-                    title: t.common.date,
-                    dataIndex: "createdAt",
-                    render: (v: string) => v?.split("T")[0] ?? "-",
-                  },
-                  {
-                    title: t.products.movementTypeColumn,
-                    dataIndex: "type",
-                    render: (type: string) => movementTypeLabel(type),
-                  },
-                  {
-                    title: t.receipt.qtyShort,
-                    dataIndex: "quantity",
-                    render: (v: number, r: StockMovementResponse) => (
-                      <span
-                        style={{
-                          color:
-                            r.type === "in" || r.type === "adjustment"
-                              ? "var(--color-success)"
-                              : "var(--color-danger)",
-                        }}
-                      >
-                        {r.type === "in" ? "+" : r.type === "out" ? "-" : ""}
-                        {v}
+            <ul className={styles.list}>
+              {movements.map((movement) => {
+                const isOut = movement.type === "out";
+                const prefix =
+                  movement.type === "in" ? "+" : movement.type === "out" ? "-" : "";
+                const note = movement.note?.trim();
+                const meta = note
+                  ? `${movementTypeLabel(movement.type)} · ${note}`
+                  : movementTypeLabel(movement.type);
+                return (
+                  <li key={movement.id} className={styles.row}>
+                    <div className={`${styles.identity} ${styles.identityStatic}`}>
+                      <span className={styles.identityText}>
+                        <span className={styles.name}>
+                          {movement.createdAt?.split("T")[0] ?? "-"}
+                        </span>
+                        <span className={styles.meta}>{meta}</span>
                       </span>
-                    ),
-                  },
-                  {
-                    title: t.products.movementBeforeAfterColumn,
-                    render: (_, r: StockMovementResponse) =>
-                      `${r.quantityBefore} → ${r.quantityAfter}`,
-                  },
-                  { title: t.products.movementNoteColumn, dataIndex: "note" },
-                ]}
-              />
-            </div>
+                    </div>
+                    <div className={styles.statusCol}>
+                      <span
+                        className={`${styles.pill} ${isOut ? styles.pillOut : styles.pillOk}`}
+                      >
+                        {prefix}
+                        {movement.quantity}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
       )}

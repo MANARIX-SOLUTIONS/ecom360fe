@@ -88,6 +88,144 @@
   color: var(--color-text-muted);
 }
 
+.page :global(.contentCard):hover {
+  box-shadow: var(--shadow-card);
+  border-color: var(--v2-border-subtle);
+  transform: none;
+}
+
+/* ========== Compact ledger lists ========== */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--v2-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--v2-border-subtle);
+  background: var(--color-bg-elevated);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--v2-primary-soft);
+}
+
+.rowSales {
+  grid-template-columns: minmax(0, 1.3fr) auto auto auto;
+}
+
+.rowVoided {
+  background: #f8fafc;
+}
+
+.rowVoided:hover {
+  background: #f1f5f9;
+}
+
+.identity {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.identityStatic {
+  cursor: default;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.rowVoided .name {
+  color: var(--color-text-secondary);
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.money {
+  text-align: right;
+}
+
+.total {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.rowVoided .total {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.pillDanger {
+  color: var(--color-danger);
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.pillOk {
+  color: var(--color-success);
+  background: rgba(5, 150, 105, 0.1);
+}
+
+.pillVoided {
+  color: var(--color-text-muted);
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
 /* ========== KPI Row ========== */
 .kpiRow {
   margin-bottom: var(--section-gap);
@@ -189,6 +327,29 @@
 
   .kpiLabel {
     font-size: 11px;
+  }
+
+  .rowSales {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "identity actions"
+      "status money";
+  }
+
+  .rowSales .identity {
+    grid-area: identity;
+  }
+
+  .rowSales .pill {
+    grid-area: status;
+  }
+
+  .rowSales .money {
+    grid-area: money;
+  }
+
+  .rowSales .actions {
+    grid-area: actions;
   }
 }
 

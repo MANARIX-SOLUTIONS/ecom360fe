@@ -837,44 +837,94 @@
   color: var(--color-error, #ff4d4f);
 }
 
-.dataTable {
-  margin: -8px -8px -8px 0;
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--v2-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-.dataTablePremium {
-  margin: -12px -12px -8px -12px;
+.row {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border-subtle);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
 }
 
-.dataTablePremium :global(.ant-table) {
-  background: transparent !important;
+.list > li:last-child .row {
+  border-bottom: none;
 }
 
-.dataTablePremium :global(.ant-table-thead > tr > th) {
-  background: rgba(27, 77, 122, 0.06) !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  color: #64748b !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+.row:hover {
+  background: var(--v2-primary-soft);
 }
 
-.dataTablePremium :global(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05) !important;
+.row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
-.dataTablePremium :global(.ant-table-tbody > tr:hover > td) {
-  background: rgba(27, 77, 122, 0.04) !important;
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
-.dataTable .ant-table-cell {
-  padding: 10px 8px;
+.name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-.tableAmount {
+.meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.money {
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--color-text);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+  background: var(--v2-primary-soft);
+  border: 1px solid var(--v2-border-subtle);
+  white-space: nowrap;
 }
 
 .twoCol {

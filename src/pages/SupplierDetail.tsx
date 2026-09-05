@@ -4,13 +4,11 @@ import {
   Card,
   Button,
   Typography,
-  Table,
   Tag,
   Modal,
   Form,
   Input,
   Select,
-  Space,
   message,
   Skeleton,
 } from "antd";
@@ -399,78 +397,49 @@ export default function SupplierDetail() {
               description={t.purchaseOrders.outstandingOrdersDesc}
             />
           ) : (
-            <div className="tableResponsive">
-              <Table
-                dataSource={outstandingOrders}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                className="dataTable"
-                scroll={{ x: "max-content" }}
-                onRow={(record) => ({
-                  style: { cursor: "pointer" },
-                  onClick: () => navigate(`/purchase-orders/${record.id}`),
-                })}
-                columns={[
-                  {
-                    title: t.purchaseOrders.reference,
-                    dataIndex: "reference",
-                    render: (ref: string) => <Typography.Text strong>{ref}</Typography.Text>,
-                  },
-                  {
-                    title: t.purchaseOrders.total,
-                    dataIndex: "totalAmount",
-                    align: "right",
-                    render: (v: number) => formatFcfa(v),
-                  },
-                  {
-                    title: t.purchaseOrders.amountPaid,
-                    dataIndex: "amountPaid",
-                    align: "right",
-                    render: (v: number) => formatFcfa(v ?? 0),
-                  },
-                  {
-                    title: t.purchaseOrders.remainingDue,
-                    dataIndex: "remainingAmount",
-                    align: "right",
-                    render: (v: number) => <Tag color="gold">{formatFcfa(v)}</Tag>,
-                  },
-                  {
-                    title: t.purchaseOrders.dueDate,
-                    dataIndex: "dueDate",
-                    render: (v: string | null) =>
-                      v ? (
-                        <Space size={4}>
-                          <span>{formatIsoDate(v)}</span>
-                          {isOverdue(v) && <Tag color="red">{t.suppliers.overdue}</Tag>}
-                        </Space>
-                      ) : (
-                        "—"
-                      ),
-                  },
-                  ...(canSettlePo
-                    ? [
-                        {
-                          title: t.common.actions,
-                          key: "actions",
-                          render: (_: unknown, record: PurchaseOrderResponse) => (
-                            <Button
-                              type="link"
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPayPo(record);
-                              }}
-                            >
-                              {t.purchaseOrders.recordPayment}
-                            </Button>
-                          ),
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
+            <ul className={styles.list}>
+              {outstandingOrders.map((order) => {
+                const overdue = isOverdue(order.dueDate);
+                const dueMeta = order.dueDate
+                  ? `${formatIsoDate(order.dueDate)}${overdue ? ` · ${t.suppliers.overdue}` : ""}`
+                  : "—";
+                return (
+                  <li
+                    key={order.id}
+                    className={`${styles.row} ${overdue ? styles.rowDue : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={styles.identity}
+                      onClick={() => navigate(`/purchase-orders/${order.id}`)}
+                      aria-label={t.purchaseOrders.openAria.replace("{ref}", order.reference)}
+                    >
+                      <span className={styles.identityText}>
+                        <span className={styles.name}>{order.reference}</span>
+                        <span className={styles.meta}>{dueMeta}</span>
+                      </span>
+                    </button>
+                    <div className={styles.statusCol}>
+                      <span className={`${styles.pill} ${styles.pillWarn}`}>
+                        {formatFcfa(order.remainingAmount ?? 0)}
+                      </span>
+                    </div>
+                    <div className={`${styles.money} ${styles.actions}`}>
+                      <span className={styles.total}>{formatFcfa(order.totalAmount)}</span>
+                      {canSettlePo ? (
+                        <Button
+                          type="primary"
+                          size="small"
+                          onClick={() => setPayPo(order)}
+                        >
+                          {t.purchaseOrders.recordPayment}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
       )}
@@ -488,34 +457,23 @@ export default function SupplierDetail() {
             description={t.suppliers.emptyPaymentHistoryDesc}
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={payments}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              columns={[
-                {
-                  title: t.common.date,
-                  dataIndex: "createdAt",
-                  render: (v: string) => formatIsoDate(v),
-                },
-                {
-                  title: t.receipt.paymentMethod,
-                  dataIndex: "paymentMethod",
-                  render: (v: string) => METHOD_LABELS[v] ?? v,
-                },
-                {
-                  title: t.expenses.amount,
-                  dataIndex: "amount",
-                  align: "right",
-                  render: (v: number) => <Typography.Text strong>{formatFcfa(v)}</Typography.Text>,
-                },
-              ]}
-            />
-          </div>
+          <ul className={styles.list}>
+            {payments.map((payment) => (
+              <li key={payment.id} className={styles.row}>
+                <div className={`${styles.identity} ${styles.identityStatic}`}>
+                  <span className={styles.identityText}>
+                    <span className={styles.name}>{formatIsoDate(payment.createdAt)}</span>
+                    <span className={styles.meta}>
+                      {METHOD_LABELS[payment.paymentMethod] ?? payment.paymentMethod}
+                    </span>
+                  </span>
+                </div>
+                <div className={styles.money}>
+                  <span className={styles.total}>{formatFcfa(payment.amount)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 

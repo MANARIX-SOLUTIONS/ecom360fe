@@ -35,6 +35,30 @@
   }
 }
 
+.voidedBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--v2-border-strong);
+  background: #f8fafc;
+  color: var(--color-text);
+}
+
+.voidedBanner strong {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.voidedBanner span {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
 .successIcon {
   color: var(--color-success);
   filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));

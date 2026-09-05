@@ -230,8 +230,11 @@ export default function Receipt() {
         discount: displayDiscount,
         method,
         amountPaid: sale?.amountPaid,
-        remainingAmount: sale?.remainingAmount,
+        remainingAmount: sale?.status === "voided" ? 0 : sale?.remainingAmount,
         dueDate: sale?.dueDate,
+        voided: sale?.status === "voided",
+        voidedLabel: t.receipt.voidedBanner,
+        voidedHint: t.receipt.voidedBannerDesc,
         printedClient: printedClientForA4,
         i18n: {
           invoiceRef: t.receipt.invoiceRef,
@@ -343,16 +346,17 @@ export default function Receipt() {
 
   return (
     <main className={styles.wrapper} role="main" aria-label={t.receipt.saleSummary}>
-      {(successBannerState === "visible" || successBannerState === "exiting") && (
-        <div
-          className={`${styles.successBanner} ${successBannerState === "exiting" ? styles.successBannerExiting : ""}`}
-          role="status"
-          aria-live="polite"
-        >
-          <CheckCircle size={40} className={styles.successIcon} />
-          <span className={styles.successText}>{t.pos.paymentSuccess}</span>
-        </div>
-      )}
+      {sale?.status !== "voided" &&
+        (successBannerState === "visible" || successBannerState === "exiting") && (
+          <div
+            className={`${styles.successBanner} ${successBannerState === "exiting" ? styles.successBannerExiting : ""}`}
+            role="status"
+            aria-live="polite"
+          >
+            <CheckCircle size={40} className={styles.successIcon} />
+            <span className={styles.successText}>{t.pos.paymentSuccess}</span>
+          </div>
+        )}
 
       {/* Thermal receipt (default screen + thermal print) */}
       <article
@@ -373,8 +377,17 @@ export default function Receipt() {
 
         <hr className={styles.divider} aria-hidden />
 
+        {sale?.status === "voided" ? (
+          <div className={styles.voidedBanner} role="status">
+            <strong>{t.receipt.voidedBanner}</strong>
+            <span>{t.receipt.voidedBannerDesc}</span>
+          </div>
+        ) : null}
+
         <div className={styles.metaBlock}>
-          <p className={styles.ticketTitle}>{t.receipt.ticket}</p>
+          <p className={styles.ticketTitle}>
+            {sale?.status === "voided" ? t.receipt.voidedBanner : t.receipt.ticket}
+          </p>
           <p className={styles.receiptId}>{receiptId}</p>
           <time className={styles.datetime} dateTime={now.toISOString()}>
             {now.toLocaleDateString("fr-FR", {
@@ -474,7 +487,7 @@ export default function Receipt() {
             <span>{t.common.total}</span>
             <span>{formatPrice(displayTotal)}</span>
           </div>
-          {remainingAmount > 0 && (
+          {sale?.status !== "voided" && remainingAmount > 0 && (
             <>
               <div className={styles.row}>
                 <span>{t.receipt.amountPaid}</span>
@@ -604,7 +617,7 @@ export default function Receipt() {
                 <span>{t.common.total}</span>
                 <span>{formatPrice(displayTotal)}</span>
               </div>
-              {remainingAmount > 0 && (
+              {sale?.status !== "voided" && remainingAmount > 0 && (
                 <>
                   <div className={styles.a4TotalRow}>
                     <span>{t.receipt.amountPaid}</span>
@@ -761,9 +774,7 @@ export default function Receipt() {
           if (!sale?.id) return;
           getSale(sale.id)
             .then(setFetchedSale)
-            .catch((e) =>
-              message.error(e instanceof Error ? e.message : t.receipt.msgLoadError)
-            );
+            .catch((e) => message.error(e instanceof Error ? e.message : t.receipt.msgLoadError));
         }}
       />
     </main>

@@ -51,6 +51,9 @@ export type A4ReceiptData = {
   amountPaid?: number;
   remainingAmount?: number;
   dueDate?: string | null;
+  voided?: boolean;
+  voidedLabel?: string;
+  voidedHint?: string;
   /** Client facturé (hors comptoir) ou mention comptoir / legacy */
   printedClient?: PrintedReceiptClient;
   i18n: {
@@ -147,6 +150,16 @@ const A4_PRINT_STYLES = `
   }
   .a4-ref-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 6px; }
   .a4-ref-value { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: #1b4d7a; letter-spacing: -0.02em; }
+  .a4-voided {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .a4-voided strong { display: block; font-size: 13px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
   .a4-meta {
     display: inline-flex;
     align-items: center;
@@ -358,6 +371,11 @@ function buildA4ReceiptHTML(data: A4ReceiptData): string {
           <span class="a4-ref-value">${escapeHtml(data.receiptId)}</span>
         </div>
       </header>
+      ${
+        data.voided
+          ? `<div class="a4-voided"><strong>${escapeHtml(data.voidedLabel ?? "Vente annulée")}</strong>${escapeHtml(data.voidedHint ?? "")}</div>`
+          : ""
+      }
       <div class="a4-meta">
         ${data.i18n.dateTime}: ${dt} à ${tm}
       </div>

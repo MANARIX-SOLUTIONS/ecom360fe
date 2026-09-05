@@ -10,7 +10,6 @@ import {
   Col,
   message,
   Skeleton,
-  Table,
   Tag,
   Modal,
   DatePicker,
@@ -772,27 +771,34 @@ export default function Reports() {
               {t.reports.marginSectionLead}
             </Typography.Paragraph>
             {data.topMarginProducts?.length ? (
-              <div className="tableResponsive">
-                <Table
-                  className="dataTable"
-                  size="small"
-                  pagination={false}
-                  scroll={{ x: "max-content" }}
-                  dataSource={data.topMarginProducts.map((r) => ({
-                    key: r.productId,
-                    ...r,
-                  }))}
-                  columns={[
-                    { title: t.reports.columnProduct, dataIndex: "productName" },
-                    {
-                      title: t.reports.columnEstimatedMargin,
-                      dataIndex: "marginAmount",
-                      align: "right",
-                      render: (v: number) => formatFCFA(v),
-                    },
-                  ]}
-                />
-              </div>
+              <ul className={styles.list}>
+                {data.topMarginProducts.map((r) => {
+                  const canOpen = Boolean(r.productId);
+                  const identityInner = <span className={styles.name}>{r.productName}</span>;
+                  return (
+                    <li key={r.productId || r.productName} className={styles.row}>
+                      {canOpen ? (
+                        <button
+                          type="button"
+                          className={styles.identity}
+                          onClick={() => navigate(`/products/${r.productId}`)}
+                        >
+                          {identityInner}
+                        </button>
+                      ) : (
+                        <div className={`${styles.identity} ${styles.identityStatic}`}>
+                          {identityInner}
+                        </div>
+                      )}
+                      <div className={styles.money}>
+                        <span className={`amount ${styles.total}`}>
+                          {formatFCFA(r.marginAmount)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <EmptyState
                 compact
@@ -810,101 +816,53 @@ export default function Reports() {
             className={`${styles.card} contentCard`}
             style={{ marginTop: 16 }}
           >
-            <div className="tableResponsive">
-              <Table
-                className="dataTable"
-                dataSource={salesInPeriod.map((s) => ({
-                  key: s.saleId,
-                  saleId: s.saleId,
-                  receiptNumber: s.receiptNumber,
-                  total: s.total,
-                  paymentMethod: s.paymentMethod,
-                  status: s.status ?? "completed",
-                  createdAt: s.createdAt,
-                }))}
-                pagination={false}
-                size="small"
-                scroll={{ x: "max-content" }}
-                onRow={(r) => ({
-                  style: { cursor: "pointer" },
-                  onClick: () => navigate("/receipt", { state: { saleId: r.saleId } }),
-                })}
-                columns={[
-                  {
-                    title: t.sales.receiptNumber,
-                    dataIndex: "receiptNumber",
-                    width: 120,
-                  },
-                  {
-                    title: t.reports.recentSalesColTime,
-                    dataIndex: "createdAt",
-                    width: 80,
-                    render: (v: string) => formatTime(v),
-                  },
-                  {
-                    title: t.reports.recentSalesColAmount,
-                    dataIndex: "total",
-                    width: 100,
-                    align: "right",
-                    render: (v: number) => (
-                      <span className="amount">{v.toLocaleString("fr-FR")} F</span>
-                    ),
-                  },
-                  {
-                    title: t.reports.recentSalesColPayment,
-                    dataIndex: "paymentMethod",
-                    width: 100,
-                    render: (m: string) => (
-                      <Tag
-                        color={
-                          m === "wave"
-                            ? "processing"
-                            : m === "orange_money"
-                              ? "warning"
-                              : m === "credit"
-                                ? "purple"
-                                : "default"
-                        }
-                      >
-                        {LABELS[m] || m}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: t.reports.exportColStatus,
-                    dataIndex: "status",
-                    width: 100,
-                    render: (status: string) => (
-                      <Tag color={status === "voided" ? "default" : "green"}>
-                        {status === "voided" ? t.sales.statusVoided : t.sales.statusCompleted}
-                      </Tag>
-                    ),
-                  },
-                  ...(matrixCan("SALES_DELETE", "reports")
-                    ? [
-                        {
-                          title: "",
-                          key: "actions",
-                          width: 120,
-                          render: (_: unknown, r: { saleId: string; status: string }) =>
-                            r.status === "completed" ? (
-                              <Button
-                                type="text"
-                                size="small"
-                                danger
-                                icon={<Ban size={14} />}
-                                loading={voidingId === r.saleId}
-                                onClick={(e) => handleVoidSale(r.saleId, e)}
-                              >
-                                {t.reports.recentSalesCancel}
-                              </Button>
-                            ) : null,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
+            <ul className={styles.list}>
+              {salesInPeriod.map((s) => {
+                const isVoided = (s.status ?? "completed") === "voided";
+                const methodLabel = LABELS[s.paymentMethod] || s.paymentMethod;
+                return (
+                  <li
+                    key={s.saleId}
+                    className={`${styles.row} ${styles.rowSales} ${isVoided ? styles.rowVoided : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={styles.identity}
+                      onClick={() => navigate("/receipt", { state: { saleId: s.saleId } })}
+                    >
+                      <span className={styles.name}>{s.receiptNumber}</span>
+                      <span className={styles.meta}>
+                        {formatTime(s.createdAt)} · {methodLabel}
+                      </span>
+                    </button>
+                    <span
+                      className={`${styles.pill} ${isVoided ? styles.pillVoided : styles.pillOk}`}
+                    >
+                      {isVoided ? t.sales.statusVoided : t.sales.statusCompleted}
+                    </span>
+                    <div className={styles.money}>
+                      <span className={`amount ${styles.total}`}>{formatFCFA(s.total)}</span>
+                    </div>
+                    {matrixCan("SALES_DELETE", "reports") ? (
+                      <div className={styles.actions}>
+                        {!isVoided ? (
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<Ban size={14} />}
+                            loading={voidingId === s.saleId}
+                            onClick={(e) => handleVoidSale(s.saleId, e)}
+                          >
+                            {t.reports.recentSalesCancel}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
           </Card>
         )}
       </div>

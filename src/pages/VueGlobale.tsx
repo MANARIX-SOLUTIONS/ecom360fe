@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Skeleton, Alert, Button, Table, DatePicker, Typography } from "antd";
+import { Card, Skeleton, Alert, Button, DatePicker, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import type { LucideIcon } from "lucide-react";
@@ -99,6 +99,39 @@ function KpiCard({
         <div className={styles.kpiValueSlot}>{children}</div>
       </div>
     </Card>
+  );
+}
+
+function TopProductsList({
+  products,
+  onOpenProduct,
+}: {
+  products: DashboardResponse["topProducts"];
+  onOpenProduct: (productId: string) => void;
+}) {
+  return (
+    <ul className={styles.list}>
+      {products.map((p) => (
+        <li key={p.productId}>
+          <button
+            type="button"
+            className={styles.row}
+            onClick={() => onOpenProduct(p.productId)}
+            aria-label={t.products.openProductAria.replace("{name}", p.productName)}
+          >
+            <span className={styles.identity}>
+              <span className={styles.name}>{p.productName}</span>
+              <span className={styles.meta}>
+                <span className={styles.pill}>
+                  {frInteger.format(p.totalQuantity)} {t.globalView.columnQtyShort}
+                </span>
+              </span>
+            </span>
+            <span className={styles.money}>{formatFCFA(p.totalRevenue)}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -314,38 +347,9 @@ function StoreDashboardView({
                 description={t.globalView.emptyProductsDesc}
               />
             ) : (
-              <Table
-                dataSource={data.topProducts.map((p) => ({
-                  key: p.productId,
-                  name: p.productName,
-                  qty: p.totalQuantity,
-                  revenue: p.totalRevenue,
-                }))}
-                pagination={false}
-                size="small"
-                className={styles.dataTablePremium}
-                onRow={(r) => ({
-                  onClick: () => navigate(`/products/${r.key}`),
-                  style: { cursor: "pointer" },
-                })}
-                columns={[
-                  { title: t.globalView.columnProduct, dataIndex: "name", ellipsis: true },
-                  {
-                    title: t.globalView.columnQtyShort,
-                    dataIndex: "qty",
-                    width: 64,
-                    align: "center",
-                  },
-                  {
-                    title: t.globalView.columnRevenueShort,
-                    dataIndex: "revenue",
-                    width: 100,
-                    align: "right",
-                    render: (v: number) => (
-                      <span className={styles.tableAmount}>{formatFCFA(v)}</span>
-                    ),
-                  },
-                ]}
+              <TopProductsList
+                products={data.topProducts}
+                onOpenProduct={(id) => navigate(`/products/${id}`)}
               />
             )}
           </div>
@@ -869,42 +873,10 @@ export default function VueGlobale() {
                       description={t.globalView.emptyProductsDesc}
                     />
                   ) : (
-                    <div className="tableResponsive">
-                      <Table
-                        dataSource={data.topProducts.map((p) => ({
-                          key: p.productId,
-                          name: p.productName,
-                          qty: p.totalQuantity,
-                          revenue: p.totalRevenue,
-                        }))}
-                        pagination={false}
-                        size="small"
-                        className={styles.dataTablePremium}
-                        scroll={{ x: "max-content" }}
-                        onRow={(r) => ({
-                          onClick: () => navigate(`/products/${r.key}`),
-                          style: { cursor: "pointer" },
-                        })}
-                        columns={[
-                          { title: t.common.name, dataIndex: "name", ellipsis: true },
-                          {
-                            title: t.globalView.columnQtyShort,
-                            dataIndex: "qty",
-                            width: 64,
-                            align: "center",
-                          },
-                          {
-                            title: t.globalView.columnRevenueShort,
-                            dataIndex: "revenue",
-                            width: 100,
-                            align: "right",
-                            render: (v: number) => (
-                              <span className={styles.tableAmount}>{formatFCFA(v)}</span>
-                            ),
-                          },
-                        ]}
-                      />
-                    </div>
+                    <TopProductsList
+                      products={data.topProducts}
+                      onOpenProduct={(id) => navigate(`/products/${id}`)}
+                    />
                   )}
                 </div>
               </section>

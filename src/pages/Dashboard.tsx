@@ -4,7 +4,6 @@ import {
   Row,
   Col,
   Typography,
-  Table,
   Tag,
   Skeleton,
   Button,
@@ -218,7 +217,7 @@ export default function Dashboard() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [data, setData] = useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
   const [extraTopProducts, setExtraTopProducts] = useState<
-    { productId: string; name: string; qty: number; amount: string }[]
+    { productId: string; name: string; qty: number; amount: number }[]
   >([]);
   const [extraLowStock, setExtraLowStock] = useState<
     { productId: string; name: string; storeName: string; stock: number; min: number }[]
@@ -299,7 +298,7 @@ export default function Dashboard() {
           productId: p.productId,
           name: p.productName,
           qty: p.totalQuantity,
-          amount: formatFCFA(p.totalRevenue),
+          amount: p.totalRevenue,
         })),
       ]);
       setTopSliceHasNext(res.hasNext);
@@ -523,7 +522,7 @@ export default function Dashboard() {
         productId: p.productId,
         name: p.productName,
         qty: p.totalQuantity,
-        amount: formatFCFA(p.totalRevenue),
+        amount: p.totalRevenue,
       })) ?? [];
     return [...base, ...extraTopProducts];
   }, [data?.topProducts, extraTopProducts]);
@@ -1024,7 +1023,7 @@ export default function Dashboard() {
         ) : null}
       </section>
 
-      <section className={styles.tablesSection} aria-label="Activité">
+      <section className={styles.tablesSection} aria-label={t.dashboard.activityAria}>
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card
@@ -1037,57 +1036,47 @@ export default function Dashboard() {
               variant="borderless"
               className={styles.card}
             >
-              <div className="tableResponsive">
-                <Table
-                  dataSource={topProducts}
-                  rowKey="productId"
-                  pagination={false}
-                  size="small"
-                  className={styles.dataTable}
-                  scroll={{ x: "max-content" }}
-                  onRow={(r) => ({
-                    style: { cursor: "pointer" },
-                    onClick: () => navigate(`/products/${r.productId}`),
-                  })}
-                  columns={[
-                    {
-                      title: t.common.name,
-                      dataIndex: "name",
-                      ellipsis: true,
-                    },
-                    {
-                      title: "Qté",
-                      dataIndex: "qty",
-                      width: 72,
-                      align: "center",
-                    },
-                    {
-                      title: "Montant",
-                      dataIndex: "amount",
-                      width: 110,
-                      className: "amount",
-                      align: "right",
-                    },
-                  ]}
-                />
-                {data && topSliceHasNext ? (
-                  <div className={styles.tableFooterActions}>
-                    <Button
-                      type="default"
-                      size="small"
-                      loading={loadingMoreTop}
-                      onClick={loadMoreTopProducts}
-                    >
-                      Charger {Math.min(DASH_LIST_BATCH, topRemaining)} suivants
-                    </Button>
-                    {topRemaining > 0 ? (
-                      <Typography.Text type="secondary" className={styles.tableFooterMeta}>
-                        Encore {topRemaining} produit{topRemaining > 1 ? "s" : ""} à afficher
-                      </Typography.Text>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+              {topProducts.length > 0 ? (
+                <ul className={styles.list}>
+                  {topProducts.map((p) => (
+                    <li key={p.productId} className={styles.row}>
+                      <button
+                        type="button"
+                        className={styles.identity}
+                        onClick={() => navigate(`/products/${p.productId}`)}
+                      >
+                        <span className={styles.name}>{p.name}</span>
+                        <span className={styles.meta}>
+                          {p.qty} {t.dashboard.columnQty}
+                        </span>
+                      </button>
+                      <div className={styles.money}>
+                        <span className={`amount ${styles.total}`}>{formatFCFA(p.amount)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {data && topSliceHasNext ? (
+                <div className={styles.tableFooterActions}>
+                  <Button
+                    type="default"
+                    size="small"
+                    loading={loadingMoreTop}
+                    onClick={loadMoreTopProducts}
+                  >
+                    {t.dashboard.loadMoreNext.replace(
+                      "{count}",
+                      String(Math.min(DASH_LIST_BATCH, topRemaining))
+                    )}
+                  </Button>
+                  {topRemaining > 0 ? (
+                    <Typography.Text type="secondary" className={styles.tableFooterMeta}>
+                      {t.dashboard.stillToShowProducts.replace("{count}", String(topRemaining))}
+                    </Typography.Text>
+                  ) : null}
+                </div>
+              ) : null}
             </Card>
           </Col>
           {canStockAlerts ? (
@@ -1109,64 +1098,56 @@ export default function Dashboard() {
                 variant="borderless"
                 className={`${styles.card} ${styles.alertCard}`}
               >
-                <div className="tableResponsive">
-                  <Table
-                    dataSource={lowStock}
-                    rowKey={(r) => `${r.productId}-${r.storeName}`}
-                    pagination={false}
-                    size="small"
-                    className={styles.dataTable}
-                    scroll={{ x: "max-content" }}
-                    onRow={(r) => ({
-                      style: { cursor: "pointer" },
-                      onClick: () => navigate(`/products/${r.productId}`),
-                    })}
-                    columns={[
-                      {
-                        title: t.common.name,
-                        dataIndex: "name",
-                        ellipsis: true,
-                      },
-                      {
-                        title: "Stock",
-                        dataIndex: "stock",
-                        width: 88,
-                        render: (
-                          val: number,
-                          r: { productId: string; storeName: string; min: number }
-                        ) => (
-                          <Tag color={val < r.min ? "error" : "default"}>
-                            {val} / {r.min}
-                          </Tag>
-                        ),
-                      },
-                    ]}
-                  />
-                  {data && lowSliceHasNext ? (
-                    <div className={styles.tableFooterActions}>
-                      <Button
-                        type="default"
-                        size="small"
-                        loading={loadingMoreLow}
-                        onClick={loadMoreLowStock}
-                      >
-                        Charger {Math.min(DASH_LIST_BATCH, lowRemaining)} suivants
-                      </Button>
-                      {lowRemaining > 0 ? (
-                        <Typography.Text type="secondary" className={styles.tableFooterMeta}>
-                          Encore {lowRemaining} ligne{lowRemaining > 1 ? "s" : ""} à afficher
-                        </Typography.Text>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
+                {lowStock.length > 0 ? (
+                  <ul className={styles.list}>
+                    {lowStock.map((r) => (
+                      <li key={`${r.productId}-${r.storeName}`} className={styles.row}>
+                        <button
+                          type="button"
+                          className={styles.identity}
+                          onClick={() => navigate(`/products/${r.productId}`)}
+                        >
+                          <span className={styles.name}>{r.name}</span>
+                          {r.storeName ? (
+                            <span className={styles.meta}>{r.storeName}</span>
+                          ) : null}
+                        </button>
+                        <span
+                          className={`${styles.pill} ${r.stock < r.min ? styles.pillDanger : ""}`}
+                        >
+                          {r.stock} / {r.min}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {data && lowSliceHasNext ? (
+                  <div className={styles.tableFooterActions}>
+                    <Button
+                      type="default"
+                      size="small"
+                      loading={loadingMoreLow}
+                      onClick={loadMoreLowStock}
+                    >
+                      {t.dashboard.loadMoreNext.replace(
+                        "{count}",
+                        String(Math.min(DASH_LIST_BATCH, lowRemaining))
+                      )}
+                    </Button>
+                    {lowRemaining > 0 ? (
+                      <Typography.Text type="secondary" className={styles.tableFooterMeta}>
+                        {t.dashboard.stillToShowRows.replace("{count}", String(lowRemaining))}
+                      </Typography.Text>
+                    ) : null}
+                  </div>
+                ) : null}
               </Card>
             </Col>
           ) : null}
         </Row>
       </section>
 
-      <section className={styles.paymentSection} aria-label="Répartition des paiements">
+      <section className={styles.paymentSection} aria-label={t.dashboard.paymentSplitAria}>
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card

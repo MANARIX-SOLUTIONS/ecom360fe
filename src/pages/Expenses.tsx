@@ -7,21 +7,20 @@ import {
   Select,
   Button,
   Typography,
-  Table,
   Tag,
   Drawer,
-  Row,
-  Col,
   Skeleton,
   message,
   DatePicker,
   Modal,
   Space,
+  Pagination,
+  Tooltip,
 } from "antd";
 import dayjs from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
+import { Plus, Wallet, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
 import { useStore } from "@/hooks/useStore";
@@ -41,6 +40,16 @@ import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 
 function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
+}
+
+function formatExpenseDate(iso: string) {
+  const parsed = dayjs(iso);
+  return parsed.isValid() ? parsed.format("DD/MM/YYYY") : iso;
+}
+
+function expensesCountLabel(count: number) {
+  if (count === 1) return t.expenses.countOne;
+  return t.expenses.countOther.replace("{count}", String(count));
 }
 
 const CATEGORY_COLOR_OPTIONS = [
@@ -74,6 +83,10 @@ export default function Expenses() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [categories, setCategories] = useState<ExpenseCategoryResponse[]>([]);
+
+  const canCreate = matrixCan("EXPENSES_CREATE", "expenses");
+  const canUpdate = matrixCan("EXPENSES_UPDATE", "expenses");
+  const canDelete = matrixCan("EXPENSES_DELETE", "expenses");
 
   useEffect(() => {
     setPage(0);
@@ -124,12 +137,7 @@ export default function Expenses() {
     };
   }, [fetchData]);
 
-  const filtered = expenses;
-
   const categoryById = Object.fromEntries(categories.map((c) => [c.id, c]));
-  const categoryColorMap: Record<string, string> = Object.fromEntries(
-    categories.map((c) => [c.id, c.color || "default"])
-  );
 
   const monthTotal = summaryExpenses.reduce((s, e) => s + (e.amount ?? 0), 0);
 
@@ -137,7 +145,7 @@ export default function Expenses() {
     ? [...summaryExpenses].reduce(
         (acc, e) => {
           const cat = categoryById[e.categoryId];
-          const name = cat?.name ?? "Autre";
+          const name = cat?.name ?? t.expenses.noCategory;
           acc[name] = (acc[name] || 0) + (e.amount ?? 0);
           return acc;
         },
@@ -145,30 +153,6 @@ export default function Expenses() {
       )
     : {};
   const topCatName = Object.entries(topCategory).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
-
-  const summaryStats = [
-    {
-      label: "Total ce mois",
-      value: formatFCFA(monthTotal),
-      icon: Wallet,
-      color: "var(--color-primary)",
-      bg: "rgba(31,58,95,0.08)",
-    },
-    {
-      label: "Top catégorie",
-      value: topCatName,
-      icon: TrendingUp,
-      color: "var(--color-warning)",
-      bg: "rgba(243,156,18,0.08)",
-    },
-    {
-      label: "Nb dépenses",
-      value: String(total),
-      icon: BarChart3,
-      color: "var(--color-success)",
-      bg: "rgba(46,204,113,0.08)",
-    },
-  ];
 
   const openAddCategory = () => {
     setEditingCategory(null);
@@ -219,30 +203,41 @@ export default function Expenses() {
     });
   };
 
-  const onCategoryDelete = async (c: ExpenseCategoryResponse) => {
-    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
-    try {
-      await deleteExpenseCategory(c.id);
-      message.success(t.common.categoryDeleted);
-      const refreshed = await listExpenseCategories();
-      setCategories(refreshed);
-      fetchData();
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const onCategoryDelete = (c: ExpenseCategoryResponse) => {
+    Modal.confirm({
+      title: t.expenses.deleteCategoryConfirm.replace("{name}", c.name),
+      okText: t.list.deleteOk,
+      okButtonProps: { danger: true },
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteExpenseCategory(c.id);
+          message.success(t.common.categoryDeleted);
+          const refreshed = await listExpenseCategories();
+          setCategories(refreshed);
+          fetchData();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        }
+      },
+    });
   };
 
   const onExpenseDelete = (exp: ExpenseResponse) => {
     Modal.confirm({
-      title: "Supprimer cette dépense ?",
-      content: `${exp.description ?? "Dépense"} — ${formatFCFA(exp.amount)}`,
-      okText: "Supprimer",
+      title: t.expenses.deleteConfirm,
+      content: `${exp.description?.trim() || categoryById[exp.categoryId]?.name || t.expenses.noCategory} — ${formatFCFA(exp.amount)}`,
+      okText: t.list.deleteOk,
       okButtonProps: { danger: true },
       cancelText: t.common.cancel,
       onOk: async () => {
-        await deleteExpense(exp.id);
-        message.success(t.expenses.msgDeleted);
-        fetchData();
+        try {
+          await deleteExpense(exp.id);
+          message.success(t.expenses.msgDeleted);
+          fetchData();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        }
       },
     });
   };
@@ -293,29 +288,48 @@ export default function Expenses() {
     }
   };
 
-  if (loading) {
+  if (loading && expenses.length === 0) {
     return (
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.header}>
-          <Skeleton.Input active style={{ width: 120, height: 28 }} />
-          <div className={styles.toolbar}>
-            <Skeleton.Input active style={{ width: 180, height: 44 }} />
-            <Skeleton.Button active style={{ width: 180, height: 44 }} />
-          </div>
+          <Skeleton.Input active style={{ width: 140, height: 32 }} />
+          <Skeleton.Button active style={{ width: 160, height: 40 }} />
         </div>
         <Card variant="borderless" className={`${styles.card} contentCard`}>
-          <Skeleton active paragraph={{ rows: 5 }} />
+          <Skeleton active paragraph={{ rows: 8 }} />
         </Card>
       </div>
     );
   }
 
+  const isUnfilteredEmpty = expenses.length === 0 && categoryFilter === "all";
+
   return (
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.expenses.title}
-        </Typography.Title>
+        <div className={styles.heading}>
+          <Typography.Title level={4} className="pageTitle">
+            {t.expenses.title}
+          </Typography.Title>
+          <Typography.Text type="secondary" className="pageSubtitle">
+            {expensesCountLabel(total)}
+          </Typography.Text>
+        </div>
+        <div className={styles.headerActions}>
+          {canUpdate && (
+            <Button icon={<Tags size={16} />} onClick={() => setCategoriesDrawerOpen(true)}>
+              {t.expenses.manageCategories}
+            </Button>
+          )}
+          {canCreate && (
+            <Button type="primary" icon={<Plus size={16} />} onClick={openAddExpense}>
+              {t.expenses.addExpense}
+            </Button>
+          )}
+        </div>
+      </header>
+
+      <Card variant="borderless" className={`${styles.card} contentCard`}>
         <div className={styles.toolbar}>
           <Select
             value={filterMonth}
@@ -335,15 +349,6 @@ export default function Expenses() {
             })}
             style={{ width: 100 }}
           />
-          {matrixCan("EXPENSES_UPDATE", "expenses") && (
-            <Button
-              icon={<Tags size={18} />}
-              onClick={() => setCategoriesDrawerOpen(true)}
-              style={{ flexShrink: 0 }}
-            >
-              {t.expenses.manageCategories}
-            </Button>
-          )}
           <Select
             value={categoryFilter}
             onChange={setCategoryFilter}
@@ -353,39 +358,15 @@ export default function Expenses() {
             ]}
             style={{ width: 180 }}
           />
-          {matrixCan("EXPENSES_CREATE", "expenses") && (
-            <Button type="primary" icon={<Plus size={18} />} onClick={openAddExpense}>
-              {t.expenses.addExpense}
-            </Button>
-          )}
         </div>
-      </header>
 
-      {/* Summary stats */}
-      <Row gutter={[12, 12]} className={styles.summaryRow}>
-        {summaryStats.map(({ label, value, icon: Icon, color, bg }) => (
-          <Col xs={8} key={label}>
-            <Card variant="borderless" className={styles.summaryCard}>
-              <div className={styles.summaryInner}>
-                <span className={styles.summaryIcon} style={{ background: bg, color }}>
-                  <Icon size={18} />
-                </span>
-                <span className={styles.summaryValue}>{value}</span>
-                <span className={styles.summaryLabel}>{label}</span>
-              </div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-
-      <Card title={t.expenses.list} variant="borderless" className={`${styles.card} contentCard`}>
         {expenses.length === 0 ? (
           <EmptyState
             icon={Wallet}
-            title={t.expenses.emptyTitle}
-            description={t.expenses.emptyDesc}
+            title={isUnfilteredEmpty ? t.expenses.emptyTitle : t.expenses.emptyFilteredTitle}
+            description={isUnfilteredEmpty ? t.expenses.emptyDesc : t.expenses.emptyFilteredDesc}
             action={
-              matrixCan("EXPENSES_CREATE", "expenses") ? (
+              isUnfilteredEmpty && canCreate ? (
                 <Button
                   type="primary"
                   size="large"
@@ -399,83 +380,90 @@ export default function Expenses() {
             }
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={filtered}
-              className="dataTable"
-              rowKey="id"
-              scroll={{ x: "max-content" }}
-              pagination={{
-                current: page + 1,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                pageSizeOptions: ["10", "20", "50", "100"],
-                onChange: (p, size) => {
-                  setPage(p - 1);
-                  setPageSize(size);
-                },
-              }}
-              locale={{ emptyText: "Aucune dépense trouvée" }}
-              columns={[
-                { title: t.common.date, dataIndex: "expenseDate", width: 120 },
-                {
-                  title: t.expenses.category,
-                  dataIndex: "categoryId",
-                  render: (_: string, r: ExpenseResponse) => (
-                    <Tag color={categoryColorMap[r.categoryId] || "default"}>
-                      {categoryById[r.categoryId]?.name ?? "-"}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: t.expenses.amount,
-                  dataIndex: "amount",
-                  sorter: (a: ExpenseResponse, b: ExpenseResponse) =>
-                    (a.amount ?? 0) - (b.amount ?? 0),
-                  render: (v: number) => <span className="amount">{formatFCFA(v ?? 0)}</span>,
-                  width: 120,
-                },
-                {
-                  title: t.expenses.description,
-                  dataIndex: "description",
-                  ellipsis: true,
-                },
-                {
-                  title: "",
-                  key: "actions",
-                  width: 100,
-                  render: (_: unknown, r: ExpenseResponse) => (
-                    <Space size={4}>
-                      {matrixCan("EXPENSES_UPDATE", "expenses") && (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<Pencil size={14} />}
-                          onClick={() => openEditExpense(r)}
-                          aria-label={t.common.edit}
-                        />
-                      )}
-                      {matrixCan("EXPENSES_DELETE", "expenses") && (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<Trash2 size={14} />}
-                          onClick={() => onExpenseDelete(r)}
-                          aria-label={t.common.delete}
-                        />
-                      )}
-                    </Space>
-                  ),
-                },
-              ]}
-            />
-          </div>
+          <>
+            <div className={styles.stats} aria-label={t.list.summaryPageHint}>
+              <div className={`${styles.stat} ${monthTotal > 0 ? styles.statWarn : ""}`}>
+                <span className={styles.statValue}>{formatFCFA(monthTotal)}</span>
+                <span className={styles.statLabel}>{t.expenses.monthTotal}</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{topCatName}</span>
+                <span className={styles.statLabel}>{t.expenses.topCategory}</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{expensesCountLabel(total)}</span>
+                <span className={styles.statLabel}>{t.list.summaryPageHint}</span>
+              </div>
+            </div>
+            <ul className={styles.list} aria-busy={loading}>
+              {expenses.map((exp) => {
+                const categoryName =
+                  categoryById[exp.categoryId]?.name ?? t.expenses.noCategory;
+                const name = exp.description?.trim() || categoryName;
+                return (
+                  <li key={exp.id} className={styles.row}>
+                    <div className={`${styles.identity} ${styles.identityStatic}`}>
+                      <span className={styles.identityText}>
+                        <span className={styles.name}>{name}</span>
+                        <span className={styles.meta}>
+                          {formatExpenseDate(exp.expenseDate)} · {categoryName}
+                        </span>
+                      </span>
+                    </div>
+                    <div className={styles.statusCol}>
+                      <span className={`${styles.pill} ${styles.pillWarn}`}>
+                        {formatFCFA(exp.amount ?? 0)}
+                      </span>
+                    </div>
+                    <div className={styles.actions}>
+                      {canUpdate ? (
+                        <Tooltip title={t.common.edit}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<Pencil size={16} />}
+                            onClick={() => openEditExpense(exp)}
+                            aria-label={t.common.edit}
+                          />
+                        </Tooltip>
+                      ) : null}
+                      {canDelete ? (
+                        <Tooltip title={t.common.delete}>
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<Trash2 size={16} />}
+                            onClick={() => onExpenseDelete(exp)}
+                            aria-label={t.common.delete}
+                          />
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {total > pageSize ? (
+              <div className={styles.pager}>
+                <Pagination
+                  current={page + 1}
+                  pageSize={pageSize}
+                  total={total}
+                  showSizeChanger
+                  pageSizeOptions={["10", "20", "50"]}
+                  showTotal={(count) => expensesCountLabel(count)}
+                  onChange={(nextPage, size) => {
+                    setPage(nextPage - 1);
+                    setPageSize(size);
+                  }}
+                />
+              </div>
+            ) : null}
+          </>
         )}
       </Card>
 
-      {/* Add / Edit expense drawer */}
       <Drawer
         title={editingExpense ? t.expenses.editExpense : t.expenses.addExpense}
         open={drawerOpen}
@@ -519,7 +507,7 @@ export default function Expenses() {
               dropdownRender={(menu) => (
                 <>
                   {menu}
-                  {matrixCan("EXPENSES_CREATE", "expenses") && (
+                  {canCreate && (
                     <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f0f0" }}>
                       <Button
                         type="text"
@@ -573,7 +561,7 @@ export default function Expenses() {
         onClose={() => setCategoriesDrawerOpen(false)}
         open={categoriesDrawerOpen}
         extra={
-          matrixCan("EXPENSES_CREATE", "expenses") ? (
+          canCreate ? (
             <Button type="primary" icon={<Plus size={16} />} onClick={openAddCategory}>
               {t.expenses.addCategory}
             </Button>
@@ -582,7 +570,7 @@ export default function Expenses() {
       >
         {categories.length === 0 ? (
           <Typography.Text type="secondary">
-            Aucune catégorie. Cliquez sur &quot;Ajouter une catégorie&quot; pour commencer.
+            {t.products.emptyCategoriesDesc}
           </Typography.Text>
         ) : (
           <Space direction="vertical" style={{ width: "100%" }} size="middle">
@@ -602,7 +590,7 @@ export default function Expenses() {
                   <Tag color={c.color || "default"}>{c.name}</Tag>
                 </div>
                 <Space>
-                  {matrixCan("EXPENSES_UPDATE", "expenses") && (
+                  {canUpdate && (
                     <Button
                       type="text"
                       size="small"
@@ -611,11 +599,11 @@ export default function Expenses() {
                       aria-label={t.common.edit}
                     />
                   )}
-                  {matrixCan("EXPENSES_DELETE", "expenses") && (
+                  {canDelete && (
                     <Button
                       type="text"
-                      danger
                       size="small"
+                      danger
                       icon={<Trash2 size={14} />}
                       onClick={() => onCategoryDelete(c)}
                       aria-label={t.common.delete}
@@ -652,7 +640,7 @@ export default function Expenses() {
           <Form.Item name="color" label={t.expenses.categoryColor} initialValue="default">
             <Select options={CATEGORY_COLOR_OPTIONS} />
           </Form.Item>
-          <Form.Item name="sortOrder" label="Ordre" initialValue={0}>
+          <Form.Item name="sortOrder" label={t.products.categorySortOrder} initialValue={0}>
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Form>

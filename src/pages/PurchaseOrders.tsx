@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Card,
-  Table,
-  Tag,
   Button,
   Typography,
   Skeleton,
@@ -14,6 +12,7 @@ import {
   InputNumber,
   DatePicker,
   message,
+  Pagination,
 } from "antd";
 import { Plus, ClipboardList, Trash2 } from "lucide-react";
 import dayjs from "dayjs";
@@ -34,12 +33,13 @@ import {
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
 
-const STATUS_COLOR: Record<string, string> = {
-  draft: "default",
-  ordered: "processing",
-  received: "success",
-  cancelled: "error",
-};
+const STATUS_CHIPS: { id: "all" | PurchaseOrderStatus; label: string }[] = [
+  { id: "all", label: t.purchaseOrders.filterAll },
+  { id: "draft", label: t.purchaseOrders.status.draft },
+  { id: "ordered", label: t.purchaseOrders.status.ordered },
+  { id: "received", label: t.purchaseOrders.status.received },
+  { id: "cancelled", label: t.purchaseOrders.status.cancelled },
+];
 
 function formatFCFA(n: number): string {
   return new Intl.NumberFormat("fr-FR").format(n) + " F";
@@ -48,6 +48,23 @@ function formatFCFA(n: number): string {
 function statusLabel(status: string): string {
   const map = t.purchaseOrders.status as Record<string, string>;
   return map[status] ?? status;
+}
+
+function statusPillClass(status: string): string {
+  if (status === "ordered") return styles.pillWarn;
+  if (status === "received") return styles.pillOk;
+  if (status === "cancelled") return styles.pillDanger;
+  return styles.pillMuted;
+}
+
+function purchaseOrdersCountLabel(count: number) {
+  if (count === 1) return t.purchaseOrders.countOne;
+  return t.purchaseOrders.countOther.replace("{count}", String(count));
+}
+
+function linesCountLabel(count: number) {
+  if (count === 1) return t.purchaseOrders.linesCountOne;
+  return t.purchaseOrders.linesCountOther.replace("{count}", String(count));
 }
 
 type LineForm = {
@@ -75,6 +92,8 @@ export default function PurchaseOrders() {
   const [suppliers, setSuppliers] = useState<SupplierResponse[]>([]);
   const [stores, setStores] = useState<StoreResponse[]>([]);
   const [products, setProducts] = useState<ProductResponse[]>([]);
+
+  const canCreate = matrixCan("PURCHASE_ORDERS_CREATE", "purchaseOrders");
 
   const supplierNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -141,6 +160,27 @@ export default function PurchaseOrders() {
       });
   }, []);
 
+  const pageStats = useMemo(() => {
+    let dueCount = 0;
+    let dueAmount = 0;
+    for (const row of rows) {
+      if (row.status === "received" && row.remainingAmount > 0) {
+        dueCount += 1;
+        dueAmount += row.remainingAmount;
+      }
+    }
+    return { dueCount, dueAmount };
+  }, [rows]);
+
+  const hasActiveFilters = !!statusFilter || !!supplierFilter;
+  const isCatalogEmpty = rows.length === 0 && !hasActiveFilters;
+
+  const resetFilters = () => {
+    setStatusFilter(undefined);
+    setPage(0);
+    if (supplierFilter) navigate("/purchase-orders");
+  };
+
   const openCreate = () => {
     form.resetFields();
     form.setFieldsValue({
@@ -182,7 +222,7 @@ export default function PurchaseOrders() {
     }
   };
 
-  if (loading && rows.length === 0) {
+  if (loading && rows.length === 0 && !hasActiveFilters) {
     return (
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.header}>
@@ -201,32 +241,24 @@ export default function PurchaseOrders() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.purchaseOrders.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Select
-            allowClear
-            placeholder={t.purchaseOrders.filterStatus}
-            style={{ minWidth: 160, maxWidth: "100%" }}
-            value={statusFilter}
-            onChange={(v) => {
-              setStatusFilter(v);
-              setPage(0);
-            }}
-            options={(["draft", "ordered", "received", "cancelled"] as PurchaseOrderStatus[]).map(
-              (s) => ({ value: s, label: statusLabel(s) })
-            )}
-          />
-          {matrixCan("PURCHASE_ORDERS_CREATE", "purchaseOrders") && (
-            <Button type="primary" icon={<Plus size={18} />} onClick={openCreate}>
+        <div className={styles.heading}>
+          <Typography.Title level={4} className="pageTitle">
+            {t.purchaseOrders.title}
+          </Typography.Title>
+          <Typography.Text type="secondary" className="pageSubtitle">
+            {purchaseOrdersCountLabel(total)}
+          </Typography.Text>
+        </div>
+        <div className={styles.headerActions}>
+          {canCreate ? (
+            <Button type="primary" icon={<Plus size={16} />} onClick={openCreate}>
               {t.purchaseOrders.create}
             </Button>
-          )}
+          ) : null}
         </div>
       </header>
 
-      {supplierFilter && (
+      {supplierFilter ? (
         <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
           {t.purchaseOrders.filteredBySupplier}{" "}
           <Link to={`/suppliers/${supplierFilter}`}>
@@ -235,16 +267,43 @@ export default function PurchaseOrders() {
           {" · "}
           <Link to="/purchase-orders">{t.purchaseOrders.clearFilter}</Link>
         </Typography.Paragraph>
-      )}
+      ) : null}
 
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {rows.length === 0 ? (
+        {isCatalogEmpty ? null : (
+          <div className={styles.toolbar}>
+            <div className={styles.chips} role="group">
+              {STATUS_CHIPS.map((chip) => {
+                const pressed = chip.id === "all" ? !statusFilter : statusFilter === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    aria-pressed={pressed}
+                    className={`${styles.chip} ${pressed ? styles.chipActive : ""}`}
+                    onClick={() => {
+                      setStatusFilter(chip.id === "all" ? undefined : chip.id);
+                      setPage(0);
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+            {hasActiveFilters ? (
+              <Button onClick={resetFilters}>{t.list.resetFilters}</Button>
+            ) : null}
+          </div>
+        )}
+
+        {isCatalogEmpty ? (
           <EmptyState
             icon={ClipboardList}
             title={t.purchaseOrders.emptyTitle}
             description={t.purchaseOrders.emptyDesc}
             action={
-              matrixCan("PURCHASE_ORDERS_CREATE", "purchaseOrders") ? (
+              canCreate ? (
                 <Button type="primary" icon={<Plus size={18} />} onClick={openCreate}>
                   {t.purchaseOrders.emptyCta}
                 </Button>
@@ -252,75 +311,120 @@ export default function PurchaseOrders() {
             }
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              className="dataTable"
-              rowKey="id"
-              loading={loading}
-              dataSource={rows}
-              scroll={{ x: "max-content" }}
-              pagination={{
-                current: page + 1,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                onChange: (p, ps) => {
-                  setPage(p - 1);
-                  setPageSize(ps);
-                },
-              }}
-              onRow={(r) => ({
-                onClick: () => navigate(`/purchase-orders/${r.id}`),
-                style: { cursor: "pointer" },
-              })}
-              columns={[
-                {
-                  title: t.purchaseOrders.reference,
-                  dataIndex: "reference",
-                  render: (ref: string) => <Typography.Text strong>{ref}</Typography.Text>,
-                },
-                {
-                  title: t.purchaseOrders.supplier,
-                  dataIndex: "supplierId",
-                  render: (id: string) => supplierNameById.get(id) ?? "—",
-                },
-                {
-                  title: t.purchaseOrders.store,
-                  dataIndex: "storeId",
-                  render: (id: string) => storeNameById.get(id) ?? "—",
-                },
-                {
-                  title: t.purchaseOrders.statusColumn,
-                  dataIndex: "status",
-                  render: (s: string) => (
-                    <Tag color={STATUS_COLOR[s] || "default"}>{statusLabel(s)}</Tag>
-                  ),
-                },
-                {
-                  title: t.purchaseOrders.total,
-                  dataIndex: "totalAmount",
-                  align: "right",
-                  render: (n: number) => formatFCFA(n),
-                },
-                {
-                  title: t.purchaseOrders.remainingDue,
-                  dataIndex: "remainingAmount",
-                  align: "right",
-                  render: (n: number, r: PurchaseOrderResponse) =>
-                    r.status === "received" && n > 0 ? (
-                      <Tag color="gold">{formatFCFA(n)}</Tag>
-                    ) : (
-                      "—"
-                    ),
-                },
-                {
-                  title: t.purchaseOrders.expectedDate,
-                  dataIndex: "expectedDate",
-                  render: (d: string | null) => (d ? dayjs(d).format("DD/MM/YYYY") : "—"),
-                },
-              ]}
-            />
-          </div>
+          <>
+            {rows.length > 0 ? (
+              <>
+                <div className={styles.stats} aria-label={t.list.summaryPageHint}>
+                  <div className={styles.stat}>
+                    <span className={styles.statValue}>
+                      {purchaseOrdersCountLabel(rows.length)}
+                    </span>
+                    <span className={styles.statLabel}>{t.list.summaryPageHint}</span>
+                  </div>
+                  <div className={`${styles.stat} ${pageStats.dueCount > 0 ? styles.statWarn : ""}`}>
+                    <span className={styles.statValue}>{pageStats.dueCount}</span>
+                    <span className={styles.statLabel}>{t.purchaseOrders.outstandingOrders}</span>
+                  </div>
+                  <div
+                    className={`${styles.stat} ${pageStats.dueAmount > 0 ? styles.statWarn : ""}`}
+                  >
+                    <span className={styles.statValue}>{formatFCFA(pageStats.dueAmount)}</span>
+                    <span className={styles.statLabel}>{t.purchaseOrders.remainingDue}</span>
+                  </div>
+                </div>
+                {pageStats.dueCount > 0 && !statusFilter ? (
+                  <div className={styles.followUp}>
+                    {(pageStats.dueCount === 1
+                      ? t.purchaseOrders.dueFollowUpOne
+                      : t.purchaseOrders.dueFollowUpOther
+                    )
+                      .replace("{count}", String(pageStats.dueCount))
+                      .replace("{amount}", formatFCFA(pageStats.dueAmount))}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {rows.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title={t.list.emptyFilteredTitle}
+                description={t.list.emptyFilteredDesc}
+                action={
+                  <Button size="large" onClick={resetFilters}>
+                    {t.list.resetFilters}
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className={styles.list} aria-busy={loading}>
+                {rows.map((row) => {
+                  const remaining = row.remainingAmount ?? 0;
+                  const due = row.status === "received" && remaining > 0;
+                  const expected = row.expectedDate
+                    ? dayjs(row.expectedDate).format("DD/MM/YYYY")
+                    : null;
+                  const lineCount = row.lines?.length ?? 0;
+                  const meta = [
+                    supplierNameById.get(row.supplierId) ?? null,
+                    storeNameById.get(row.storeId) ?? null,
+                    expected,
+                    lineCount > 0 ? linesCountLabel(lineCount) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <li
+                      key={row.id}
+                      className={`${styles.row} ${due ? styles.rowDue : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className={styles.identity}
+                        onClick={() => navigate(`/purchase-orders/${row.id}`)}
+                        aria-label={t.purchaseOrders.openAria.replace("{ref}", row.reference)}
+                      >
+                        <span className={styles.identityText}>
+                          <span className={styles.name}>{row.reference}</span>
+                          {meta ? <span className={styles.meta}>{meta}</span> : null}
+                        </span>
+                      </button>
+                      <div className={styles.statusCol}>
+                        <span className={`${styles.pill} ${statusPillClass(row.status)}`}>
+                          {statusLabel(row.status)}
+                        </span>
+                      </div>
+                      <div className={`${styles.money} ${styles.actions}`}>
+                        <span className={styles.identityText}>
+                          <span className={styles.total}>{formatFCFA(row.totalAmount)}</span>
+                          {remaining > 0 ? (
+                            <span className={styles.meta}>
+                              {t.purchaseOrders.remainingDue} {formatFCFA(remaining)}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {total > pageSize ? (
+              <div className={styles.pager}>
+                <Pagination
+                  current={page + 1}
+                  pageSize={pageSize}
+                  total={total}
+                  showSizeChanger
+                  pageSizeOptions={["10", "20", "50"]}
+                  showTotal={(count) => purchaseOrdersCountLabel(count)}
+                  onChange={(nextPage, size) => {
+                    setPage(nextPage - 1);
+                    setPageSize(size);
+                  }}
+                />
+              </div>
+            ) : null}
+          </>
         )}
       </Card>
 

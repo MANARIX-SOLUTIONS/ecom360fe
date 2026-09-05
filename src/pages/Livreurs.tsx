@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
-  Table,
-  Tag,
   Button,
   Input,
   Typography,
@@ -13,7 +11,7 @@ import {
   Switch,
   InputNumber,
   Select,
-  Progress,
+  Tooltip,
 } from "antd";
 import { Plus, Search, Bike, Pencil, Trash2, PackageCheck } from "lucide-react";
 import { t } from "@/i18n";
@@ -30,6 +28,8 @@ import type { CourierResponse, CourierStatsResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
 
+type CourierFilter = "all" | "active" | "inactive";
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -39,8 +39,14 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+function livreursCountLabel(count: number) {
+  if (count === 1) return t.livreurs.countOne;
+  return t.livreurs.countOther.replace("{count}", String(count));
+}
+
 export default function Livreurs() {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<CourierFilter>("all");
   const [couriers, setCouriers] = useState<CourierResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -48,22 +54,26 @@ export default function Livreurs() {
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [deliveryForm] = Form.useForm();
-  const [activeOnly, setActiveOnly] = useState(false);
   const [statsMap, setStatsMap] = useState<Record<string, CourierStatsResponse>>({});
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const { matrixCan } = useMatrixCan();
 
-  const fetchCouriers = useCallback(async () => {
+  const canCreate = matrixCan("DELIVERY_COURIERS_CREATE", "livreurs");
+  const canUpdate = matrixCan("DELIVERY_COURIERS_UPDATE", "livreurs");
+  const canDelete = matrixCan("DELIVERY_COURIERS_DELETE", "livreurs");
+
+  const fetchCouriers = useCallback(async (isCancelled?: () => boolean) => {
     if (!localStorage.getItem("ecom360_access_token")) {
-      setLoading(false);
+      if (!isCancelled?.()) setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!isCancelled?.()) setLoading(true);
     try {
       const [couriersRes, statsRes] = await Promise.all([
-        listCouriers(activeOnly),
+        listCouriers(false),
         getCouriersStats(),
       ]);
+      if (isCancelled?.()) return;
       setCouriers(couriersRes);
       const map: Record<string, CourierStatsResponse> = {};
       statsRes.forEach((s) => {
@@ -71,26 +81,78 @@ export default function Livreurs() {
       });
       setStatsMap(map);
     } catch (e) {
+      if (isCancelled?.()) return;
       message.error(e instanceof Error ? e.message : t.common.msgLoadError);
       setCouriers([]);
       setStatsMap({});
     } finally {
-      setLoading(false);
+      if (!isCancelled?.()) setLoading(false);
     }
-  }, [activeOnly]);
+  }, []);
 
   useEffect(() => {
-    fetchCouriers();
+    let cancelled = false;
+    void fetchCouriers(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [fetchCouriers]);
 
-  const filtered = couriers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.phone && c.phone.includes(search)) ||
-      (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
-  );
+  const searched = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return couriers;
+    return couriers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone && c.phone.includes(search.trim())) ||
+        (c.email && c.email.toLowerCase().includes(q))
+    );
+  }, [couriers, search]);
 
-  if (loading) {
+  const filtered = useMemo(() => {
+    if (filter === "active") return searched.filter((c) => c.isActive);
+    if (filter === "inactive") return searched.filter((c) => !c.isActive);
+    return searched;
+  }, [searched, filter]);
+
+  const pageStats = useMemo(() => {
+    let activeCount = 0;
+    let parcelsTotal = 0;
+    for (const courier of filtered) {
+      if (courier.isActive) activeCount += 1;
+      parcelsTotal += statsMap[courier.id]?.totalParcelsDelivered ?? 0;
+    }
+    return { activeCount, parcelsTotal };
+  }, [filtered, statsMap]);
+
+  const hasActiveFilters = search !== "" || filter !== "all";
+  const isCatalogEmpty = couriers.length === 0 && search === "" && filter === "all";
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilter("all");
+  };
+
+  const onDelete = (courier: CourierResponse) => {
+    Modal.confirm({
+      title: t.common.delete,
+      content: t.list.deleteConfirm.replace("{name}", courier.name),
+      okText: t.list.deleteOk,
+      okType: "danger",
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteCourier(courier.id);
+          message.success(t.livreurs.msgDeleted);
+          fetchCouriers();
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        }
+      },
+    });
+  };
+
+  if (loading && couriers.length === 0 && !hasActiveFilters) {
     return (
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.header}>
@@ -110,32 +172,19 @@ export default function Livreurs() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.livreurs.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Input
-            prefix={<Search size={18} />}
-            placeholder={t.livreurs.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Switch
-              size="small"
-              checked={!activeOnly}
-              onChange={(checked) => setActiveOnly(!checked)}
-            />
-            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-              {activeOnly ? "Actifs uniquement" : "Tous"}
-            </Typography.Text>
-          </span>
-          {matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") && (
+        <div className={styles.heading}>
+          <Typography.Title level={4} className="pageTitle">
+            {t.livreurs.title}
+          </Typography.Title>
+          <Typography.Text type="secondary" className="pageSubtitle">
+            {livreursCountLabel(couriers.length)}
+          </Typography.Text>
+        </div>
+        <div className={styles.headerActions}>
+          {canCreate ? (
             <>
               <Button
-                icon={<PackageCheck size={18} />}
+                icon={<PackageCheck size={16} />}
                 onClick={() => {
                   deliveryForm.resetFields();
                   setDeliveryModalOpen(true);
@@ -143,21 +192,57 @@ export default function Livreurs() {
               >
                 {t.livreurs.recordDelivery}
               </Button>
-              <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
+              <Button type="primary" icon={<Plus size={16} />} onClick={() => setAddOpen(true)}>
                 {t.livreurs.addCourier}
               </Button>
             </>
-          )}
+          ) : null}
         </div>
       </header>
+
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {couriers.length === 0 ? (
+        {isCatalogEmpty ? null : (
+          <div className={styles.toolbar}>
+            <div className={styles.chips} role="group">
+              {(
+                [
+                  { id: "all" as const, label: t.list.filterAll },
+                  { id: "active" as const, label: t.livreurs.filterActive },
+                  { id: "inactive" as const, label: t.livreurs.filterInactive },
+                ] as const
+              ).map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  aria-pressed={filter === chip.id}
+                  className={`${styles.chip} ${filter === chip.id ? styles.chipActive : ""}`}
+                  onClick={() => setFilter(chip.id)}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            <Input
+              prefix={<Search size={16} />}
+              placeholder={t.livreurs.search}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              className={styles.toolbarSearch}
+            />
+            {hasActiveFilters ? (
+              <Button onClick={resetFilters}>{t.list.resetFilters}</Button>
+            ) : null}
+          </div>
+        )}
+
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Bike}
             title={t.livreurs.emptyTitle}
             description={t.livreurs.emptyDesc}
             action={
-              matrixCan("DELIVERY_COURIERS_CREATE", "livreurs") ? (
+              canCreate ? (
                 <Button
                   type="primary"
                   size="large"
@@ -171,131 +256,100 @@ export default function Livreurs() {
             }
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={filtered}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              locale={{ emptyText: "Aucun livreur trouvé" }}
-              columns={[
-                {
-                  title: t.livreurs.name,
-                  dataIndex: "name",
-                  render: (name: string) => (
-                    <span className={styles.nameCell}>
-                      <span className={styles.avatarSmall}>{getInitials(name)}</span>
-                      {name}
-                    </span>
-                  ),
-                },
-                {
-                  title: t.livreurs.phone,
-                  dataIndex: "phone",
-                  render: (v: string | null) => v ?? "-",
-                },
-                {
-                  title: t.livreurs.email,
-                  dataIndex: "email",
-                  render: (v: string | null) => v ?? "-",
-                },
-                {
-                  title: t.livreurs.status,
-                  dataIndex: "isActive",
-                  width: 100,
-                  render: (active: boolean) => (
-                    <Tag color={active ? "green" : "default"}>
-                      {active ? t.livreurs.active : t.livreurs.inactive}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: t.livreurs.parcelsDelivered,
-                  key: "parcels",
-                  width: 110,
-                  sorter: (a: CourierResponse, b: CourierResponse) =>
-                    (statsMap[b.id]?.totalParcelsDelivered ?? 0) -
-                    (statsMap[a.id]?.totalParcelsDelivered ?? 0),
-                  render: (_: unknown, r: CourierResponse) => (
-                    <span style={{ fontWeight: 500 }}>
-                      {statsMap[r.id]?.totalParcelsDelivered ?? 0}
-                    </span>
-                  ),
-                },
-                {
-                  title: t.livreurs.efficiency,
-                  key: "efficiency",
-                  width: 140,
-                  sorter: (a: CourierResponse, b: CourierResponse) =>
-                    (statsMap[a.id]?.successRatePercent ?? 100) -
-                    (statsMap[b.id]?.successRatePercent ?? 100),
-                  render: (_: unknown, r: CourierResponse) => {
-                    const rate = statsMap[r.id]?.successRatePercent ?? 100;
-                    const status = rate >= 90 ? "success" : rate >= 70 ? "normal" : "exception";
-                    return (
-                      <Progress
-                        percent={Math.round(rate)}
-                        size="small"
-                        status={status}
-                        format={(p) => `${p}%`}
-                      />
-                    );
-                  },
-                },
-                {
-                  title: "",
-                  width: 100,
-                  render: (_, r: CourierResponse) => (
-                    <div role="group">
-                      {matrixCan("DELIVERY_COURIERS_UPDATE", "livreurs") && (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<Pencil size={14} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editForm.setFieldsValue({
-                              name: r.name,
-                              phone: r.phone ?? "",
-                              email: r.email ?? "",
-                              isActive: r.isActive,
-                            });
-                            setEditOpen(r);
-                          }}
-                          aria-label={t.common.edit}
-                        />
-                      )}
-                      {matrixCan("DELIVERY_COURIERS_DELETE", "livreurs") && (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<Trash2 size={14} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`${t.common.delete} "${r.name}" ?`)) {
-                              deleteCourier(r.id)
-                                .then(() => {
-                                  message.success(t.livreurs.msgDeleted);
-                                  fetchCouriers();
-                                })
-                                .catch((err) =>
-                                  message.error(
-                                    err instanceof Error ? err.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
-                          }}
-                          aria-label={t.common.delete}
-                        />
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          </div>
+          <>
+            {filtered.length > 0 ? (
+              <div className={styles.stats} aria-label={t.list.summaryPageHint}>
+                <div className={styles.stat}>
+                  <span className={styles.statValue}>{livreursCountLabel(filtered.length)}</span>
+                  <span className={styles.statLabel}>{t.list.summaryPageHint}</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.statValue}>{pageStats.activeCount}</span>
+                  <span className={styles.statLabel}>{t.livreurs.filterActive}</span>
+                </div>
+                <div className={styles.stat}>
+                  <span className={styles.statValue}>{pageStats.parcelsTotal}</span>
+                  <span className={styles.statLabel}>{t.livreurs.parcelsDelivered}</span>
+                </div>
+              </div>
+            ) : null}
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={Bike}
+                title={t.list.emptyFilteredTitle}
+                description={t.list.emptyFilteredDesc}
+                action={
+                  <Button size="large" onClick={resetFilters}>
+                    {t.list.resetFilters}
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className={styles.list} aria-busy={loading}>
+                {filtered.map((courier) => {
+                  const meta = [courier.phone, courier.email].filter(Boolean).join(" · ");
+                  const parcels = statsMap[courier.id]?.totalParcelsDelivered ?? 0;
+                  const rate = Math.round(statsMap[courier.id]?.successRatePercent ?? 100);
+                  return (
+                    <li key={courier.id} className={styles.row}>
+                      <div className={`${styles.identity} ${styles.identityStatic}`}>
+                        <span className={styles.avatarSmall}>{getInitials(courier.name)}</span>
+                        <span className={styles.identityText}>
+                          <span className={styles.name}>{courier.name}</span>
+                          {meta ? <span className={styles.meta}>{meta}</span> : null}
+                        </span>
+                      </div>
+                      <div className={styles.statusCol}>
+                        <span
+                          className={`${styles.pill} ${
+                            courier.isActive ? styles.pillOk : styles.pillMuted
+                          }`}
+                        >
+                          {courier.isActive ? t.livreurs.active : t.livreurs.inactive}
+                        </span>
+                        <span className={styles.meta}>
+                          {t.livreurs.parcelsMeta.replace("{count}", String(parcels))} · {rate}%
+                        </span>
+                      </div>
+                      <div className={styles.actions}>
+                        {canUpdate ? (
+                          <Tooltip title={t.common.edit}>
+                            <Button
+                              type="text"
+                              size="small"
+                              aria-label={t.common.edit}
+                              icon={<Pencil size={16} />}
+                              onClick={() => {
+                                editForm.setFieldsValue({
+                                  name: courier.name,
+                                  phone: courier.phone ?? "",
+                                  email: courier.email ?? "",
+                                  isActive: courier.isActive,
+                                });
+                                setEditOpen(courier);
+                              }}
+                            />
+                          </Tooltip>
+                        ) : null}
+                        {canDelete ? (
+                          <Tooltip title={t.common.delete}>
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              aria-label={t.common.delete}
+                              icon={<Trash2 size={16} />}
+                              onClick={() => onDelete(courier)}
+                            />
+                          </Tooltip>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </Card>
 
@@ -464,11 +518,11 @@ export default function Livreurs() {
             name="parcelsCount"
             label={t.livreurs.parcelsCount}
             initialValue={1}
-            rules={[{ required: true }, { type: "number", min: 1, message: "Min. 1" }]}
+            rules={[{ required: true }, { type: "number", min: 1, message: t.livreurs.minOne }]}
           >
             <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item name="notes" label="Note">
+          <Form.Item name="notes" label={t.livreurs.note}>
             <Input.TextArea rows={2} placeholder={t.livreurs.optionalNotePlaceholder} />
           </Form.Item>
         </Form>

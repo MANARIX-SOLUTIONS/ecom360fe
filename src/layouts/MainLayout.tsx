@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Typography, Space, Badge, Dropdown, Drawer } from "antd";
+import { Layout, Typography, Badge, Dropdown, Drawer, Button } from "antd";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -20,15 +20,18 @@ import {
   Shield,
   Bell,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { SkipLink } from "@/components/SkipLink";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { HeaderProfile } from "@/components/HeaderProfile";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
+import type { NavPermission } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { markAllNotificationsRead } from "@/api";
 import { t } from "@/i18n";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { APP_LOGO_MARK } from "@/constants/branding";
@@ -42,82 +45,109 @@ import styles from "./MainLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
 
-const navConfig = [
+type NavGroup = "shop" | "follow" | "account";
+
+type NavDef = {
+  key: string;
+  permission: NavPermission;
+  icon: LucideIcon;
+  label: string;
+  group: NavGroup;
+};
+
+const NAV_ITEMS: NavDef[] = [
   {
     key: "/dashboard",
-    permission: "dashboard" as const,
-    icon: <LayoutDashboard size={20} />,
-    label: "Tableau de bord",
-  },
-  {
-    key: "/vue-globale",
-    permission: "globalView" as const,
-    icon: <Store size={20} />,
-    label: "Vue globale",
+    permission: "dashboard",
+    icon: LayoutDashboard,
+    label: t.nav.dashboard,
+    group: "shop",
   },
   {
     key: "/pos",
-    permission: "pos" as const,
-    icon: <ShoppingCart size={20} />,
-    label: "POS",
+    permission: "pos",
+    icon: ShoppingCart,
+    label: t.nav.pos,
+    group: "shop",
   },
   {
     key: "/sales",
-    permission: "pos" as const,
-    icon: <ListOrdered size={20} />,
-    label: "Ventes",
+    permission: "pos",
+    icon: ListOrdered,
+    label: t.sales.title,
+    group: "shop",
   },
   {
     key: "/products",
-    permission: "products" as const,
-    icon: <Package size={20} />,
-    label: "Produits",
+    permission: "products",
+    icon: Package,
+    label: t.products.title,
+    group: "shop",
+  },
+  {
+    key: "/vue-globale",
+    permission: "globalView",
+    icon: Store,
+    label: t.globalView.title,
+    group: "follow",
   },
   {
     key: "/reports",
-    permission: "reports" as const,
-    icon: <FileText size={20} />,
-    label: "Rapports",
+    permission: "reports",
+    icon: FileText,
+    label: t.reports.title,
+    group: "follow",
   },
   {
     key: "/clients",
-    permission: "clients" as const,
-    icon: <Users size={20} />,
-    label: "Clients",
+    permission: "clients",
+    icon: Users,
+    label: t.clients.title,
+    group: "follow",
   },
   {
     key: "/suppliers",
-    permission: "suppliers" as const,
-    icon: <Truck size={20} />,
-    label: "Fournisseurs",
+    permission: "suppliers",
+    icon: Truck,
+    label: t.suppliers.title,
+    group: "follow",
   },
   {
     key: "/purchase-orders",
-    permission: "purchaseOrders" as const,
-    icon: <ClipboardList size={20} />,
-    label: "Bons de commande",
+    permission: "purchaseOrders",
+    icon: ClipboardList,
+    label: t.purchaseOrders.title,
+    group: "follow",
   },
   {
     key: "/livreurs",
-    permission: "livreurs" as const,
-    icon: <Bike size={20} />,
-    label: "Livreurs",
+    permission: "livreurs",
+    icon: Bike,
+    label: t.livreurs.title,
+    group: "follow",
   },
   {
     key: "/expenses",
-    permission: "expenses" as const,
-    icon: <Receipt size={20} />,
-    label: "Dépenses",
+    permission: "expenses",
+    icon: Receipt,
+    label: t.expenses.title,
+    group: "follow",
   },
   {
     key: "/settings",
-    permission: "settings" as const,
-    icon: <Settings size={20} />,
-    label: "Paramètres",
+    permission: "settings",
+    icon: Settings,
+    label: t.settings.title,
+    group: "account",
   },
 ];
 
-/** Highlight bottom nav « Plus » when user is on these sections. */
+const GROUP_ORDER: { id: NavGroup; label: string }[] = [
+  { id: "shop", label: t.nav.groupShop },
+  { id: "follow", label: t.nav.groupFollow },
+  { id: "account", label: t.nav.groupAccount },
+];
+
 const MORE_SECTION_PREFIXES = [
   "/settings",
   "/clients",
@@ -130,8 +160,94 @@ const MORE_SECTION_PREFIXES = [
   "/profile",
 ] as const;
 
+function pathMatches(pathname: string, key: string): boolean {
+  return pathname === key || pathname.startsWith(`${key}/`);
+}
+
+function selectedNavKey(pathname: string, keys: string[]): string | null {
+  const matches = keys.filter((key) => pathMatches(pathname, key));
+  if (matches.length === 0) return null;
+  return matches.reduce((best, key) => (key.length > best.length ? key : best));
+}
+
 function matchesMoreSection(pathname: string): boolean {
-  return MORE_SECTION_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return MORE_SECTION_PREFIXES.some((p) => pathMatches(pathname, p));
+}
+
+function formatNotifTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+type BrandMarkProps = {
+  src: string | undefined;
+  broken: boolean;
+  onBroken: () => void;
+};
+
+function BrandMark({ src, broken, onBroken }: BrandMarkProps) {
+  return (
+    <span className={`${styles.logoIcon} ${!broken && src ? styles.logoIconImage : ""}`}>
+      {!broken && src ? (
+        <img src={src} alt="" className={styles.logoBrandImg} onError={onBroken} />
+      ) : (
+        <ShoppingCart size={20} />
+      )}
+    </span>
+  );
+}
+
+type SideNavProps = {
+  items: NavDef[];
+  pathname: string;
+  onNavigate: (path: string) => void;
+};
+
+function SideNav({ items, pathname, onNavigate }: SideNavProps) {
+  const selected = selectedNavKey(
+    pathname,
+    items.map((item) => item.key)
+  );
+
+  return (
+    <nav className={styles.navList} aria-label={t.nav.mobileNav}>
+      {GROUP_ORDER.map((group) => {
+        const groupItems = items.filter((item) => item.group === group.id);
+        if (groupItems.length === 0) return null;
+        return (
+          <div key={group.id} className={styles.navGroup}>
+            <span className={styles.navGroupLabel}>{group.label}</span>
+            {groupItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.key === selected;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => onNavigate(item.key)}
+                >
+                  <span className={styles.navIcon}>
+                    <Icon size={18} />
+                  </span>
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </nav>
+  );
 }
 
 export default function MainLayout() {
@@ -139,11 +255,13 @@ export default function MainLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const { isSuperAdmin } = useAuthRole();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
-  const canSeeReports = canAccessPlan("reports", canAccessBackend("reports"));
-  const { notifications, unreadCount, markRead } = useNotifications({ pollingIntervalMs: 30000 });
+  const { notifications, unreadCount, markRead, refetch } = useNotifications({
+    pollingIntervalMs: 30000,
+  });
   const { offline } = useNetworkStatus();
   const { profile: businessProfile } = useBusinessProfile();
   const brandLogoUrl = sanitizeExternalImageUrl(businessProfile?.logoUrl ?? undefined);
@@ -151,130 +269,124 @@ export default function MainLayout() {
   const [defaultLogoBroken, setDefaultLogoBroken] = useState(false);
   const useBusinessLogo = Boolean(brandLogoUrl && !brandLogoBroken);
   const effectiveLogoSrc = useBusinessLogo ? brandLogoUrl : APP_LOGO_MARK;
+  const logoBroken = useBusinessLogo ? brandLogoBroken : defaultLogoBroken;
+  const sidebarBrandTitle = businessProfile?.name?.trim();
+
+  const canGo = useCallback(
+    (permission: NavPermission) => {
+      const backendCan = canAccessBackend(permission);
+      return backendCan && canAccessPlan(permission, backendCan);
+    },
+    [canAccessBackend, canAccessPlan]
+  );
+
   useEffect(() => {
     setBrandLogoBroken(false);
     setDefaultLogoBroken(false);
   }, [brandLogoUrl]);
-  const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom 360 PME";
 
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  const notificationItems = useMemo(() => {
-    const items: { key: string; label: React.ReactNode }[] = [];
-    if (notifications.length === 0) {
-      items.push({
-        key: "empty",
-        label: (
-          <div
-            style={{
-              padding: 16,
-              textAlign: "center",
-              color: "var(--color-text-muted)",
-              fontSize: 13,
-            }}
-          >
-            Aucune notification
-          </div>
-        ),
-      });
-    } else {
-      items.push(
-        ...notifications.map((n) => {
-          const Icon = getNotificationPresentation(n.type).icon;
-          const iconColor = getNotificationColor(n.type);
-          return {
-            key: n.id,
-            label: (
-              <div
-                role="button"
-                tabIndex={0}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  padding: "8px 0",
-                  maxWidth: 280,
-                  cursor: "pointer",
-                  opacity: n.isRead ? 0.8 : 1,
-                }}
-                onClick={() => {
-                  if (!n.isRead) markRead(n.id);
-                  if (n.actionUrl) navigate(n.actionUrl);
-                }}
-                onKeyDown={(e: React.KeyboardEvent) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    if (!n.isRead) markRead(n.id);
-                    if (n.actionUrl) navigate(n.actionUrl);
-                  }
-                }}
-              >
-                <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
-                  {n.body && (
-                    <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body}</div>
-                  )}
-                </div>
-              </div>
-            ),
-          };
-        })
-      );
-    }
-    items.push({
-      key: "manage",
-      label: (
-        <div
-          role="button"
-          tabIndex={0}
-          style={{
-            padding: "12px 16px",
-            borderTop: "1px solid var(--color-border)",
-            cursor: "pointer",
-            fontWeight: 500,
-            fontSize: 13,
-            color: "var(--color-primary)",
-          }}
-          onClick={() => navigate("/settings/notifications")}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              navigate("/settings/notifications");
-            }
-          }}
-        >
-          Gérer les notifications
-        </div>
-      ),
-    });
-    return items;
-  }, [notifications, markRead, navigate]);
-
   const navItems = useMemo(() => {
-    const items = navConfig
-      .filter((item) => {
-        const backendCan = canAccessBackend(item.permission);
-        const planAllows = canAccessPlan(item.permission, backendCan);
-        return backendCan && planAllows;
-      })
-      .map(({ key, icon, label }) => ({ key, icon, label }));
+    const items = NAV_ITEMS.filter((item) => canGo(item.permission));
     if (isSuperAdmin) {
       items.push({
         key: "/backoffice",
-        icon: <Shield size={20} />,
+        permission: "backoffice",
+        icon: Shield,
         label: t.backoffice.title,
+        group: "account",
       });
     }
     return items;
-  }, [canAccessBackend, canAccessPlan, isSuperAdmin]);
+  }, [canGo, isSuperAdmin]);
 
   const moreNavActive =
     location.pathname === "/more" ||
     location.pathname === "/backoffice" ||
     matchesMoreSection(location.pathname);
+
+  const isActive = (key: string) => pathMatches(location.pathname, key);
+
+  const goHome = () => navigate("/dashboard");
+
+  const onLogoError = () => {
+    if (brandLogoUrl && !brandLogoBroken) setBrandLogoBroken(true);
+    else setDefaultLogoBroken(true);
+  };
+
+  const openNotification = async (id: string, actionUrl: string | null, isRead: boolean) => {
+    if (!isRead) await markRead(id);
+    setNotifOpen(false);
+    if (actionUrl) navigate(actionUrl);
+  };
+
+  const onMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      await refetch();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const notificationPanel = (
+    <div className={styles.notifPanel}>
+      <div className={styles.notifHead}>
+        <span className={styles.notifTitle}>{t.nav.notifications}</span>
+        {unreadCount > 0 ? (
+          <Button type="link" size="small" onClick={() => void onMarkAllRead()}>
+            {t.settings.notificationsMarkAllRead}
+          </Button>
+        ) : null}
+      </div>
+      {notifications.length === 0 ? (
+        <div className={styles.notifEmpty}>{t.nav.notificationsEmpty}</div>
+      ) : (
+        <ul className={styles.notifList}>
+          {notifications.map((n) => {
+            const Icon = getNotificationPresentation(n.type).icon;
+            const time = formatNotifTime(n.createdAt);
+            return (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  className={`${styles.notifItem} ${n.isRead ? "" : styles.notifUnread}`}
+                  aria-label={n.isRead ? n.title : `${n.title}. ${t.nav.unreadAria}`}
+                  onClick={() => void openNotification(n.id, n.actionUrl, n.isRead)}
+                >
+                  <Icon
+                    size={16}
+                    className={styles.notifIcon}
+                    style={{ color: getNotificationColor(n.type) }}
+                  />
+                  <span className={styles.notifBody}>
+                    <span className={styles.notifItemTitle}>{n.title}</span>
+                    {n.body ? <span className={styles.notifItemText}>{n.body}</span> : null}
+                    {time ? <span className={styles.notifItemTime}>{time}</span> : null}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className={styles.notifFoot}>
+        <button
+          type="button"
+          className={styles.notifManage}
+          onClick={() => {
+            setNotifOpen(false);
+            navigate("/settings/notifications");
+          }}
+        >
+          {t.nav.notificationsManage}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <Layout className={styles.root}>
@@ -289,48 +401,19 @@ export default function MainLayout() {
         theme="light"
       >
         <div data-onboarding="sidebar" className={styles.sidebarTourRegion}>
-          <div
+          <button
+            type="button"
             className={styles.logo}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate("/dashboard")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                navigate("/dashboard");
-              }
-            }}
+            onClick={goHome}
+            aria-label={t.nav.goHomeAria}
           >
-            <div className={`${styles.logoIcon} ${!defaultLogoBroken ? styles.logoIconImage : ""}`}>
-              {!defaultLogoBroken ? (
-                <img
-                  src={effectiveLogoSrc}
-                  alt=""
-                  className={styles.logoBrandImg}
-                  onError={() => {
-                    if (brandLogoUrl && !brandLogoBroken) setBrandLogoBroken(true);
-                    else setDefaultLogoBroken(true);
-                  }}
-                />
-              ) : (
-                <ShoppingCart size={20} />
-              )}
-            </div>
-            <div className={styles.logoText}>
-              <Typography.Text strong className={styles.logoTitle}>
-                {sidebarBrandTitle}
-              </Typography.Text>
-              <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
-            </div>
-          </div>
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={navItems}
-            onClick={({ key }) => navigate(key)}
-            style={{ borderRight: 0 }}
-            className={styles.menu}
-          />
+            <BrandMark src={effectiveLogoSrc} broken={logoBroken} onBroken={onLogoError} />
+            <span className={styles.logoText}>
+              <span className={styles.logoTitle}>{sidebarBrandTitle}</span>
+              <span className={styles.logoSub}>{t.nav.brandSubtitle}</span>
+            </span>
+          </button>
+          <SideNav items={navItems} pathname={location.pathname} onNavigate={navigate} />
         </div>
       </Sider>
 
@@ -348,17 +431,20 @@ export default function MainLayout() {
             </button>
             <StoreSwitcher />
           </div>
-          <Space size="middle">
+          <div className={styles.headerTools}>
             <SyncIndicator offline={offline} />
             <Dropdown
-              menu={{ items: notificationItems }}
+              popupRender={() => notificationPanel}
               trigger={["click"]}
               placement="bottomRight"
+              open={notifOpen}
+              onOpenChange={setNotifOpen}
             >
               <button
                 type="button"
-                className={styles.notifBtn}
-                aria-label="Notifications"
+                className={`${styles.notifBtn} ${notifOpen ? styles.notifBtnOpen : ""}`}
+                aria-label={t.nav.notifications}
+                aria-expanded={notifOpen}
                 data-onboarding="notifications"
               >
                 <Badge count={unreadCount} size="small" offset={[-2, 2]}>
@@ -367,7 +453,7 @@ export default function MainLayout() {
               </button>
             </Dropdown>
             <HeaderProfile />
-          </Space>
+          </div>
         </Header>
 
         <Content id="main-content" className={styles.content} tabIndex={-1}>
@@ -375,89 +461,95 @@ export default function MainLayout() {
         </Content>
       </Layout>
 
-      {/* Mobile: bottom navigation */}
-      <nav className={styles.bottomNav} data-onboarding="bottom-nav" aria-label="Navigation mobile">
-        <button
-          type="button"
-          className={location.pathname === "/dashboard" ? styles.navActive : ""}
-          onClick={() => navigate("/dashboard")}
-          aria-label="Dashboard"
-        >
-          <LayoutDashboard size={22} />
-          <span>Dashboard</span>
-          {location.pathname === "/dashboard" && <span className={styles.navDot} />}
-        </button>
-        <button
-          type="button"
-          className={location.pathname === "/products" ? styles.navActive : ""}
-          onClick={() => navigate("/products")}
-          aria-label="Produits"
-        >
-          <Package size={22} />
-          <span>Produits</span>
-          {location.pathname === "/products" && <span className={styles.navDot} />}
-        </button>
-        {/* Center POS FAB */}
-        <button
-          type="button"
-          className={`${styles.navFab} ${location.pathname === "/pos" ? styles.navFabActive : ""}`}
-          onClick={() => navigate("/pos")}
-          aria-label="POS"
-        >
-          <ShoppingCart size={24} />
-        </button>
-        {canSeeReports && (
+      <nav className={styles.bottomNav} data-onboarding="bottom-nav" aria-label={t.nav.mobileNav}>
+        {canGo("dashboard") ? (
           <button
             type="button"
-            className={location.pathname === "/reports" ? styles.navActive : ""}
+            className={`${styles.bottomItem} ${isActive("/dashboard") ? styles.bottomActive : ""}`}
+            onClick={() => navigate("/dashboard")}
+            aria-label={t.nav.dashboard}
+            aria-current={isActive("/dashboard") ? "page" : undefined}
+          >
+            <LayoutDashboard size={22} />
+            <span>{t.nav.dashboardShort}</span>
+            {isActive("/dashboard") ? <span className={styles.navDot} /> : null}
+          </button>
+        ) : null}
+        {canGo("products") ? (
+          <button
+            type="button"
+            className={`${styles.bottomItem} ${isActive("/products") ? styles.bottomActive : ""}`}
+            onClick={() => navigate("/products")}
+            aria-label={t.products.title}
+            aria-current={isActive("/products") ? "page" : undefined}
+          >
+            <Package size={22} />
+            <span>{t.products.title}</span>
+            {isActive("/products") ? <span className={styles.navDot} /> : null}
+          </button>
+        ) : null}
+        {canGo("pos") ? (
+          <button
+            type="button"
+            className={`${styles.navFab} ${isActive("/pos") ? styles.navFabActive : ""}`}
+            onClick={() => navigate("/pos")}
+            aria-label={t.nav.pos}
+            aria-current={isActive("/pos") ? "page" : undefined}
+          >
+            <ShoppingCart size={24} />
+          </button>
+        ) : null}
+        {canGo("reports") ? (
+          <button
+            type="button"
+            className={`${styles.bottomItem} ${isActive("/reports") ? styles.bottomActive : ""}`}
             onClick={() => navigate("/reports")}
             aria-label={t.reports.title}
+            aria-current={isActive("/reports") ? "page" : undefined}
           >
             <TrendingUp size={22} />
             <span>{t.reports.title}</span>
-            {location.pathname === "/reports" && <span className={styles.navDot} />}
+            {isActive("/reports") ? <span className={styles.navDot} /> : null}
           </button>
-        )}
+        ) : null}
         <button
           type="button"
-          className={moreNavActive ? styles.navActive : ""}
+          className={`${styles.bottomItem} ${moreNavActive ? styles.bottomActive : ""}`}
           onClick={() => navigate("/more")}
-          aria-label="Plus"
+          aria-label={t.nav.more}
+          aria-current={moreNavActive ? "page" : undefined}
         >
           <MoreHorizontal size={22} />
-          <span>Plus</span>
-          {moreNavActive && <span className={styles.navDot} />}
+          <span>{t.nav.more}</span>
+          {moreNavActive ? <span className={styles.navDot} /> : null}
         </button>
       </nav>
 
       <Drawer
         title={
-          <div>
-            <Typography.Text strong>{sidebarBrandTitle}</Typography.Text>
-            <Typography.Text
-              type="secondary"
-              style={{ display: "block", fontSize: 12, marginTop: 2 }}
-            >
-              {t.common.menu}
-            </Typography.Text>
+          <div className={styles.drawerBrand}>
+            <BrandMark src={effectiveLogoSrc} broken={logoBroken} onBroken={onLogoError} />
+            <div className={styles.drawerTitles}>
+              <Typography.Text strong>{sidebarBrandTitle}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {t.common.menu}
+              </Typography.Text>
+            </div>
           </div>
         }
         placement="left"
         width={280}
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
-        styles={{ body: { padding: "8px 12px 24px" } }}
+        styles={{ body: { padding: "8px 8px 24px" } }}
       >
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
+        <SideNav
           items={navItems}
-          onClick={({ key }) => {
-            navigate(key);
+          pathname={location.pathname}
+          onNavigate={(path) => {
+            navigate(path);
             setMobileNavOpen(false);
           }}
-          style={{ borderRight: 0 }}
-          className={styles.menu}
         />
       </Drawer>
 

@@ -41,7 +41,7 @@ const linkConfig: MenuLink[] = [
     permission: "clients",
     icon: Users,
     label: t.clients.title,
-    desc: "Crédits et paiements",
+    desc: t.clients.moreDesc,
     group: "commerce",
   },
   {
@@ -49,7 +49,7 @@ const linkConfig: MenuLink[] = [
     permission: "suppliers",
     icon: Truck,
     label: t.suppliers.title,
-    desc: "Achats et soldes",
+    desc: t.suppliers.moreDesc,
     group: "commerce",
   },
   {
@@ -57,7 +57,7 @@ const linkConfig: MenuLink[] = [
     permission: "purchaseOrders",
     icon: ClipboardList,
     label: t.purchaseOrders.title,
-    desc: "Commandes et réception stock",
+    desc: t.purchaseOrders.moreDesc,
     group: "commerce",
   },
   {
@@ -65,7 +65,7 @@ const linkConfig: MenuLink[] = [
     permission: "livreurs",
     icon: Bike,
     label: t.livreurs.title,
-    desc: "Gestion des livreurs (livraison)",
+    desc: t.livreurs.moreDesc,
     group: "commerce",
   },
   {
@@ -73,7 +73,7 @@ const linkConfig: MenuLink[] = [
     permission: "expenses",
     icon: Receipt,
     label: t.expenses.title,
-    desc: "Suivi des charges",
+    desc: t.expenses.moreDesc,
     group: "commerce",
   },
   {
@@ -148,7 +148,7 @@ export default function More() {
               {displayName}
             </Typography.Text>
             <Typography.Text type="secondary" className={styles.profileHint}>
-              Voir mon profil
+              {t.nav.viewProfile}
             </Typography.Text>
           </div>
           <ChevronRight size={20} className={styles.itemChevron} />
@@ -159,7 +159,7 @@ export default function More() {
       {commerceLinks.length > 0 && (
         <section className={styles.section}>
           <Typography.Text type="secondary" className={styles.sectionTitle}>
-            Commerce
+            {t.nav.moreCommerce}
           </Typography.Text>
           <Card variant="borderless" className={styles.listCard}>
             <div className={styles.itemList}>
@@ -178,7 +178,7 @@ export default function More() {
       {adminLinks.length > 0 && (
         <section className={styles.section}>
           <Typography.Text type="secondary" className={styles.sectionTitle}>
-            Administration
+            {t.nav.moreAdmin}
           </Typography.Text>
           <Card variant="borderless" className={styles.listCard}>
             <div className={styles.itemList}>

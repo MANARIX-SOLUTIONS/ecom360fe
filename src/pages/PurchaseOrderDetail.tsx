@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, Navigate, Link } from "react-router-dom";
 import {
   Card,
-  Table,
   Tag,
   Button,
   Typography,
@@ -315,48 +314,28 @@ export default function PurchaseOrderDetail() {
         className={`${styles.card} contentCard`}
         title={t.purchaseOrders.lines}
       >
-        <div className="tableResponsive">
-          <Table
-            className="dataTable"
-            rowKey="id"
-            pagination={false}
-            dataSource={po.lines}
-            scroll={{ x: "max-content" }}
-            columns={[
-              {
-                title: t.purchaseOrders.product,
-                dataIndex: "productId",
-                render: (pid: string) => productNames[pid] ?? pid.slice(0, 8),
-              },
-              {
-                title: t.purchaseOrders.qty,
-                dataIndex: "quantity",
-                align: "right",
-              },
-              {
-                title: t.purchaseOrders.unitCost,
-                dataIndex: "unitCost",
-                align: "right",
-                render: (n: number) => formatFCFA(n),
-              },
-              {
-                title: t.purchaseOrders.lineTotal,
-                dataIndex: "lineTotal",
-                align: "right",
-                render: (n: number) => formatFCFA(n),
-              },
-            ]}
-            summary={() => (
-              <Table.Summary.Row>
-                <Table.Summary.Cell index={0} colSpan={3} align="right">
-                  <Typography.Text strong>{t.purchaseOrders.total}</Typography.Text>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={1} align="right">
-                  <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>
-                </Table.Summary.Cell>
-              </Table.Summary.Row>
-            )}
-          />
+        <div className={styles.list}>
+          {po.lines.map((line) => (
+            <div key={line.id} className={styles.row}>
+              <div className={`${styles.identity} ${styles.identityStatic}`}>
+                <span className={styles.identityText}>
+                  <span className={styles.name}>
+                    {productNames[line.productId] ?? line.productId.slice(0, 8)}
+                  </span>
+                  <span className={styles.meta}>
+                    {line.quantity} × {formatFCFA(line.unitCost)}
+                  </span>
+                </span>
+              </div>
+              <div className={styles.money}>
+                <span className={styles.total}>{formatFCFA(line.lineTotal)}</span>
+              </div>
+            </div>
+          ))}
+          <div className={styles.listFooter}>
+            <span>{t.purchaseOrders.total}</span>
+            <span>{formatFCFA(po.totalAmount)}</span>
+          </div>
         </div>
       </Card>
 

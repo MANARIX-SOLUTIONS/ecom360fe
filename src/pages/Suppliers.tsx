@@ -1,6 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, Table, Tag, Button, Input, Typography, Skeleton, Modal, Form, message } from "antd";
+import {
+  Card,
+  Button,
+  Input,
+  Typography,
+  Skeleton,
+  Modal,
+  Form,
+  message,
+  Pagination,
+  Tooltip,
+} from "antd";
 import { Plus, Search, Truck, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Clients.module.css";
@@ -23,6 +34,8 @@ type Supplier = {
   balance: number;
 };
 
+type SupplierFilter = "all" | "due";
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -32,9 +45,19 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+function formatAmount(n: number) {
+  return `${n.toLocaleString("fr-FR")} F`;
+}
+
+function suppliersCountLabel(count: number) {
+  if (count === 1) return t.suppliers.countOne;
+  return t.suppliers.countOther.replace("{count}", String(count));
+}
+
 export default function Suppliers() {
   const navigate = useNavigate();
   const { matrixCan } = useMatrixCan();
+  const [filter, setFilter] = useState<SupplierFilter>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -60,7 +83,9 @@ export default function Suppliers() {
   useEffect(() => {
     getSubscriptionUsage()
       .then((u) =>
-        setSuppliersAtLimit(u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit)
+        setSuppliersAtLimit(
+          u.suppliersLimit > 0 && u.suppliersCount >= u.suppliersLimit
+        )
       )
       .catch(() => setSuppliersAtLimit(false));
   }, [suppliers.length]);
@@ -110,7 +135,60 @@ export default function Suppliers() {
     };
   }, [fetchSuppliers]);
 
-  if (loading) {
+  const pageStats = useMemo(() => {
+    let dueCount = 0;
+    let dueAmount = 0;
+    for (const supplier of suppliers) {
+      if (supplier.balance !== 0) {
+        dueCount += 1;
+        dueAmount += supplier.balance;
+      }
+    }
+    return { dueCount, dueAmount };
+  }, [suppliers]);
+
+  const filtered = useMemo(
+    () =>
+      filter === "due"
+        ? suppliers.filter((s) => s.balance !== 0)
+        : suppliers,
+    [suppliers, filter]
+  );
+
+  const hasActiveFilters = search !== "" || filter !== "all";
+  const isCatalogEmpty =
+    suppliers.length === 0 && search === "" && filter === "all";
+  const canCreate = matrixCan("SUPPLIERS_CREATE", "suppliers");
+  const canUpdate = matrixCan("SUPPLIERS_UPDATE", "suppliers");
+  const canDelete = matrixCan("SUPPLIERS_DELETE", "suppliers");
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilter("all");
+  };
+
+  const onDelete = (supplier: Supplier) => {
+    Modal.confirm({
+      title: t.common.delete,
+      content: t.list.deleteConfirm.replace("{name}", supplier.name),
+      okText: t.list.deleteOk,
+      okType: "danger",
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteSupplier(supplier.id);
+          message.success(t.suppliers.msgDeleted);
+          fetchSuppliers();
+        } catch (e) {
+          message.error(
+            e instanceof Error ? e.message : t.common.errorGeneric
+          );
+        }
+      },
+    });
+  };
+
+  if (loading && suppliers.length === 0 && !hasActiveFilters) {
     return (
       <div className={`${styles.page} pageWrapper`}>
         <div className={styles.header}>
@@ -121,7 +199,7 @@ export default function Suppliers() {
           </div>
         </div>
         <Card variant="borderless" className={`${styles.card} contentCard`}>
-          <Skeleton active paragraph={{ rows: 4 }} />
+          <Skeleton active paragraph={{ rows: 5 }} />
         </Card>
       </div>
     );
@@ -130,37 +208,76 @@ export default function Suppliers() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.suppliers.title}
-        </Typography.Title>
-        <div className={styles.toolbar}>
-          <Input
-            prefix={<Search size={18} />}
-            placeholder={t.suppliers.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
+        <div className={styles.heading}>
+          <Typography.Title level={4} className="pageTitle">
+            {t.suppliers.title}
+          </Typography.Title>
+          <Typography.Text type="secondary" className="pageSubtitle">
+            {suppliersCountLabel(total)}
+          </Typography.Text>
+        </div>
+        <div className={styles.headerActions}>
           {suppliersAtLimit ? (
             <Typography.Text type="secondary">
-              Limite atteinte. <Link to="/settings/subscription">Passer à un plan supérieur</Link>
+              {t.list.limitReached}{" "}
+              <Link to="/settings/subscription">{t.list.upgradePlan}</Link>
             </Typography.Text>
-          ) : matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
-            <Button type="primary" icon={<Plus size={18} />} onClick={() => setAddOpen(true)}>
+          ) : canCreate ? (
+            <Button
+              type="primary"
+              icon={<Plus size={16} />}
+              onClick={() => setAddOpen(true)}
+            >
               {t.suppliers.addSupplier}
             </Button>
           ) : null}
         </div>
       </header>
+
       <Card variant="borderless" className={`${styles.card} contentCard`}>
-        {suppliers.length === 0 ? (
+        {isCatalogEmpty ? null : (
+          <div className={styles.toolbar}>
+            <div className={styles.chips} role="group">
+              {(
+                [
+                  { id: "all" as const, label: t.list.filterAll },
+                  { id: "due" as const, label: t.suppliers.filterDue },
+                ] as const
+              ).map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  aria-pressed={filter === chip.id}
+                  className={`${styles.chip} ${
+                    filter === chip.id ? styles.chipActive : ""
+                  }`}
+                  onClick={() => setFilter(chip.id)}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            <Input
+              prefix={<Search size={16} />}
+              placeholder={t.suppliers.search}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              className={styles.toolbarSearch}
+            />
+            {hasActiveFilters ? (
+              <Button onClick={resetFilters}>{t.list.resetFilters}</Button>
+            ) : null}
+          </div>
+        )}
+
+        {isCatalogEmpty ? (
           <EmptyState
             icon={Truck}
             title={t.suppliers.emptyTitle}
             description={t.suppliers.emptyDesc}
             action={
-              !suppliersAtLimit && matrixCan("SUPPLIERS_CREATE", "suppliers") ? (
+              !suppliersAtLimit && canCreate ? (
                 <Button
                   type="primary"
                   size="large"
@@ -174,113 +291,169 @@ export default function Suppliers() {
             }
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={suppliers}
-              rowKey="id"
-              scroll={{ x: "max-content" }}
-              pagination={{
-                current: page + 1,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                pageSizeOptions: ["10", "20", "50"],
-                onChange: (p, size) => {
-                  setPage(p - 1);
-                  setPageSize(size);
-                },
-              }}
-              onRow={(r) => ({
-                style: { cursor: "pointer" },
-                role: "button",
-                tabIndex: 0,
-                onClick: () => navigate(`/suppliers/${r.id}`),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    navigate(`/suppliers/${r.id}`);
-                  }
-                },
-              })}
-              className="dataTable"
-              locale={{ emptyText: "Aucun fournisseur trouvé" }}
-              columns={[
-                {
-                  title: t.common.name,
-                  dataIndex: "name",
-                  render: (name: string) => (
-                    <span className={styles.nameCell}>
-                      <span className={styles.avatarSmall}>{getInitials(name)}</span>
-                      {name}
+          <>
+            {suppliers.length > 0 ? (
+              <>
+                <div
+                  className={styles.stats}
+                  aria-label={t.list.summaryPageHint}
+                >
+                  <div className={styles.stat}>
+                    <span className={styles.statValue}>
+                      {suppliersCountLabel(suppliers.length)}
                     </span>
-                  ),
-                },
-                { title: t.common.phone, dataIndex: "phone" },
-                { title: t.common.email, dataIndex: "email" },
-                { title: t.common.zone, dataIndex: "zone" },
-                {
-                  title: t.suppliers.balance,
-                  dataIndex: "balance",
-                  render: (v: number) => (
-                    <Tag color={v < 0 ? "error" : "default"}>{v.toLocaleString("fr-FR")} F</Tag>
-                  ),
-                },
-                {
-                  title: "",
-                  width: 100,
-                  render: (_, r: Supplier) => (
-                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- stopPropagation only, not interactive
-                    <div
-                      role="group"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
+                    <span className={styles.statLabel}>
+                      {t.list.summaryPageHint}
+                    </span>
+                  </div>
+                  <div
+                    className={`${styles.stat} ${
+                      pageStats.dueCount > 0 ? styles.statWarn : ""
+                    }`}
+                  >
+                    <span className={styles.statValue}>
+                      {pageStats.dueCount}
+                    </span>
+                    <span className={styles.statLabel}>
+                      {t.suppliers.filterDue}
+                    </span>
+                  </div>
+                  <div
+                    className={`${styles.stat} ${
+                      pageStats.dueAmount !== 0 ? styles.statWarn : ""
+                    }`}
+                  >
+                    <span className={styles.statValue}>
+                      {formatAmount(pageStats.dueAmount)}
+                    </span>
+                    <span className={styles.statLabel}>
+                      {t.suppliers.balance}
+                    </span>
+                  </div>
+                </div>
+                {pageStats.dueCount > 0 && filter === "all" ? (
+                  <div className={styles.followUp}>
+                    {(pageStats.dueCount === 1
+                      ? t.suppliers.dueFollowUpOne
+                      : t.suppliers.dueFollowUpOther
+                    )
+                      .replace("{count}", String(pageStats.dueCount))
+                      .replace(
+                        "{amount}",
+                        formatAmount(pageStats.dueAmount)
+                      )}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={Truck}
+                title={t.list.emptyFilteredTitle}
+                description={t.list.emptyFilteredDesc}
+                action={
+                  <Button size="large" onClick={resetFilters}>
+                    {t.list.resetFilters}
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className={styles.list} aria-busy={loading}>
+                {filtered.map((supplier) => {
+                  const due = supplier.balance !== 0;
+                  const meta = [supplier.phone, supplier.email, supplier.zone]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <li
+                      key={supplier.id}
+                      className={`${styles.row} ${due ? styles.rowDue : ""}`}
                     >
-                      {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<Pencil size={14} />}
-                          onClick={() => {
-                            editForm.setFieldsValue({
-                              name: r.name,
-                              phone: r.phone || "",
-                              email: r.email || "",
-                              zone: r.zone || "",
-                            });
-                            setEditOpen(r);
-                          }}
-                          aria-label={t.common.edit}
-                        />
-                      )}
-                      {matrixCan("SUPPLIERS_DELETE", "suppliers") && (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<Trash2 size={14} />}
-                          onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteSupplier(r.id)
-                                .then(() => {
-                                  message.success(t.suppliers.msgDeleted);
-                                  fetchSuppliers();
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
-                          }}
-                          aria-label={t.common.delete}
-                        />
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          </div>
+                      <button
+                        type="button"
+                        className={styles.identity}
+                        onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                        aria-label={t.suppliers.openAria.replace(
+                          "{name}",
+                          supplier.name
+                        )}
+                      >
+                        <span className={styles.avatarSmall}>
+                          {getInitials(supplier.name)}
+                        </span>
+                        <span className={styles.identityText}>
+                          <span className={styles.name}>{supplier.name}</span>
+                          {meta ? (
+                            <span className={styles.meta}>{meta}</span>
+                          ) : null}
+                        </span>
+                      </button>
+                      <div className={styles.statusCol}>
+                        <span
+                          className={`${styles.pill} ${
+                            due ? styles.pillWarn : styles.pillOk
+                          }`}
+                        >
+                          {due
+                            ? formatAmount(supplier.balance)
+                            : t.suppliers.settled}
+                        </span>
+                      </div>
+                      <div className={styles.actions}>
+                        {canUpdate ? (
+                          <Tooltip title={t.common.edit}>
+                            <Button
+                              type="text"
+                              size="small"
+                              aria-label={t.common.edit}
+                              icon={<Pencil size={16} />}
+                              onClick={() => {
+                                editForm.setFieldsValue({
+                                  name: supplier.name,
+                                  phone: supplier.phone || "",
+                                  email: supplier.email || "",
+                                  zone: supplier.zone || "",
+                                });
+                                setEditOpen(supplier);
+                              }}
+                            />
+                          </Tooltip>
+                        ) : null}
+                        {canDelete ? (
+                          <Tooltip title={t.common.delete}>
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              aria-label={t.common.delete}
+                              icon={<Trash2 size={16} />}
+                              onClick={() => onDelete(supplier)}
+                            />
+                          </Tooltip>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {total > pageSize ? (
+              <div className={styles.pager}>
+                <Pagination
+                  current={page + 1}
+                  pageSize={pageSize}
+                  total={total}
+                  showSizeChanger
+                  pageSizeOptions={["10", "20", "50"]}
+                  showTotal={(count) => suppliersCountLabel(count)}
+                  onChange={(nextPage, size) => {
+                    setPage(nextPage - 1);
+                    setPageSize(size);
+                  }}
+                />
+              </div>
+            ) : null}
+          </>
         )}
       </Card>
 
@@ -301,7 +474,9 @@ export default function Suppliers() {
               addForm.resetFields();
               fetchSuppliers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+              message.error(
+                e instanceof Error ? e.message : t.common.errorGeneric
+              );
             }
           });
         }}
@@ -362,7 +537,9 @@ export default function Suppliers() {
               editForm.resetFields();
               fetchSuppliers();
             } catch (e) {
-              message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+              message.error(
+                e instanceof Error ? e.message : t.common.errorGeneric
+              );
             }
           });
         }}

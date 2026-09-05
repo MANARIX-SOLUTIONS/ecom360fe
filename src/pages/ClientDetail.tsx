@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Typography, Table, Tag, Modal, Form, Input, message, Skeleton } from "antd";
+import { Card, Button, Typography, Modal, Form, Input, message, Skeleton } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
 import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2, Wallet } from "lucide-react";
@@ -30,6 +30,15 @@ function getInitials(name: string) {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+function formatAmount(n: number) {
+  return `${n.toLocaleString("fr-FR")} F`;
+}
+
+function formatDay(isoDate: string | null | undefined) {
+  if (!isoDate) return "—";
+  return new Date(`${isoDate.slice(0, 10)}T00:00:00`).toLocaleDateString("fr-FR");
 }
 
 export default function ClientDetail() {
@@ -160,13 +169,22 @@ export default function ClientDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteClient(id)
-      .then(() => {
-        message.success(t.clients.msgDeleted);
-        navigate("/clients");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+    Modal.confirm({
+      title: t.common.delete,
+      content: t.list.deleteConfirm.replace("{name}", client.name),
+      okText: t.list.deleteOk,
+      okType: "danger",
+      cancelText: t.common.cancel,
+      onOk: async () => {
+        try {
+          await deleteClient(id);
+          message.success(t.clients.msgDeleted);
+          navigate("/clients");
+        } catch (e) {
+          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        }
+      },
+    });
   };
 
   const handlePayment = async () => {
@@ -248,7 +266,7 @@ export default function ClientDetail() {
             <span className={styles.heroBalanceLabel}>{t.clients.outstandingBalance}</span>
             <span className={styles.heroBalanceAmount} style={{ color: balanceColor }}>
               {client.creditBalance > 0 ? "+" : ""}
-              {client.creditBalance.toLocaleString("fr-FR")} F
+              {formatAmount(client.creditBalance)}
             </span>
           </div>
           <div className={styles.heroActions}>
@@ -291,41 +309,31 @@ export default function ClientDetail() {
             description={t.clients.outstandingSalesDesc}
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={outstandingSales}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              onRow={(record) => ({
-                style: { cursor: "pointer" },
-                onClick: () => navigate("/receipt", { state: { saleId: record.id } }),
-              })}
-              columns={[
-                { title: t.sales.receiptNumber, dataIndex: "receiptNumber" },
-                {
-                  title: t.common.total,
-                  dataIndex: "total",
-                  render: (v: number) => `${v.toLocaleString("fr-FR")} F`,
-                },
-                {
-                  title: t.sales.remainingDue,
-                  dataIndex: "remainingAmount",
-                  render: (v: number) => (
-                    <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>
-                  ),
-                },
-                {
-                  title: t.sales.dueDate,
-                  dataIndex: "dueDate",
-                  render: (v: string | null) =>
-                    v ? new Date(`${v}T00:00:00`).toLocaleDateString("fr-FR") : "—",
-                },
-              ]}
-            />
-          </div>
+          <ul className={styles.list}>
+            {outstandingSales.map((sale) => (
+              <li key={sale.id} className={`${styles.row} ${styles.rowDue}`}>
+                <button
+                  type="button"
+                  className={styles.identity}
+                  onClick={() => navigate("/receipt", { state: { saleId: sale.id } })}
+                  aria-label={t.sales.openReceiptAria.replace("{ticket}", sale.receiptNumber)}
+                >
+                  <span className={styles.identityText}>
+                    <span className={styles.name}>{sale.receiptNumber}</span>
+                    <span className={styles.meta}>{formatDay(sale.dueDate)}</span>
+                  </span>
+                </button>
+                <div className={styles.statusCol}>
+                  <span className={`${styles.pill} ${styles.pillWarn}`}>
+                    {formatAmount(sale.remainingAmount ?? 0)}
+                  </span>
+                </div>
+                <div className={styles.money}>
+                  <span className={styles.total}>{formatAmount(sale.total)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 
@@ -342,24 +350,22 @@ export default function ClientDetail() {
             description={t.clients.emptyPaymentHistoryDesc}
           />
         ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={payments}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              columns={[
-                { title: t.common.date, dataIndex: "date" },
-                {
-                  title: t.expenses.amount,
-                  dataIndex: "amount",
-                  render: (v: number) => <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>,
-                },
-              ]}
-            />
-          </div>
+          <ul className={styles.list}>
+            {payments.map((payment) => (
+              <li key={payment.id} className={styles.row}>
+                <div className={`${styles.identity} ${styles.identityStatic}`}>
+                  <span className={styles.identityText}>
+                    <span className={styles.name}>{formatDay(payment.date)}</span>
+                  </span>
+                </div>
+                <div className={styles.statusCol}>
+                  <span className={`${styles.pill} ${styles.pillOk}`}>
+                    +{formatAmount(payment.amount)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Card>
 
@@ -419,7 +425,7 @@ export default function ClientDetail() {
               </Typography.Text>
               <Typography.Text type="secondary">
                 {t.clients.outstandingBalance}:{" "}
-                <strong>{client.creditBalance.toLocaleString("fr-FR")} F</strong>
+                <strong>{formatAmount(client.creditBalance)}</strong>
               </Typography.Text>
             </div>
           </div>
