@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useCallback, useEffect } from "react";
-import { listNotifications, markNotificationRead } from "@/api";
+import { getUnreadNotificationCount, listNotifications, markNotificationRead } from "@/api";
 import type { NotificationResponse } from "@/api";
 import { createSharedStore } from "@/hooks/createSharedStore";
 
@@ -9,13 +9,20 @@ type NotificationsState = {
   loading: boolean;
 };
 
+type UseNotificationsOptions = {
+  listSize?: number;
+  pollingIntervalMs?: number;
+};
+
+const DEFAULT_LIST_SIZE = 10;
+
 const notificationsStore = createSharedStore<NotificationsState>({
   notifications: [],
   unreadCount: 0,
   loading: false,
 });
 
-async function fetchNotifications(): Promise<void> {
+async function fetchNotifications(listSize = DEFAULT_LIST_SIZE): Promise<void> {
   if (!localStorage.getItem("ecom360_access_token")) {
     notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
     return;
@@ -23,13 +30,13 @@ async function fetchNotifications(): Promise<void> {
   notificationsStore.setState((s) => (s.loading ? s : { ...s, loading: true }));
   return notificationsStore.run(async () => {
     try {
-      const [all, unread] = await Promise.all([
-        listNotifications({ page: 0, size: 10 }),
-        listNotifications({ unreadOnly: true, page: 0, size: 1 }),
+      const [all, unreadCountValue] = await Promise.all([
+        listNotifications({ page: 0, size: listSize }),
+        getUnreadNotificationCount(),
       ]);
       notificationsStore.setState({
         notifications: all.content,
-        unreadCount: unread.totalElements,
+        unreadCount: unreadCountValue,
         loading: false,
       });
     } catch {
@@ -44,16 +51,28 @@ if (typeof window !== "undefined") {
   });
 }
 
-export function useNotifications() {
+export function useNotifications(options: UseNotificationsOptions = {}) {
+  const { listSize = DEFAULT_LIST_SIZE, pollingIntervalMs = 0 } = options;
+
   const { notifications, unreadCount, loading } = useSyncExternalStore(
     notificationsStore.subscribe,
     notificationsStore.getSnapshot,
     notificationsStore.getSnapshot
   );
 
+  const refetch = useCallback(() => fetchNotifications(listSize), [listSize]);
+
   useEffect(() => {
-    void fetchNotifications();
-  }, []);
+    void refetch();
+  }, [refetch]);
+
+  useEffect(() => {
+    if (!pollingIntervalMs) return undefined;
+    const intervalId = window.setInterval(() => {
+      void refetch();
+    }, pollingIntervalMs);
+    return () => window.clearInterval(intervalId);
+  }, [refetch, pollingIntervalMs]);
 
   const markRead = useCallback(async (id: string) => {
     try {
@@ -72,7 +91,7 @@ export function useNotifications() {
     notifications,
     unreadCount,
     loading,
-    refetch: fetchNotifications,
+    refetch,
     markRead,
   };
 }

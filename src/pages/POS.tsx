@@ -28,7 +28,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import {
-  getStockByStore,
+  getAllStockByStore,
   getStockForProducts,
   listClients,
   createSale,
@@ -827,18 +827,12 @@ export default function POS() {
     let cancelled = false;
     const load = async () => {
       try {
-        const [stockRes, catsRes, clientsRes] = await Promise.all([
-          getStockByStore(activeStore.id, {
-            page: 0,
-            size: 100,
-            search: debouncedSearch.trim() || undefined,
-          }),
+        const [stockList, catsRes, clientsRes] = await Promise.all([
+          getAllStockByStore(activeStore.id, debouncedSearch.trim() || undefined),
           listCategories(),
           listClients({ page: 0, size: 100 }),
         ]);
         if (cancelled) return;
-
-        const stockList = Array.isArray(stockRes) ? stockRes : stockRes.content;
         const catNames = catsRes.map((c) => c.name);
         setCategories(["Tous", ...catNames]);
         let nextClients: ClientForPOS[] = clientsRes.content.map((c) => ({

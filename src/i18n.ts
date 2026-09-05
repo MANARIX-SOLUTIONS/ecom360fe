@@ -102,7 +102,7 @@ export const t = {
     clientLabelShort: "Client",
     clientCreditLabelShort: "Client (crédit)",
     walkInDefaultSuffix: " (par défaut)",
-    currentDebtLabel: "Dette actuelle",
+    currentDebtLabel: "Solde actuel",
     afterThisSaleLabel: "Après cette vente",
     monthlySalesLimitReached: "Limite des ventes mensuelles atteinte.",
     upgradePlanLink: "Passer à un plan supérieur",
@@ -204,8 +204,8 @@ export const t = {
       "Période tableau de bord : du 1er du mois à aujourd’hui — pas le mois calendaire complet.",
     moneyStoryTitle: "Lecture rapide",
     moneyStoryRecentPayments:
-      "Ventes récentes (liste ci‑dessous) : {collected} encaissés (hors crédit), {credit} à crédit.",
-    moneyStoryReceivable: "Encours clients à recouvrer : {amount}.",
+      "Ventes récentes (liste ci‑dessous) : {collected} déjà encaissés, {credit} encore dus (crédit ou acompte).",
+    moneyStoryReceivable: "Reste dû par vos clients (crédits et acomptes) : {amount}.",
     moneyStoryPeriodProfit: "Résultat net sur cette période : {amount}.",
     moneyStoryDetailClients: "Clients",
     moneyStoryDetailReports: "Rapports",
@@ -222,7 +222,7 @@ export const t = {
       "CA de la période moins dépenses enregistrées sur la même plage — même logique que « Résultat net » en vue globale.",
     tooltipPeriodLowStock: "Nombre de références sous le seuil minimum de stock.",
     tooltipPeriodReceivable:
-      "Somme des soldes créditeurs clients (argent encore dû par vos clients).",
+      "Argent encore dû par vos clients — ventes à crédit et acomptes non soldés.",
     periodCashCollected: "Encaissé",
     periodOutstandingSales: "Reste à encaisser",
     tooltipPeriodCashCollected:
@@ -245,8 +245,9 @@ export const t = {
     periodExpenseRatio: "Charges / CA",
     periodProfit: "Résultat net (période)",
     periodLowStockCount: "Alertes stock faible",
-    periodReceivable: "Encours clients",
-    periodDebtorsHint: "{n} débiteur(s)",
+    periodReceivable: "Dû par les clients",
+    periodDebtorsHintOne: "1 client",
+    periodDebtorsHintOther: "{n} clients",
     vsPrevPeriod: "vs période préc.",
     topProducts: "Produits les plus vendus",
     lowStockAlerts: "Alertes stock faible",
@@ -257,10 +258,9 @@ export const t = {
     emptyCta: "Ouvrir la caisse",
     loadError: "Erreur chargement",
     retryLoad: "Réessayer",
-    creditFollowUpTitle: "Crédits clients à suivre",
-    creditFollowUpDesc:
-      "<strong>{count}</strong> client(s) avec une dette ouverte — encours total " +
-      "<strong>{amount}</strong>.",
+    creditFollowUpTitle: "Crédits et acomptes à suivre",
+    creditFollowUpDescOne: "1 client a encore un reste à payer — {amount} au total.",
+    creditFollowUpDescOther: "{count} clients ont encore un reste à payer — {amount} au total.",
     creditFollowUpCta: "Voir les clients",
     starterPlanInfoTitle: "Vue du jour (plan Starter)",
     starterPlanInfoDesc:
@@ -357,7 +357,7 @@ export const t = {
     placeholderAddress: "Adresse du client",
     paymentNeedsActiveStore: "Sélectionnez une boutique active pour enregistrer un paiement.",
     paymentExceedsBalance: "Le paiement ne peut pas dépasser le solde dû.",
-    noOutstandingBalance: "Ce client n'a pas de crédit en cours.",
+    noOutstandingBalance: "Ce client n'a rien à régler.",
     walkInNoCreditPayment: "Le client comptoir n'a pas de crédit nominatif.",
     msgAdded: "Client ajouté",
     outstandingSales: "Ventes à solder",
@@ -644,6 +644,19 @@ export const t = {
     emptyDesc:
       "Créez votre premier point de vente pour commencer à utiliser 360 PME. Gérez vos stocks, enregistrez des ventes et suivez votre activité.",
     emptyCta: "Créer ma première boutique",
+    catalogModeTitle: "Catalogue produits",
+    catalogModeDesc:
+      "Choisissez si toutes les boutiques vendent les mêmes produits, ou si chaque point de vente a son propre catalogue.",
+    catalogModePerStore: "Catalogue par boutique",
+    catalogModePerStoreDesc:
+      "Un produit créé dans une boutique n’apparaît pas dans les autres. Le stock reste local.",
+    catalogModeShared: "Catalogue partagé",
+    catalogModeSharedDesc:
+      "Un produit créé une fois apparaît dans toutes les boutiques. Le stock reste indépendant par magasin.",
+    catalogModeSharedConfirmTitle: "Activer le catalogue partagé ?",
+    catalogModeSharedWarning:
+      "Les produits déjà créés en double dans plusieurs boutiques ne seront pas fusionnés automatiquement.",
+    catalogModeUpdated: "Mode catalogue mis à jour",
   },
   profile: {
     myProfile: "Mon profil",
@@ -1100,7 +1113,7 @@ export const t = {
     qtyShort: "Qté",
     unitPrice: "P.U.",
     invoiceRef: "Réf. vente",
-    amountPaid: "Acompte versé",
+    amountPaid: "Déjà encaissé",
     remainingToPay: "Reste à payer",
     dueDate: "À régler avant le",
     dateTime: "Date et heure",

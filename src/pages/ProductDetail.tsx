@@ -39,6 +39,8 @@ import {
 import { getStockLevel, adjustStock, getStockMovements } from "@/api";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { isSharedCatalog } from "@/api/business";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import type { ProductResponse } from "@/api";
@@ -69,6 +71,8 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const { activeStore, stores } = useStore();
   const { matrixCan } = useMatrixCan();
+  const { profile } = useBusinessProfile();
+  const sharedCatalog = isSharedCatalog(profile);
   const [product, setProduct] = useState<ProductResponse | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [stockLevels, setStockLevels] = useState<StockLevelResponse[]>([]);
@@ -226,7 +230,7 @@ export default function ProductDetail() {
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
       try {
-        if (!values.storeId) {
+        if (!sharedCatalog && !values.storeId) {
           message.warning(t.products.msgSelectOwnerStore);
           return;
         }
@@ -236,7 +240,7 @@ export default function ProductDetail() {
           categoryId: values.categoryId || null,
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
-          storeId: values.storeId,
+          storeId: sharedCatalog ? product.storeId : values.storeId,
           imageUrl: imageUrlForUpdate,
           isActive: product.isActive,
         });
@@ -615,6 +619,7 @@ export default function ProductDetail() {
           >
             <Input placeholder={t.products.placeholderProductName} />
           </Form.Item>
+          {!sharedCatalog ? (
           <Form.Item
             name="storeId"
             label={t.products.ownerStoreLabel}
@@ -633,6 +638,7 @@ export default function ProductDetail() {
               </Typography.Text>
             </>
           </Form.Item>
+          ) : null}
           <Form.Item name="categoryId" label={t.products.category}>
             <Select
               placeholder={t.products.category}

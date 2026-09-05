@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Card, Typography, Button, Modal, Form, Input, message } from "antd";
+import { Card, Typography, Button, Modal, Form, Input, Radio, Space, message } from "antd";
 import { Store, Plus, MapPin, Check, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
-import { getSubscriptionUsage } from "@/api";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
+import { getSubscriptionUsage, updateBusinessCatalogMode } from "@/api";
+import type { CatalogMode } from "@/api/business";
 import { EmptyState } from "@/components/EmptyState";
+import { ROLES } from "@/constants/roles";
 import { t } from "@/i18n";
 import styles from "./SettingsStores.module.css";
 import layoutStyles from "./Settings.module.css";
@@ -15,10 +19,15 @@ export default function SettingsStores() {
   const { stores, activeStore, setActiveStoreId, addStore, updateStore, removeStore, hasStores } =
     useStore();
   const { matrixCan } = useMatrixCan();
+  const { role, isSuperAdmin } = useAuthRole();
+  const { profile, refresh: refreshProfile } = useBusinessProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [storesAtLimit, setStoresAtLimit] = useState(false);
+  const [savingCatalog, setSavingCatalog] = useState(false);
+  const catalogMode: CatalogMode = profile?.catalogMode === "SHARED" ? "SHARED" : "PER_STORE";
+  const canEditCatalog = role === ROLES.PROPRIETAIRE || isSuperAdmin;
 
   useEffect(() => {
     getSubscriptionUsage()
@@ -56,6 +65,34 @@ export default function SettingsStores() {
         message.error(e instanceof Error ? e.message : t.common.errorGeneric);
       }
     });
+  };
+
+  const applyCatalogMode = async (next: CatalogMode) => {
+    setSavingCatalog(true);
+    try {
+      await updateBusinessCatalogMode(next);
+      await refreshProfile();
+      message.success(t.stores.catalogModeUpdated);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+    } finally {
+      setSavingCatalog(false);
+    }
+  };
+
+  const handleCatalogModeChange = (next: CatalogMode) => {
+    if (next === catalogMode || savingCatalog) return;
+    if (next === "SHARED") {
+      Modal.confirm({
+        title: t.stores.catalogModeSharedConfirmTitle,
+        content: t.stores.catalogModeSharedWarning,
+        okText: t.common.save,
+        cancelText: t.common.cancel,
+        onOk: () => applyCatalogMode(next),
+      });
+      return;
+    }
+    void applyCatalogMode(next);
   };
 
   const handleRemove = async (id: string) => {
@@ -97,6 +134,40 @@ export default function SettingsStores() {
           </Button>
         ) : null}
       </header>
+
+      <Card variant="borderless" className={styles.catalogCard}>
+        <Typography.Title level={5} className={styles.catalogTitle}>
+          {t.stores.catalogModeTitle}
+        </Typography.Title>
+        <Typography.Paragraph type="secondary" className={styles.catalogDesc}>
+          {t.stores.catalogModeDesc}
+        </Typography.Paragraph>
+        <Radio.Group
+          value={catalogMode}
+          disabled={!canEditCatalog || savingCatalog}
+          onChange={(e) => handleCatalogModeChange(e.target.value as CatalogMode)}
+        >
+          <Space direction="vertical" size={12}>
+            <Radio value="PER_STORE">
+              <span className={styles.catalogOption}>
+                <span className={styles.catalogOptionTitle}>{t.stores.catalogModePerStore}</span>
+                <span className={styles.catalogOptionDesc}>{t.stores.catalogModePerStoreDesc}</span>
+              </span>
+            </Radio>
+            <Radio value="SHARED">
+              <span className={styles.catalogOption}>
+                <span className={styles.catalogOptionTitle}>{t.stores.catalogModeShared}</span>
+                <span className={styles.catalogOptionDesc}>{t.stores.catalogModeSharedDesc}</span>
+              </span>
+            </Radio>
+          </Space>
+        </Radio.Group>
+        {catalogMode === "SHARED" ? (
+          <Typography.Paragraph type="secondary" className={styles.catalogWarning}>
+            {t.stores.catalogModeSharedWarning}
+          </Typography.Paragraph>
+        ) : null}
+      </Card>
 
       <Card variant="borderless" className={styles.card}>
         {!hasStores ? (

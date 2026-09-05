@@ -34,21 +34,14 @@ export type StockAdjustmentRequest = {
 
 export async function getStockByStore(
   storeId: string,
-  params?: { page?: number; size?: number; search?: string; productIds?: string[] }
-): Promise<PageResponse<StockLevelResponse> | StockLevelResponse[]> {
+  params?: { page?: number; size?: number; search?: string }
+): Promise<PageResponse<StockLevelResponse>> {
   const search = new URLSearchParams();
-  if (params?.productIds?.length) {
-    for (const id of params.productIds) search.append("productIds", id);
-    const qs = search.toString();
-    return api.get<StockLevelResponse[]>(`/stock/store/${storeId}?${qs}`);
-  }
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.size != null) search.set("size", String(params.size));
   if (params?.search) search.set("search", params.search);
   const qs = search.toString();
-  return api.get<PageResponse<StockLevelResponse>>(
-    `/stock/store/${storeId}${qs ? `?${qs}` : "?page=0&size=40"}`
-  );
+  return api.get<PageResponse<StockLevelResponse>>(`/stock/store/${storeId}${qs ? `?${qs}` : ""}`);
 }
 
 /** Stock for specific products in a store (products list page). */
@@ -57,8 +50,36 @@ export async function getStockForProducts(
   productIds: string[]
 ): Promise<StockLevelResponse[]> {
   if (productIds.length === 0) return [];
-  const res = await getStockByStore(storeId, { productIds });
-  return Array.isArray(res) ? res : res.content;
+  const search = new URLSearchParams();
+  for (const id of productIds) {
+    search.append("productIds", id);
+  }
+  return api.get<StockLevelResponse[]>(`/stock/store/${storeId}?${search.toString()}`);
+}
+
+const STOCK_PAGE_SIZE = 100;
+
+/** All stock levels for a store (POS catalog). */
+export async function getAllStockByStore(
+  storeId: string,
+  searchTerm?: string
+): Promise<StockLevelResponse[]> {
+  const first = await getStockByStore(storeId, {
+    page: 0,
+    size: STOCK_PAGE_SIZE,
+    search: searchTerm,
+  });
+  const items = [...(first.content ?? [])];
+  const totalPages = first.totalPages ?? 1;
+  for (let page = 1; page < totalPages; page++) {
+    const next = await getStockByStore(storeId, {
+      page,
+      size: STOCK_PAGE_SIZE,
+      search: searchTerm,
+    });
+    items.push(...(next.content ?? []));
+  }
+  return items;
 }
 
 export async function getStockLevel(

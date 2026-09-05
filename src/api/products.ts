@@ -10,6 +10,10 @@ export type PageResponse<T> = {
   size: number;
   totalElements: number;
   totalPages: number;
+  first?: boolean;
+  last?: boolean;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
 };
 
 export type ProductResponse = {
@@ -42,6 +46,8 @@ export type ProductRequest = {
   categoryId?: string | null;
   isActive?: boolean;
   storeId: string;
+  initialStock?: number;
+  minStock?: number;
 };
 
 export async function listProducts(params?: {
