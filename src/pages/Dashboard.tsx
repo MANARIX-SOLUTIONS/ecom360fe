@@ -82,6 +82,21 @@ function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
 }
 
+function creditFollowUpDescription(count: number, amount: number): string {
+  const amountLabel = formatFCFA(amount);
+  if (count === 1) {
+    return t.dashboard.creditFollowUpDescOne.replace("{amount}", amountLabel);
+  }
+  return t.dashboard.creditFollowUpDescOther
+    .replace("{count}", String(count))
+    .replace("{amount}", amountLabel);
+}
+
+function periodDebtorsHint(count: number): string {
+  if (count === 1) return t.dashboard.periodDebtorsHintOne;
+  return t.dashboard.periodDebtorsHintOther.replace("{n}", String(count));
+}
+
 function formatTime(iso: string) {
   try {
     const d = new Date(iso);
@@ -481,8 +496,7 @@ export default function Dashboard() {
         variant: "sales",
         icon: CreditCard,
         trendPct: null,
-        hint:
-          debtors > 0 ? t.dashboard.periodDebtorsHint.replace("{n}", String(debtors)) : undefined,
+        hint: debtors > 0 ? periodDebtorsHint(debtors) : undefined,
         tooltip: t.dashboard.tooltipPeriodReceivable,
       });
       rows.push({
@@ -778,9 +792,10 @@ export default function Dashboard() {
             showIcon
             icon={<CreditCard size={18} aria-hidden />}
             message={t.dashboard.creditFollowUpTitle}
-            description={t.dashboard.creditFollowUpDesc
-              .replace("{count}", String(data?.debtorClientsCount ?? 0))
-              .replace("{amount}", formatFCFA(data?.totalReceivable ?? 0))}
+            description={creditFollowUpDescription(
+              data?.debtorClientsCount ?? 0,
+              data?.totalReceivable ?? 0
+            )}
             action={
               <Space size={8} wrap>
                 <Button size="small" type="primary" onClick={() => navigate("/clients")}>
