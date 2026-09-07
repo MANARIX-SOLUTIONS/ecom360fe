@@ -1,25 +1,9 @@
 ## Summary
-<!-- What does this PR do? Why is it needed? -->
+<!-- What changed and why. -->
 
-## Type of Change
-- [ ] Feature (new functionality)
-- [ ] Fix (bug fix)
-- [ ] Refactor (no functional change)
-- [ ] Dependency update
-- [ ] CI/CD
-- [ ] Documentation
-
-## Changes
-<!-- Bullet list of changes -->
+## Test plan
+<!-- How a reviewer can verify. Skip if CI is enough. -->
 -
 
-## Testing
-<!-- How was this tested? -->
-- [ ] Unit tests added/updated
-- [ ] Manual testing done
-
-## Checklist
-- [ ] Code formatted (`npm run format`)
-- [ ] Lint passes (`npm run lint`)
-- [ ] Tests pass (`npm run test:run`)
-- [ ] No secrets or credentials in code
+## Notes
+<!-- Breaking changes, follow-ups. Delete if none. -->

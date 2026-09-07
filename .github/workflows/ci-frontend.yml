@@ -1,7 +1,6 @@
 # ──────────────────────────────────────────────────────────────
-# CI Frontend — Lint, test, build
-# Use when ecom360 is the repo root (standalone).
-# For monorepo (ecom360Saas root), see .github/workflows/ci-frontend.yml at repo root.
+# CI — Lint, test, build, E2E smoke
+# Repo: ecom360fe (frontend). Independent from ecom360be.
 # ──────────────────────────────────────────────────────────────
 name: CI Frontend
 
