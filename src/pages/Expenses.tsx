@@ -38,6 +38,7 @@ import {
   deleteExpense,
 } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
+import { confirmDelete } from "@/utils/confirmDelete";
 
 function formatFCFA(n: number) {
   return n.toLocaleString("fr-FR") + " F";
@@ -219,26 +220,23 @@ export default function Expenses() {
     });
   };
 
-  const onCategoryDelete = async (c: ExpenseCategoryResponse) => {
-    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
-    try {
-      await deleteExpenseCategory(c.id);
-      message.success(t.common.categoryDeleted);
-      const refreshed = await listExpenseCategories();
-      setCategories(refreshed);
-      fetchData();
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const onCategoryDelete = (c: ExpenseCategoryResponse) => {
+    confirmDelete({
+      name: c.name,
+      onOk: async () => {
+        await deleteExpenseCategory(c.id);
+        message.success(t.common.categoryDeleted);
+        const refreshed = await listExpenseCategories();
+        setCategories(refreshed);
+        fetchData();
+      },
+    });
   };
 
   const onExpenseDelete = (exp: ExpenseResponse) => {
-    Modal.confirm({
-      title: "Supprimer cette dépense ?",
-      content: `${exp.description ?? "Dépense"} — ${formatFCFA(exp.amount)}`,
-      okText: "Supprimer",
-      okButtonProps: { danger: true },
-      cancelText: t.common.cancel,
+    confirmDelete({
+      name: exp.description?.trim() || t.expenses.title,
+      description: `${exp.description ?? t.expenses.title} — ${formatFCFA(exp.amount)}`,
       onOk: async () => {
         await deleteExpense(exp.id);
         message.success(t.expenses.msgDeleted);

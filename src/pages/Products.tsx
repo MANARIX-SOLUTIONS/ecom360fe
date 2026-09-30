@@ -44,6 +44,7 @@ import {
 } from "@/api";
 import type { StockLevelResponse, CategoryResponse } from "@/api";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import { confirmDelete } from "@/utils/confirmDelete";
 import type { UploadFile } from "antd/es/upload/interface";
 
 const CATEGORY_COLOR_OPTIONS = [
@@ -288,17 +289,17 @@ export default function Products() {
     });
   };
 
-  const onCategoryDelete = async (c: CategoryResponse) => {
-    if (!window.confirm(`Supprimer la catégorie "${c.name}" ?`)) return;
-    try {
-      await deleteCategory(c.id);
-      message.success(t.common.categoryDeleted);
-      const refreshed = await listCategories();
-      setCategories(refreshed);
-      fetchData(true, "");
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const onCategoryDelete = (c: CategoryResponse) => {
+    confirmDelete({
+      name: c.name,
+      onOk: async () => {
+        await deleteCategory(c.id);
+        message.success(t.common.categoryDeleted);
+        const refreshed = await listCategories();
+        setCategories(refreshed);
+        fetchData(true, "");
+      },
+    });
   };
 
   const openEdit = (p: Product) => {
@@ -637,18 +638,14 @@ export default function Products() {
                           size="small"
                           icon={<Trash2 size={14} />}
                           onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteProduct(r.id)
-                                .then(() => {
-                                  message.success(t.products.msgDeleted);
-                                  fetchData(true, "");
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
+                            confirmDelete({
+                              name: r.name,
+                              onOk: async () => {
+                                await deleteProduct(r.id);
+                                message.success(t.products.msgDeleted);
+                                fetchData(true, "");
+                              },
+                            });
                           }}
                           aria-label={t.common.delete}
                         />

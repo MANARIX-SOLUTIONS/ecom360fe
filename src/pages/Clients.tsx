@@ -19,6 +19,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { EmptyState } from "@/components/EmptyState";
 import { canRecordClientPayment, creditBalanceTagColor } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
+import { confirmDelete } from "@/utils/confirmDelete";
 
 type Client = {
   id: string;
@@ -288,18 +289,14 @@ export default function Clients() {
                           size="small"
                           icon={<Trash2 size={14} />}
                           onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteClient(r.id)
-                                .then(() => {
-                                  message.success(t.clients.msgDeleted);
-                                  fetchClients();
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
+                            confirmDelete({
+                              name: r.name,
+                              onOk: async () => {
+                                await deleteClient(r.id);
+                                message.success(t.clients.msgDeleted);
+                                fetchClients();
+                              },
+                            });
                           }}
                           aria-label={t.common.delete}
                         />

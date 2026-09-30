@@ -13,6 +13,7 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { confirmDelete } from "@/utils/confirmDelete";
 
 type Supplier = {
   id: string;
@@ -259,18 +260,15 @@ export default function Suppliers() {
                           size="small"
                           icon={<Trash2 size={14} />}
                           onClick={() => {
-                            if (window.confirm(t.common.delete + " ?")) {
-                              deleteSupplier(r.id)
-                                .then(() => {
-                                  message.success(t.suppliers.msgDeleted);
-                                  fetchSuppliers();
-                                })
-                                .catch((e) =>
-                                  message.error(
-                                    e instanceof Error ? e.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
+                            confirmDelete({
+                              name: r.name,
+                              description: t.suppliers.deleteConfirmDesc,
+                              onOk: async () => {
+                                await deleteSupplier(r.id);
+                                message.success(t.suppliers.msgDeleted);
+                                fetchSuppliers();
+                              },
+                            });
                           }}
                           aria-label={t.common.delete}
                         />

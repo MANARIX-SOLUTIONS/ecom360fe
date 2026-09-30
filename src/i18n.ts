@@ -397,9 +397,8 @@ export const t = {
     paymentExceedsBalance: "Le versement ne peut pas dépasser le solde à payer.",
     paymentHintFifo: "Le versement est imputé d'abord sur le bon de commande le plus ancien.",
     afterThisPayment: "Solde après ce versement",
-    deleteConfirmTitle: "Supprimer ce fournisseur ?",
     deleteConfirmDesc:
-      "Cette action est définitive. Les bons de commande déjà enregistrés restent visibles.",
+      "La fiche disparaît des listes. Les bons de commande et paiements déjà enregistrés restent visibles.",
     placeholderAddress: "Adresse du fournisseur",
     overdue: "Échue",
     settled: "À jour",
@@ -659,6 +658,7 @@ export const t = {
     catalogModeSharedWarning:
       "Les produits déjà créés en double dans plusieurs boutiques ne seront pas fusionnés automatiquement.",
     catalogModeUpdated: "Mode catalogue mis à jour",
+    msgDeleted: "Boutique supprimée",
   },
   profile: {
     myProfile: "Mon profil",
@@ -1150,6 +1150,9 @@ export const t = {
     unlimited: "Illimité",
     edit: "Modifier",
     delete: "Supprimer",
+    deleteConfirmTitle: "Supprimer {name} ?",
+    deleteConfirmDesc:
+      "La fiche disparaît des listes. L'historique (ventes, stocks, paiements) est conservé.",
     add: "Ajouter",
     back: "Retour",
     close: "Fermer",

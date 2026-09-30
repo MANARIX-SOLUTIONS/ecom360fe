@@ -11,6 +11,7 @@ import type { CatalogMode } from "@/api/business";
 import { EmptyState } from "@/components/EmptyState";
 import { ROLES } from "@/constants/roles";
 import { t } from "@/i18n";
+import { confirmDelete } from "@/utils/confirmDelete";
 import styles from "./SettingsStores.module.css";
 import layoutStyles from "./Settings.module.css";
 
@@ -95,13 +96,14 @@ export default function SettingsStores() {
     void applyCatalogMode(next);
   };
 
-  const handleRemove = async (id: string) => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    try {
-      await removeStore(id);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-    }
+  const handleRemove = (store: { id: string; name: string }) => {
+    confirmDelete({
+      name: store.name,
+      onOk: async () => {
+        await removeStore(store.id);
+        message.success(t.stores.msgDeleted);
+      },
+    });
   };
 
   return (
@@ -235,7 +237,7 @@ export default function SettingsStores() {
                       danger
                       size="small"
                       icon={<Trash2 size={14} />}
-                      onClick={() => handleRemove(store.id)}
+                      onClick={() => handleRemove(store)}
                       aria-label={t.common.delete}
                     />
                   )}

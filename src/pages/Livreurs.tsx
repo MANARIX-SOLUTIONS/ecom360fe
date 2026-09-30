@@ -29,6 +29,7 @@ import {
 import type { CourierResponse, CourierStatsResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { confirmDelete } from "@/utils/confirmDelete";
 
 function getInitials(name: string) {
   return name
@@ -48,7 +49,7 @@ export default function Livreurs() {
   const [addForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [deliveryForm] = Form.useForm();
-  const [activeOnly, setActiveOnly] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(true);
   const [statsMap, setStatsMap] = useState<Record<string, CourierStatsResponse>>({});
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const { matrixCan } = useMatrixCan();
@@ -274,18 +275,14 @@ export default function Livreurs() {
                           icon={<Trash2 size={14} />}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm(`${t.common.delete} "${r.name}" ?`)) {
-                              deleteCourier(r.id)
-                                .then(() => {
-                                  message.success(t.livreurs.msgDeleted);
-                                  fetchCouriers();
-                                })
-                                .catch((err) =>
-                                  message.error(
-                                    err instanceof Error ? err.message : t.common.errorGeneric
-                                  )
-                                );
-                            }
+                            confirmDelete({
+                              name: r.name,
+                              onOk: async () => {
+                                await deleteCourier(r.id);
+                                message.success(t.livreurs.msgDeleted);
+                                fetchCouriers();
+                              },
+                            });
                           }}
                           aria-label={t.common.delete}
                         />

@@ -43,6 +43,7 @@ import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { isSharedCatalog } from "@/api/business";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import { confirmDelete } from "@/utils/confirmDelete";
 import type { ProductResponse } from "@/api";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -262,13 +263,15 @@ export default function ProductDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteProduct(id)
-      .then(() => {
+    if (!product) return;
+    confirmDelete({
+      name: product.name,
+      onOk: async () => {
+        await deleteProduct(id);
         message.success(t.products.msgDeleted);
         navigate("/products");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+      },
+    });
   };
 
   const handleStockSave = () => {

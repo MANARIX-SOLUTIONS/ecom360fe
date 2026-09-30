@@ -22,6 +22,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
+import { confirmDelete } from "@/utils/confirmDelete";
 
 function getInitials(name: string) {
   return name
@@ -160,13 +161,15 @@ export default function ClientDetail() {
   };
 
   const handleDelete = () => {
-    if (!window.confirm(t.common.delete + " ?")) return;
-    deleteClient(id)
-      .then(() => {
+    if (!client) return;
+    confirmDelete({
+      name: client.name,
+      onOk: async () => {
+        await deleteClient(id);
         message.success(t.clients.msgDeleted);
         navigate("/clients");
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : t.common.errorGeneric));
+      },
+    });
   };
 
   const handlePayment = async () => {

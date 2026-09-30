@@ -29,6 +29,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { t } from "@/i18n";
+import { confirmDelete } from "@/utils/confirmDelete";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import styles from "./Clients.module.css";
 import {
@@ -237,21 +238,14 @@ export default function SupplierDetail() {
   };
 
   const handleDelete = () => {
-    Modal.confirm({
-      title: t.suppliers.deleteConfirmTitle,
-      content: t.suppliers.deleteConfirmDesc,
-      okText: t.common.delete,
-      okButtonProps: { danger: true },
-      cancelText: t.common.cancel,
+    if (!supplier) return;
+    confirmDelete({
+      name: supplier.name,
+      description: t.suppliers.deleteConfirmDesc,
       onOk: async () => {
-        try {
-          await deleteSupplier(id);
-          message.success(t.suppliers.msgDeleted);
-          navigate("/suppliers");
-        } catch (e) {
-          message.error(e instanceof Error ? e.message : t.common.errorGeneric);
-          return Promise.reject(e);
-        }
+        await deleteSupplier(id);
+        message.success(t.suppliers.msgDeleted);
+        navigate("/suppliers");
       },
     });
   };
