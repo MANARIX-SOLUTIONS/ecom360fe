@@ -632,6 +632,25 @@ export default function Dashboard() {
               </Col>
             ))}
           </Row>
+        </div>
+        <div className={styles.moneySection}>
+          <Typography.Title level={5} className={styles.statsSectionTitle}>
+            {t.dashboard.sectionMovements}
+          </Typography.Title>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <Card variant="borderless" className={styles.card}>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card variant="borderless" className={styles.card}>
+                <Skeleton active paragraph={{ rows: 4 }} />
+              </Card>
+            </Col>
+          </Row>
+        </div>
+        <div className={styles.periodSection}>
           <Collapse
             bordered={false}
             ghost
@@ -665,6 +684,9 @@ export default function Dashboard() {
           />
         </div>
         <div className={styles.tablesSection}>
+          <Typography.Title level={5} className={styles.statsSectionTitle}>
+            {t.dashboard.sectionCatalog}
+          </Typography.Title>
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={12}>
               <Card variant="borderless" className={styles.card}>
@@ -737,6 +759,16 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      <NoStoreBanner />
+
+      {!hideSetupChecklist && (
+        <SetupChecklist
+          hasProducts={(data?.totalProducts ?? 0) > 0}
+          hasFirstSale={(data?.periodSalesCount ?? 0) > 0}
+          hasClients={(data?.totalClients ?? 0) > 0}
+        />
+      )}
 
       {apiError && (
         <Alert
@@ -812,18 +844,6 @@ export default function Dashboard() {
           />
         )}
 
-      {/* Store setup banner for users with no store */}
-      <NoStoreBanner />
-
-      {/* Onboarding : max 2 jours après création du commerce */}
-      {!hideSetupChecklist && (
-        <SetupChecklist
-          hasProducts={(data?.totalProducts ?? 0) > 0}
-          hasFirstSale={(data?.periodSalesCount ?? 0) > 0}
-          hasClients={(data?.totalClients ?? 0) > 0}
-        />
-      )}
-
       {/* Quick actions — alignées sur les mêmes règles que le menu (canAccess par route). */}
       <section className={styles.quickActions} aria-label="Actions rapides">
         {canAccess("pos") && (
@@ -895,14 +915,16 @@ export default function Dashboard() {
             </Col>
           ))}
         </Row>
+      </section>
 
+      <section className={styles.moneySection} aria-label={t.dashboard.sectionMovements}>
+        <Typography.Title level={5} className={styles.statsSectionTitle}>
+          {t.dashboard.sectionMovements}
+        </Typography.Title>
         <Card variant="borderless" className={styles.moneyStoryCard}>
           <Typography.Title level={5} className={styles.moneyStoryTitle}>
             {t.dashboard.moneyStoryTitle}
           </Typography.Title>
-          <Typography.Paragraph type="secondary" className={styles.moneyStoryBanner}>
-            {t.dashboard.periodDefaultBanner}
-          </Typography.Paragraph>
           {recentSalesPaymentStats.total > 0 ? (
             <Typography.Paragraph className={styles.moneyStoryLine}>
               {t.dashboard.moneyStoryRecentPayments
@@ -940,6 +962,131 @@ export default function Dashboard() {
           </Space>
         </Card>
 
+        {recentSalesPaymentStats.total > 0 ? (
+          <Card variant="borderless" className={styles.cashSplitCard}>
+            <Typography.Title level={5} className={styles.cashSplitTitle}>
+              {t.dashboard.cashSplitTitle}
+            </Typography.Title>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12}>
+                <Typography.Text type="secondary">{t.dashboard.cashSplitCollected}</Typography.Text>
+                <div className={`amount ${styles.cashSplitAmount}`}>
+                  {formatFCFA(recentSalesPaymentStats.collected)}
+                </div>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Typography.Text type="secondary">{t.dashboard.cashSplitCredit}</Typography.Text>
+                <div className={`amount ${styles.cashSplitAmount}`}>
+                  {formatFCFA(recentSalesPaymentStats.credit)}
+                </div>
+              </Col>
+            </Row>
+            <Typography.Paragraph type="secondary" className={styles.cashSplitDisclaimer}>
+              {t.dashboard.cashSplitDisclaimer}
+            </Typography.Paragraph>
+          </Card>
+        ) : null}
+
+        <section className={styles.paymentSection} aria-label="Répartition des paiements">
+          <Row gutter={[16, 16]}>
+            <Col xs={24} lg={12}>
+              <Card
+                title={
+                  <span className={styles.cardTitle}>
+                    <Receipt size={20} aria-hidden />
+                    Ventes récentes
+                  </span>
+                }
+                variant="borderless"
+                className={styles.card}
+                extra={
+                  matrixNavAccess("reports") &&
+                  canAccessPlan("reports", matrixNavAccess("reports")) ? (
+                    <Button type="link" size="small" onClick={() => navigate("/reports")}>
+                      Voir tout
+                    </Button>
+                  ) : null
+                }
+              >
+                <div className={styles.recentList}>
+                  {recentSales.map((sale) => (
+                    <div
+                      key={sale.id}
+                      className={styles.recentRow}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate("/receipt", { state: { saleId: sale.saleId } })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate("/receipt", {
+                            state: { saleId: sale.saleId },
+                          });
+                        }
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className={styles.recentInfo}>
+                        <span className={styles.recentTime}>{sale.time}</span>
+                        <span className={styles.recentItems}>{sale.items}</span>
+                      </div>
+                      <div className={styles.recentRight}>
+                        <span className={`amount ${styles.recentTotal}`}>
+                          {sale.total.toLocaleString("fr-FR")} F
+                        </span>
+                        <Tag
+                          className={styles.recentMethod}
+                          color={
+                            sale.method === "Espèces"
+                              ? "default"
+                              : sale.method === "Wave"
+                                ? "processing"
+                                : "warning"
+                          }
+                        >
+                          {sale.method}
+                        </Tag>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card
+                title={
+                  <span className={styles.cardTitle}>
+                    <CreditCard size={20} aria-hidden />
+                    {t.dashboard.paymentBreakdown}
+                  </span>
+                }
+                variant="borderless"
+                className={styles.card}
+              >
+                <div className={styles.paymentList}>
+                  {recentSalesPaymentStats.breakdown.map(({ method, amount, pct, color }) => (
+                    <div key={method} className={styles.paymentRow}>
+                      <div className={styles.paymentLabel}>
+                        <span className={styles.paymentMethod}>{method}</span>
+                        <span className={styles.paymentPct}>{pct}%</span>
+                        <span className={`amount ${styles.paymentAmount}`}>{amount}</span>
+                      </div>
+                      <div className={styles.barBg} role="presentation">
+                        <div
+                          className={styles.barFill}
+                          style={{ width: `${pct}%`, backgroundColor: color }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </Col>
+          </Row>
+        </section>
+      </section>
+
+      <section className={styles.periodSection} aria-label={t.dashboard.sectionPeriod}>
         <Collapse
           bordered={false}
           ghost
@@ -975,56 +1122,39 @@ export default function Dashboard() {
                 </div>
               ),
               children: (
-                <Row gutter={[16, 16]}>
-                  {periodCards.map(
-                    ({ key, label, value, variant, icon, trendPct, hint, tooltip }) => (
-                      <Col xs={24} sm={12} lg={8} key={key}>
-                        <DashboardKpiCard
-                          label={label}
-                          value={value}
-                          variant={variant}
-                          icon={icon}
-                          tooltip={tooltip}
-                          hint={hint}
-                          trendPct={trendPct}
-                          showTrend
-                        />
-                      </Col>
-                    )
-                  )}
-                </Row>
+                <>
+                  <Typography.Paragraph type="secondary" className={styles.moneyStoryBanner}>
+                    {t.dashboard.periodDefaultBanner}
+                  </Typography.Paragraph>
+                  <Row gutter={[16, 16]}>
+                    {periodCards.map(
+                      ({ key, label, value, variant, icon, trendPct, hint, tooltip }) => (
+                        <Col xs={24} sm={12} lg={8} key={key}>
+                          <DashboardKpiCard
+                            label={label}
+                            value={value}
+                            variant={variant}
+                            icon={icon}
+                            tooltip={tooltip}
+                            hint={hint}
+                            trendPct={trendPct}
+                            showTrend
+                          />
+                        </Col>
+                      )
+                    )}
+                  </Row>
+                </>
               ),
             },
           ]}
         />
-
-        {recentSalesPaymentStats.total > 0 ? (
-          <Card variant="borderless" className={styles.cashSplitCard}>
-            <Typography.Title level={5} className={styles.cashSplitTitle}>
-              {t.dashboard.cashSplitTitle}
-            </Typography.Title>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12}>
-                <Typography.Text type="secondary">{t.dashboard.cashSplitCollected}</Typography.Text>
-                <div className={`amount ${styles.cashSplitAmount}`}>
-                  {formatFCFA(recentSalesPaymentStats.collected)}
-                </div>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Typography.Text type="secondary">{t.dashboard.cashSplitCredit}</Typography.Text>
-                <div className={`amount ${styles.cashSplitAmount}`}>
-                  {formatFCFA(recentSalesPaymentStats.credit)}
-                </div>
-              </Col>
-            </Row>
-            <Typography.Paragraph type="secondary" className={styles.cashSplitDisclaimer}>
-              {t.dashboard.cashSplitDisclaimer}
-            </Typography.Paragraph>
-          </Card>
-        ) : null}
       </section>
 
-      <section className={styles.tablesSection} aria-label="Activité">
+      <section className={styles.tablesSection} aria-label={t.dashboard.sectionCatalog}>
+        <Typography.Title level={5} className={styles.statsSectionTitle}>
+          {t.dashboard.sectionCatalog}
+        </Typography.Title>
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card
@@ -1163,104 +1293,6 @@ export default function Dashboard() {
               </Card>
             </Col>
           ) : null}
-        </Row>
-      </section>
-
-      <section className={styles.paymentSection} aria-label="Répartition des paiements">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <CreditCard size={20} aria-hidden />
-                  {t.dashboard.paymentBreakdown}
-                </span>
-              }
-              variant="borderless"
-              className={styles.card}
-            >
-              <div className={styles.paymentList}>
-                {recentSalesPaymentStats.breakdown.map(({ method, amount, pct, color }) => (
-                  <div key={method} className={styles.paymentRow}>
-                    <div className={styles.paymentLabel}>
-                      <span className={styles.paymentMethod}>{method}</span>
-                      <span className={styles.paymentPct}>{pct}%</span>
-                      <span className={`amount ${styles.paymentAmount}`}>{amount}</span>
-                    </div>
-                    <div className={styles.barBg} role="presentation">
-                      <div
-                        className={styles.barFill}
-                        style={{ width: `${pct}%`, backgroundColor: color }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <span className={styles.cardTitle}>
-                  <Receipt size={20} aria-hidden />
-                  Ventes récentes
-                </span>
-              }
-              variant="borderless"
-              className={styles.card}
-              extra={
-                matrixNavAccess("reports") &&
-                canAccessPlan("reports", matrixNavAccess("reports")) ? (
-                  <Button type="link" size="small" onClick={() => navigate("/reports")}>
-                    Voir tout
-                  </Button>
-                ) : null
-              }
-            >
-              <div className={styles.recentList}>
-                {recentSales.map((sale) => (
-                  <div
-                    key={sale.id}
-                    className={styles.recentRow}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate("/receipt", { state: { saleId: sale.saleId } })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate("/receipt", {
-                          state: { saleId: sale.saleId },
-                        });
-                      }
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className={styles.recentInfo}>
-                      <span className={styles.recentTime}>{sale.time}</span>
-                      <span className={styles.recentItems}>{sale.items}</span>
-                    </div>
-                    <div className={styles.recentRight}>
-                      <span className={`amount ${styles.recentTotal}`}>
-                        {sale.total.toLocaleString("fr-FR")} F
-                      </span>
-                      <Tag
-                        className={styles.recentMethod}
-                        color={
-                          sale.method === "Espèces"
-                            ? "default"
-                            : sale.method === "Wave"
-                              ? "processing"
-                              : "warning"
-                        }
-                      >
-                        {sale.method}
-                      </Tag>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </Col>
         </Row>
       </section>
     </div>

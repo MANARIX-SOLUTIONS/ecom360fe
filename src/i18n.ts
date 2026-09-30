@@ -197,6 +197,8 @@ export const t = {
     expensesToday: "Dépenses du jour",
     profitEstimate: "Résultat net (jour)",
     sectionToday: "Aujourd'hui",
+    sectionMovements: "Mouvements récents",
+    sectionCatalog: "Produits et stock",
     sectionPeriod: "Synthèse de la période",
     periodCollapseHint: "Déplier pour le détail et les tendances",
     resultToday: "Résultat net (jour)",
