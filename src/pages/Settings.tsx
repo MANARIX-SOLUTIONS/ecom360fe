@@ -12,9 +12,12 @@ import {
   BadgeCheck,
   ShoppingBag,
   KeyRound,
+  Smartphone,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { ROLES } from "@/constants/roles";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
@@ -26,6 +29,7 @@ type SettingItem = {
   desc: string;
   path: string;
   permission: string;
+  ownerOnly?: boolean;
 };
 
 const organisationConfig: SettingItem[] = [
@@ -67,6 +71,14 @@ const integrationsConfig: SettingItem[] = [
     path: "/settings/api",
     permission: "settings:api",
   },
+  {
+    icon: Smartphone,
+    title: t.settings.paymentsTitle,
+    desc: t.settings.paymentsDesc,
+    path: "/settings/payments",
+    permission: "settings:subscription",
+    ownerOnly: true,
+  },
 ];
 
 const accountConfig: SettingItem[] = [
@@ -105,6 +117,8 @@ export default function Settings() {
   const { logout } = useAuth();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
+  const { role, isSuperAdmin } = useAuthRole();
+  const isOwner = role === ROLES.PROPRIETAIRE || isSuperAdmin;
 
   const organisationItems = useMemo(
     () =>
@@ -119,12 +133,13 @@ export default function Settings() {
   const integrationsItems = useMemo(
     () =>
       integrationsConfig.filter((item) => {
+        if (item.ownerOnly && !isOwner) return false;
         const backendCan = canAccessBackend(
           item.permission as Parameters<typeof canAccessBackend>[0]
         );
         return backendCan && canAccessPlan(item.permission, backendCan);
       }),
-    [canAccessBackend, canAccessPlan]
+    [canAccessBackend, canAccessPlan, isOwner]
   );
   const accountItems = useMemo(
     () =>

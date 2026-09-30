@@ -16,6 +16,7 @@ type FeatureFlags = {
   livreurs: boolean;
   globalView: boolean;
   multiPayment: boolean;
+  posOnlinePayment: boolean;
   clientCredits: boolean;
   settingsUsers: boolean;
   advancedReports: boolean;
@@ -34,6 +35,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   livreurs: false,
   globalView: false,
   multiPayment: false,
+  posOnlinePayment: false,
   clientCredits: false,
   settingsUsers: false,
   advancedReports: false,
@@ -52,6 +54,7 @@ function planToFeatures(p: PlanResponse): FeatureFlags {
     livreurs: p.featureDeliveryCouriers ?? false,
     globalView: p.featureGlobalView ?? false,
     multiPayment: p.featureMultiPayment,
+    posOnlinePayment: p.featurePosOnlinePayment ?? false,
     clientCredits: p.featureClientCredits,
     settingsUsers: p.featureRoleManagement,
     advancedReports: p.featureAdvancedReports,
@@ -164,6 +167,7 @@ export function usePlanFeatures() {
     canLivreurs: features.livreurs,
     canGlobalView: features.globalView,
     canMultiPayment: features.multiPayment,
+    canPosOnlinePayment: features.posOnlinePayment,
     canClientCredits: features.clientCredits,
     canSettingsUsers: features.settingsUsers,
     canAdvancedReports: features.advancedReports,

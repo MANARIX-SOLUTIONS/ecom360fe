@@ -28,6 +28,7 @@ const TITLE_MAP: Record<string, string> = {
   "/settings/stores": "Points de vente",
   "/settings/commerce": "Commandes web",
   "/settings/api": "API & webhooks",
+  "/settings/payments": "Paiements Bictorys",
   "/profile": "Mon profil",
   "/more": "Plus",
   "/backoffice": "Backoffice",

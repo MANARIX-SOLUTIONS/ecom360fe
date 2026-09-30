@@ -46,6 +46,7 @@ const SettingsNotifications = lazy(() => import("./pages/SettingsNotifications")
 const SettingsStores = lazy(() => import("./pages/SettingsStores"));
 const SettingsCommerce = lazy(() => import("./pages/SettingsCommerce"));
 const SettingsApi = lazy(() => import("./pages/SettingsApi"));
+const SettingsPayments = lazy(() => import("./pages/SettingsPayments"));
 const Profile = lazy(() => import("./pages/Profile"));
 const More = lazy(() => import("./pages/More"));
 const DemoRequest = lazy(() => import("./pages/DemoRequest"));
@@ -412,6 +413,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="settings:api">
                   <SettingsApi />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="settings/payments"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="settings:subscription">
+                  <SettingsPayments />
                 </RequirePermission>
               </Suspense>
             }

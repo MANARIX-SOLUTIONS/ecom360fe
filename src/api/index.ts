@@ -30,3 +30,4 @@ export * from "./backoffice";
 export * from "./notifications";
 export * from "./permissions";
 export * from "./roles";
+export * from "./paymentProviders";

@@ -12,10 +12,21 @@ import {
   reactivateSubscription,
   getSubscriptionUsage,
 } from "@/api";
-import type { PaymentChannel, SubscriptionResponse } from "@/api";
+import type {
+  PaymentChannel,
+  SubscriptionCheckoutResponse,
+  SubscriptionResponse,
+} from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import type { PlanResponse, SubscriptionUsageResponse } from "@/api";
+import PaymentQrModal from "@/components/PaymentQrModal";
 import styles from "./Settings.module.css";
+
+type CheckoutRequest = {
+  planSlug: string;
+  billingCycle: "monthly" | "yearly";
+  channel: PaymentChannel;
+};
 
 function getPlanComparisonRows(): { label: string; key: string }[] {
   return [
@@ -34,6 +45,7 @@ function getPlanComparisonRows(): { label: string; key: string }[] {
     { label: t.settings.planRowReports, key: "reports" },
     { label: t.settings.planRowAdvancedReports, key: "advancedReports" },
     { label: t.settings.planRowMultiPayment, key: "multiPayment" },
+    { label: t.settings.planRowPosOnlinePayment, key: "posOnlinePayment" },
     { label: t.settings.planRowExportPdf, key: "exportPdf" },
     { label: t.settings.planRowExportExcel, key: "exportExcel" },
     { label: t.settings.planRowClientCredits, key: "clientCredits" },
@@ -83,6 +95,7 @@ function planToDisplay(p: PlanResponse) {
       p.featureGlobalView && t.settings.planFeatGlobalView,
       p.featureReports && t.settings.planFeatReports,
       p.featureMultiPayment && t.settings.planFeatMultiPayment,
+      p.featurePosOnlinePayment && t.settings.planFeatPosOnlinePayment,
       p.featureExportPdf && t.settings.planFeatExportPdf,
       p.featureExportExcel && t.settings.planFeatExportExcel,
       p.featureClientCredits && t.settings.planFeatClientCredits,
@@ -111,6 +124,7 @@ function planToDisplay(p: PlanResponse) {
       reports: p.featureReports,
       advancedReports: p.featureAdvancedReports,
       multiPayment: p.featureMultiPayment,
+      posOnlinePayment: p.featurePosOnlinePayment ?? false,
       exportPdf: p.featureExportPdf,
       exportExcel: p.featureExportExcel,
       clientCredits: p.featureClientCredits,
@@ -150,6 +164,10 @@ export default function SettingsSubscription() {
   const [payChannel, setPayChannel] = useState<PaymentChannel>("wave");
   const [confirmingCheckout, setConfirmingCheckout] = useState(false);
   const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null);
+  const [activeCheckout, setActiveCheckout] = useState<SubscriptionCheckoutResponse | null>(
+    null
+  );
+  const lastCheckoutRequestRef = useRef<CheckoutRequest | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const comparisonRows = getPlanComparisonRows();
@@ -263,6 +281,51 @@ export default function SettingsSubscription() {
     };
   }, [searchParams, pollCheckout]);
 
+  const handleCheckoutPaid = useCallback(
+    (planSlug: string) => {
+      setPendingCheckoutId(null);
+      if (planSlug) localStorage.setItem("ecom360_plan_slug", planSlug);
+      window.dispatchEvent(new Event("ecom360:plan-updated"));
+      refreshSubscription();
+    },
+    [refreshSubscription]
+  );
+
+  const handleCheckoutClose = useCallback((intentId: string, status: string) => {
+    setActiveCheckout(null);
+    setPendingCheckoutId(status === "pending" ? intentId : null);
+  }, []);
+
+  const startCheckout = (req: CheckoutRequest) => {
+    lastCheckoutRequestRef.current = req;
+    setChanging(req.planSlug);
+    message.loading({ content: t.settings.planPayRedirecting, key: "pay", duration: 0 });
+    return createSubscriptionCheckout(req.planSlug, req.billingCycle, req.channel)
+      .then((res) => {
+        if (!res.qrCode && !res.paymentLink && !res.checkoutUrl) {
+          message.error({ content: t.settings.planPayError, key: "pay" });
+          return Promise.reject(new Error(t.settings.planPayError));
+        }
+        message.destroy("pay");
+        setPendingCheckoutId(res.intentId);
+        setActiveCheckout(res);
+      })
+      .catch((e) => {
+        message.error({
+          content: e instanceof Error ? e.message : t.settings.planPayError,
+          key: "pay",
+        });
+        return Promise.reject(e);
+      })
+      .finally(() => setChanging(null));
+  };
+
+  const handleCheckoutRetry = () => {
+    setActiveCheckout(null);
+    const req = lastCheckoutRequestRef.current;
+    if (req) startCheckout(req).catch(() => undefined);
+  };
+
   const handleChoose = (plan: ReturnType<typeof planToDisplay>) => {
     if (plan.key === currentPlanSlug && !isTrialing && !isExpired) return;
     let selectedChannel: PaymentChannel = payChannel;
@@ -300,31 +363,12 @@ export default function SettingsSubscription() {
       ),
       okText: t.common.confirm,
       cancelText: t.common.cancel,
-      onOk: () => {
-        setChanging(plan.key);
-        message.loading({ content: t.settings.planPayRedirecting, key: "pay", duration: 0 });
-        return createSubscriptionCheckout(
-          plan.key,
-          yearlyBilling ? "yearly" : "monthly",
-          selectedChannel
-        )
-          .then((res) => {
-            if (!res.checkoutUrl) {
-              message.error({ content: t.settings.planPayError, key: "pay" });
-              return Promise.reject(new Error(t.settings.planPayError));
-            }
-            message.destroy("pay");
-            window.location.href = res.checkoutUrl;
-          })
-          .catch((e) => {
-            message.error({
-              content: e instanceof Error ? e.message : t.settings.planPayError,
-              key: "pay",
-            });
-            return Promise.reject(e);
-          })
-          .finally(() => setChanging(null));
-      },
+      onOk: () =>
+        startCheckout({
+          planSlug: plan.key,
+          billingCycle: yearlyBilling ? "yearly" : "monthly",
+          channel: selectedChannel,
+        }),
     });
   };
 
@@ -371,7 +415,7 @@ export default function SettingsSubscription() {
         <Typography.Text type="secondary" className={styles.settingsPageSubtitle}>
           {t.settings.subscriptionPageSubtitle}
         </Typography.Text>
-        {pendingCheckoutId && !confirmingCheckout && (
+        {pendingCheckoutId && !confirmingCheckout && !activeCheckout && (
           <div style={{ marginTop: 12 }}>
             <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
               {t.settings.planPayPending}
@@ -720,6 +764,13 @@ export default function SettingsSubscription() {
             )}
           </div>
         )}
+
+      <PaymentQrModal
+        checkout={activeCheckout}
+        onClose={handleCheckoutClose}
+        onPaid={handleCheckoutPaid}
+        onRetry={handleCheckoutRetry}
+      />
     </div>
   );
 }

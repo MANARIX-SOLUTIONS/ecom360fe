@@ -32,6 +32,7 @@ export type PlanResponse = {
   featureStockAlerts: boolean;
   featureDeliveryCouriers: boolean;
   featureGlobalView: boolean;
+  featurePosOnlinePayment?: boolean;
   dataRetentionMonths: number;
 };
 
@@ -80,6 +81,12 @@ export type SubscriptionCheckoutResponse = {
   invoiceId?: string;
   failureReason?: string;
   paidAt?: string;
+  /** Base64 PNG (Wave), only while pending. */
+  qrCode?: string;
+  /** Operator deep link, only while pending. */
+  paymentLink?: string;
+  /** USSD instruction (Orange Money), only while pending. */
+  ussdMessage?: string;
 };
 
 export async function createSubscriptionCheckout(

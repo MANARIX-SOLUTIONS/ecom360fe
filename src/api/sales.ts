@@ -130,3 +130,75 @@ export async function recordSalePayment(
 export async function listSalePayments(saleId: string): Promise<SalePaymentResponse[]> {
   return api.get<SalePaymentResponse[]>(`/sales/${saleId}/payments`);
 }
+
+export type DigitalCheckoutChannel = "wave" | "orange_money";
+
+export type DigitalCheckoutStatus =
+  | "pending"
+  | "paid"
+  | "manual"
+  | "failed"
+  | "expired"
+  | "cancelled";
+
+export type DigitalCheckoutRequest = {
+  storeId: string;
+  clientId: string;
+  channel: DigitalCheckoutChannel;
+  discountAmount?: number;
+  note?: string;
+  lines: SaleLineRequest[];
+};
+
+export type DigitalCheckoutResponse = {
+  intentId: string;
+  status: DigitalCheckoutStatus;
+  channel: DigitalCheckoutChannel;
+  amount: number;
+  currency: string;
+  saleId: string;
+  receiptNumber?: string;
+  checkoutUrl?: string;
+  /** Only while pending. */
+  qrCode?: string;
+  paymentLink?: string;
+  ussdMessage?: string;
+  expiresAt: string;
+  failureReason?: string;
+  /** Set once paid (or confirmed by hand), for the receipt. */
+  sale?: SaleResponse;
+};
+
+export type DigitalCheckoutAvailability = {
+  planAllowed: boolean;
+  configured: boolean;
+  available: boolean;
+};
+
+export const DIGITAL_CHECKOUT_SETTLED: DigitalCheckoutStatus[] = ["paid", "manual"];
+export const DIGITAL_CHECKOUT_CLOSED: DigitalCheckoutStatus[] = ["failed", "expired", "cancelled"];
+
+/** Paiement Wave / Orange Money vérifié via le compte Bictorys du commerce (plan Business). */
+export async function startDigitalCheckout(
+  req: DigitalCheckoutRequest
+): Promise<DigitalCheckoutResponse> {
+  return api.post<DigitalCheckoutResponse>("/sales/digital-checkout", req);
+}
+
+export async function getDigitalCheckout(intentId: string): Promise<DigitalCheckoutResponse> {
+  return api.get<DigitalCheckoutResponse>(`/sales/digital-checkout/${intentId}`);
+}
+
+export async function cancelDigitalCheckout(intentId: string): Promise<DigitalCheckoutResponse> {
+  return api.post<DigitalCheckoutResponse>(`/sales/digital-checkout/${intentId}/cancel`);
+}
+
+export async function confirmManualDigitalCheckout(
+  intentId: string
+): Promise<DigitalCheckoutResponse> {
+  return api.post<DigitalCheckoutResponse>(`/sales/digital-checkout/${intentId}/confirm-manual`);
+}
+
+export async function getDigitalCheckoutAvailability(): Promise<DigitalCheckoutAvailability> {
+  return api.get<DigitalCheckoutAvailability>("/sales/digital-checkout/availability");
+}

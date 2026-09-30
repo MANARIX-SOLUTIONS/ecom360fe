@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback, memo } from "react";
-import { useNavigate, Link, useParams } from "react-router-dom";
+import { useNavigate, Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Card,
   Input,
@@ -37,14 +37,26 @@ import {
   getSubscriptionUsage,
   listCategories,
   createClient,
+  startDigitalCheckout,
+  getDigitalCheckout,
+  getDigitalCheckoutAvailability,
+  DIGITAL_CHECKOUT_SETTLED,
 } from "@/api";
-import type { SaleResponse } from "@/api";
+import type { SaleResponse, DigitalCheckoutResponse, DigitalCheckoutAvailability } from "@/api";
+import PosPaymentModal from "@/components/PosPaymentModal";
 import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
 import { loadPosCart, savePosCart, clearPosCart, type PosCartLine } from "@/utils/posCartStorage";
 
 type CartLine = PosCartLine;
 
 type PaymentMethod = "cash" | "wave" | "orange_money" | "credit";
+
+type OnlinePayNotice = "upsell" | "configure" | "verified" | null;
+
+const isDigitalMethod = (m: PaymentMethod): m is "wave" | "orange_money" =>
+  m === "wave" || m === "orange_money";
+
+const CHECKOUT_PARAM = "checkout";
 
 type ProductForPOS = {
   id: string;
@@ -326,8 +338,35 @@ type PosCheckoutPanelProps = {
   loading: boolean;
   editHydrated: boolean;
   cartEmpty: boolean;
+  onlinePayNotice: OnlinePayNotice;
   onValidate: () => void;
 };
+
+function OnlinePayNoticeBanner({ notice }: { notice: OnlinePayNotice }) {
+  if (!notice) return null;
+  const text =
+    notice === "upsell"
+      ? t.pos.onlinePayUpsell
+      : notice === "configure"
+        ? t.pos.onlinePayNotConfigured
+        : t.pos.onlinePayVerifiedHint;
+  const link =
+    notice === "upsell"
+      ? { to: "/settings/subscription", label: t.pos.onlinePayUpsellLink }
+      : notice === "configure"
+        ? { to: "/settings/payments", label: t.pos.onlinePayConfigureLink }
+        : null;
+  return (
+    <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: "8px 0 0" }}>
+      {text}{" "}
+      {link && (
+        <Link to={link.to} style={{ fontWeight: 600 }}>
+          {link.label}
+        </Link>
+      )}
+    </Typography.Paragraph>
+  );
+}
 
 const PosCheckoutPanel = memo(function PosCheckoutPanel({
   paymentMethods,
@@ -355,6 +394,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
   loading,
   editHydrated,
   cartEmpty,
+  onlinePayNotice,
   onValidate,
 }: PosCheckoutPanelProps) {
   const remainingToPay = Math.max(0, total - amountPaid);
@@ -401,6 +441,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
               </button>
             ))}
           </div>
+          <OnlinePayNoticeBanner notice={onlinePayNotice} />
         </div>
 
         <div className={styles.clientRow}>
@@ -603,7 +644,11 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             (partialEnabled && remainingToPay > 0 && (!selectedClientId || !!selectedClient?.isWalkIn))
           }
         >
-          {editSaleId ? t.pos.updateSale : t.pos.validateSale}
+          {editSaleId
+            ? t.pos.updateSale
+            : onlinePayNotice === "verified"
+              ? t.pos.requestPayment
+              : t.pos.validateSale}
           {partialEnabled && remainingToPay > 0 && (
             <span className={styles.validateBtnHint}>
               {t.pos.remainingToPay} {remainingToPay.toLocaleString("fr-FR")} F
@@ -657,8 +702,27 @@ export default function POS() {
   const navigate = useNavigate();
   const { saleId: editSaleId } = useParams<{ saleId: string }>();
   const { activeStore, setActiveStoreId } = useStore();
-  const { canMultiPayment, canClientCredits } = usePlanFeatures();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { canMultiPayment, canClientCredits, canPosOnlinePayment } = usePlanFeatures();
   useDocumentTitle(editSaleId ? t.pos.editSaleTitle : undefined);
+
+  const [onlinePayAvailability, setOnlinePayAvailability] =
+    useState<DigitalCheckoutAvailability | null>(null);
+  const [digitalCheckout, setDigitalCheckout] = useState<DigitalCheckoutResponse | null>(null);
+
+  useEffect(() => {
+    if (!canPosOnlinePayment || editSaleId) {
+      setOnlinePayAvailability(null);
+      return;
+    }
+    let isActive = true;
+    getDigitalCheckoutAvailability()
+      .then((res) => isActive && setOnlinePayAvailability(res))
+      .catch(() => isActive && setOnlinePayAvailability(null));
+    return () => {
+      isActive = false;
+    };
+  }, [canPosOnlinePayment, editSaleId]);
 
   const paymentMethods = useMemo(
     () =>
@@ -932,7 +996,22 @@ export default function POS() {
 
   // L'acompte est proposé dès qu'un encaissement immédiat est choisi.
   // Le client comptoir voit le bloc, mais le switch reste verrouillé.
-  const showPartialSection = canClientCredits && paymentMethod !== "credit";
+  const isVerifiedDigital =
+    !editSaleId && isDigitalMethod(paymentMethod) && !!onlinePayAvailability?.available;
+  const onlinePayNotice: OnlinePayNotice =
+    editSaleId || !isDigitalMethod(paymentMethod)
+      ? null
+      : isVerifiedDigital
+        ? "verified"
+        : !canPosOnlinePayment
+          ? "upsell"
+          : onlinePayAvailability && !onlinePayAvailability.configured
+            ? "configure"
+            : null;
+
+  // Bictorys encaisse le total : pas d'acompte en paiement vérifié.
+  const showPartialSection =
+    canClientCredits && paymentMethod !== "credit" && !isVerifiedDigital;
   const partialLocked = !selectedClientId || !!selectedClient?.isWalkIn;
   const alreadyCollected = editSaleId ? (saleToEdit?.amountPaid ?? 0) : 0;
 
@@ -1061,6 +1140,34 @@ export default function POS() {
       }
     });
 
+  const finishSale = useCallback(
+    (sale: SaleResponse, method: PaymentMethod) => {
+      const soldCart = cart;
+      setCartSheetOpen(false);
+      setCart([]);
+      if (activeStore?.id && !editSaleId) clearPosCart(activeStore.id);
+      if (editSaleId) {
+        setSelectedClientId(null);
+      } else {
+        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
+        setSelectedClientId(defaultClient?.id ?? null);
+      }
+      setPartialEnabled(false);
+      setAmountPaid(0);
+      setDueDate(null);
+      navigate("/receipt", {
+        state: {
+          sale,
+          cart: soldCart,
+          total: sale.total,
+          discount: sale.discountAmount,
+          method,
+        },
+      });
+    },
+    [cart, activeStore?.id, editSaleId, clients, navigate]
+  );
+
   const validateSale = useCallback(async () => {
     if (cart.length === 0) {
       message.warning(t.pos.addAtLeastOne);
@@ -1160,6 +1267,26 @@ export default function POS() {
         dueDate: remainingAfterSale > 0 && dueDate ? dueDate.format("YYYY-MM-DD") : null,
         lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
       };
+      if (isVerifiedDigital && isDigitalMethod(paymentMethod)) {
+        const checkout = await startDigitalCheckout({
+          storeId: activeStore.id,
+          clientId: selectedClientId,
+          channel: paymentMethod,
+          discountAmount: discountRounded,
+          lines: body.lines,
+        });
+        setCartSheetOpen(false);
+        setDigitalCheckout(checkout);
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.set(CHECKOUT_PARAM, checkout.intentId);
+            return next;
+          },
+          { replace: true }
+        );
+        return;
+      }
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       if (!editSaleId && sale.remainingAmount > 0 && selectedClientId) {
         setClients((prev) =>
@@ -1171,29 +1298,7 @@ export default function POS() {
         );
       }
       message.success(editSaleId ? t.pos.editSaleSuccess : t.pos.paymentSuccess);
-      setCartSheetOpen(false);
-      setCart([]);
-      if (!editSaleId) {
-        clearPosCart(activeStore.id);
-      }
-      if (editSaleId) {
-        setSelectedClientId(null);
-      } else {
-        const defaultClient = clients.find((c) => c.isWalkIn) ?? clients[0] ?? null;
-        setSelectedClientId(defaultClient?.id ?? null);
-      }
-      setPartialEnabled(false);
-      setAmountPaid(0);
-      setDueDate(null);
-      navigate("/receipt", {
-        state: {
-          sale,
-          cart,
-          total: sale.total,
-          discount: sale.discountAmount,
-          method: paymentMethod,
-        },
-      });
+      finishSale(sale, paymentMethod);
     } catch (e) {
       message.error(e instanceof Error ? e.message : t.pos.paymentError);
     } finally {
@@ -1209,12 +1314,79 @@ export default function POS() {
     saleToEdit,
     products,
     discount,
-    clients,
-    navigate,
     partialEnabled,
     amountPaid,
     dueDate,
     alreadyCollected,
+    isVerifiedDigital,
+    setSearchParams,
+    finishSale,
+  ]);
+
+  const clearCheckoutParam = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(CHECKOUT_PARAM);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [setSearchParams]);
+
+  const handleDigitalSettled = useCallback(
+    (res: DigitalCheckoutResponse) => {
+      setDigitalCheckout(null);
+      clearCheckoutParam();
+      message.success(t.pos.onlinePaySuccess);
+      if (res.sale) {
+        finishSale(res.sale, res.channel);
+      } else {
+        navigate("/receipt", { state: { saleId: res.saleId, method: res.channel } });
+      }
+    },
+    [clearCheckoutParam, finishSale, navigate]
+  );
+
+  const handleDigitalClosed = useCallback(
+    (res: DigitalCheckoutResponse) => {
+      setDigitalCheckout(null);
+      clearCheckoutParam();
+      const title =
+        res.status === "cancelled"
+          ? t.pos.onlinePayCancelled
+          : res.status === "expired"
+            ? t.pos.onlinePayExpired
+            : t.pos.onlinePayFailed;
+      message.error(res.failureReason ? `${title} : ${res.failureReason}` : title);
+    },
+    [clearCheckoutParam]
+  );
+
+  const resumeCheckoutId = searchParams.get(CHECKOUT_PARAM);
+  const resumedCheckoutRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!resumeCheckoutId || editSaleId) return;
+    if (resumedCheckoutRef.current === resumeCheckoutId) return;
+    if (digitalCheckout?.intentId === resumeCheckoutId) return;
+    resumedCheckoutRef.current = resumeCheckoutId;
+    getDigitalCheckout(resumeCheckoutId)
+      .then((res) => {
+        if (res.status === "pending") setDigitalCheckout(res);
+        else if (DIGITAL_CHECKOUT_SETTLED.includes(res.status)) handleDigitalSettled(res);
+        else handleDigitalClosed(res);
+      })
+      .catch((e) => {
+        clearCheckoutParam();
+        message.error(e instanceof Error ? e.message : t.pos.onlinePayResumeError);
+      });
+  }, [
+    resumeCheckoutId,
+    editSaleId,
+    digitalCheckout?.intentId,
+    handleDigitalSettled,
+    handleDigitalClosed,
+    clearCheckoutParam,
   ]);
 
   const openQuickClient = useCallback(() => setQuickClientOpen(true), []);
@@ -1313,6 +1485,7 @@ export default function POS() {
       loading={loading}
       editHydrated={editHydrated}
       cartEmpty={cart.length === 0}
+      onlinePayNotice={onlinePayNotice}
       onValidate={validateSale}
     />
   );
@@ -1472,6 +1645,14 @@ export default function POS() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {digitalCheckout && (
+        <PosPaymentModal
+          checkout={digitalCheckout}
+          onSettled={handleDigitalSettled}
+          onClosed={handleDigitalClosed}
+        />
+      )}
     </>
   );
 }

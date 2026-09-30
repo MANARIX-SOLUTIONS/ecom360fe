@@ -211,7 +211,7 @@ export default function BackofficeSubscriptionPayments() {
           Paiements abonnements
         </Typography.Title>
         <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          Historique des intentions de paiement Wave / Orange Money (PayDunya)
+          Historique des intentions de paiement Wave / Orange Money (Bictorys)
         </Typography.Text>
       </header>
 

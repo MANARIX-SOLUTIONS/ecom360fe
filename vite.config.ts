@@ -35,6 +35,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Public dev tunnels used as Bictorys redirect targets (BICTORYS_REDIRECT_BASE_URL).
+    allowedHosts: [".trycloudflare.com", ".ngrok-free.app", ".ngrok.app"],
     proxy: {
       "/api": {
         target: "http://localhost:8080",
