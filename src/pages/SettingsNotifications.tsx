@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Typography, Switch, Button, Table, message, Spin } from "antd";
-import { ArrowLeft, Bell, CheckCheck, Package, Wallet, CreditCard, Info } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
 import {
