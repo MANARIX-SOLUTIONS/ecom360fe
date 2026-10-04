@@ -5,10 +5,21 @@ export type PosCartLine = {
   name: string;
   price: number;
   qty: number;
+  performerBusinessUserId?: string | null;
+  performerName?: string | null;
 };
+
+/** Une prestation par employé : deux coiffeurs sur la même prestation = deux lignes. */
+export function cartLineKey(line: Pick<PosCartLine, "id" | "performerBusinessUserId">): string {
+  return line.performerBusinessUserId ? `${line.id}:${line.performerBusinessUserId}` : line.id;
+}
 
 function storageKey(storeId: string): string {
   return `${KEY_PREFIX}${storeId}`;
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || value === null || typeof value === "string";
 }
 
 function isPosCartLine(value: unknown): value is PosCartLine {
@@ -19,7 +30,9 @@ function isPosCartLine(value: unknown): value is PosCartLine {
     typeof line.name === "string" &&
     typeof line.price === "number" &&
     typeof line.qty === "number" &&
-    line.qty > 0
+    line.qty > 0 &&
+    isOptionalString(line.performerBusinessUserId) &&
+    isOptionalString(line.performerName)
   );
 }
 

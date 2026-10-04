@@ -33,6 +33,9 @@ import {
   updateProduct,
   deleteProduct,
   uploadProductImageFile,
+  getProductPerformers,
+  replaceProductPerformers,
+  listBusinessUsers,
   listCategoriesWithDefaults,
   ApiError,
 } from "@/api";
@@ -44,7 +47,9 @@ import { isSharedCatalog } from "@/api/business";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import { confirmDelete } from "@/utils/confirmDelete";
-import type { ProductResponse } from "@/api";
+import type { ProductResponse, BusinessUser } from "@/api";
+import { ProductUnitFields } from "@/components/ProductUnitFields";
+import { isServiceUnit } from "@/utils/serviceUnit";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 import type { UploadFile } from "antd/es/upload/interface";
 
@@ -81,12 +86,22 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [employees, setEmployees] = useState<BusinessUser[]>([]);
+  const [performerNames, setPerformerNames] = useState<string[]>([]);
   const [stockOpen, setStockOpen] = useState(false);
   const [editForm] = Form.useForm();
   const [stockForm] = Form.useForm();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
   const [imageFileList, setImageFileList] = useState<UploadFile[]>([]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("ecom360_access_token")) return;
+    if (!matrixCan("PRODUCTS_UPDATE", "products")) return;
+    listBusinessUsers()
+      .then(setEmployees)
+      .catch(() => setEmployees([]));
+  }, [matrixCan]);
 
   const resetImageState = () => {
     setImageFile(null);
@@ -124,12 +139,18 @@ export default function ProductDetail() {
       ]);
       setProduct(productRes);
       setCategories(categoriesRes.map((c) => ({ id: c.id, name: c.name })));
+      const assigned = isServiceUnit(productRes.unit)
+        ? await getProductPerformers(productRes.id)
+        : [];
+      setPerformerNames(assigned.map((row) => row.fullName).filter(Boolean));
       editForm.setFieldsValue({
         name: productRes.name,
         categoryId: productRes.categoryId || undefined,
         costPrice: productRes.costPrice ?? 0,
         salePrice: productRes.salePrice,
         storeId: productRes.storeId,
+        unit: productRes.unit || "pièce",
+        performerBusinessUserIds: assigned.map((row) => row.businessUserId),
       });
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) {
@@ -165,6 +186,7 @@ export default function ProductDetail() {
             salePrice: null,
             categoryId: null,
             imageUrl: null,
+            unit: null,
           });
         }
       }
@@ -241,10 +263,14 @@ export default function ProductDetail() {
           categoryId: values.categoryId || null,
           costPrice: values.costPrice ?? 0,
           salePrice: values.salePrice,
+          unit: values.unit || "pièce",
           storeId: sharedCatalog ? product.storeId : values.storeId,
           imageUrl: imageUrlForUpdate,
           isActive: product.isActive,
         });
+        if (isServiceUnit(values.unit)) {
+          await replaceProductPerformers(id!, values.performerBusinessUserIds ?? []);
+        }
         if (imageFile) {
           try {
             await uploadProductImageFile(id!, imageFile);
@@ -429,6 +455,14 @@ export default function ProductDetail() {
             <div className={styles.infoLabel}>{t.products.unitLabel}</div>
             <div className={styles.infoValue}>{product.unit || t.products.unitPieceDefault}</div>
           </div>
+          {isServiceUnit(product.unit) && (
+            <div>
+              <div className={styles.infoLabel}>{t.products.performersLabel}</div>
+              <div className={styles.infoValue}>
+                {performerNames.length > 0 ? performerNames.join(", ") : "—"}
+              </div>
+            </div>
+          )}
           {product.description && (
             <div style={{ gridColumn: "1 / -1" }}>
               <div className={styles.infoLabel}>{t.products.descriptionLabel}</div>
@@ -666,6 +700,7 @@ export default function ProductDetail() {
           >
             <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
+          <ProductUnitFields form={editForm} employees={employees} />
         </Form>
       </Modal>
 
