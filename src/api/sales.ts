@@ -8,6 +8,7 @@ import type { PageResponse } from "./products";
 export type SaleLineRequest = {
   productId: string;
   quantity: number;
+  performerBusinessUserId?: string | null;
 };
 
 export type SaleLineResponse = {
@@ -17,6 +18,8 @@ export type SaleLineResponse = {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  performerBusinessUserId?: string | null;
+  performerName?: string | null;
 };
 
 /** `paid` = soldée, `partial` = acompte versé, `unpaid` = rien encaissé. */

@@ -14,6 +14,7 @@ export type StockLevelResponse = {
   salePrice: number | null;
   categoryId: string | null;
   imageUrl: string | null;
+  unit: string | null;
 };
 
 export type StockInitRequest = {

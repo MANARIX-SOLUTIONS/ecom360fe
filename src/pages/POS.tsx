@@ -20,7 +20,17 @@ import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  ShoppingBag,
+  Scissors,
+  UserRound,
+  AlertCircle,
+  ChevronRight,
+} from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./POS.module.css";
 import { useStore } from "@/hooks/useStore";
@@ -37,10 +47,18 @@ import {
   getSubscriptionUsage,
   listCategories,
   createClient,
+  listEligiblePerformers,
 } from "@/api";
-import type { SaleResponse } from "@/api";
+import type { SaleResponse, EligiblePerformerResponse } from "@/api";
 import { WALK_IN_CLIENT_NAME, isWalkInClientName } from "@/utils/clientWalkIn";
-import { loadPosCart, savePosCart, clearPosCart, type PosCartLine } from "@/utils/posCartStorage";
+import {
+  loadPosCart,
+  savePosCart,
+  clearPosCart,
+  cartLineKey,
+  type PosCartLine,
+} from "@/utils/posCartStorage";
+import { isServiceUnit } from "@/utils/serviceUnit";
 
 type CartLine = PosCartLine;
 
@@ -54,6 +72,7 @@ type ProductForPOS = {
   stock: number;
   minStock: number;
   imageUrl: string | null;
+  isService: boolean;
 };
 
 type ClientForPOS = {
@@ -115,6 +134,49 @@ function categoryInitial(category: string): string {
   return category.charAt(0).toUpperCase();
 }
 
+const PERFORMER_COLORS = ["#1f3a5f", "#8e44ad", "#16a085", "#d35400", "#c0392b", "#2980b9"];
+
+function personInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0].charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : "";
+  return (first + last).toUpperCase();
+}
+
+function personColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return PERFORMER_COLORS[Math.abs(hash) % PERFORMER_COLORS.length];
+}
+
+const PersonAvatar = memo(function PersonAvatar({
+  id,
+  name,
+  size = 28,
+}: {
+  id: string;
+  name: string;
+  size?: number;
+}) {
+  const color = personColor(id);
+  return (
+    <span
+      className={styles.personAvatar}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.4),
+        background: `${color}1f`,
+        color,
+      }}
+      aria-hidden
+    >
+      {personInitials(name)}
+    </span>
+  );
+});
+
 const ProductCardVisual = memo(function ProductCardVisual({
   imageUrl,
   category,
@@ -153,6 +215,7 @@ type PosProductCardProps = {
   product: ProductForPOS;
   cartQty: number;
   maxStock: number;
+  isLoading: boolean;
   onAdd: (product: ProductForPOS) => void;
 };
 
@@ -160,6 +223,7 @@ const PosProductCard = memo(function PosProductCard({
   product,
   cartQty,
   maxStock,
+  isLoading,
   onAdd,
 }: PosProductCardProps) {
   const availableStock = maxStock - cartQty;
@@ -167,14 +231,16 @@ const PosProductCard = memo(function PosProductCard({
   const outOfStock = availableStock <= 0;
   const catColor = CATEGORY_COLORS[product.category] || "#999";
   const priceLabel = `${product.price.toLocaleString("fr-FR")} F`;
+  const showStock = !product.isService || level !== "ok";
 
   return (
     <button
       type="button"
       className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartQty > 0 ? styles.productCardInCart : ""}`}
       onClick={() => onAdd(product)}
-      disabled={outOfStock}
+      disabled={outOfStock || isLoading}
       aria-disabled={outOfStock}
+      aria-busy={isLoading}
       aria-label={`${product.name}, ${priceLabel}`}
     >
       <div className={styles.productMedia}>
@@ -184,21 +250,114 @@ const PosProductCard = memo(function PosProductCard({
           catColor={catColor}
         />
       </div>
-      {cartQty > 0 && <span className={styles.cartQtyBadge}>{cartQty}</span>}
-      <div className={styles.productOverlay}>
-        <span className={styles.productName}>{product.name}</span>
-        <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
-        <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-          {outOfStock
-            ? t.pos.outOfStock
-            : level === "low"
-              ? `Stock: ${availableStock} ⚠`
-              : `Stock: ${availableStock}`}
+      {product.isService && (
+        <span className={styles.serviceBadge}>
+          <Scissors size={11} aria-hidden />
+          {t.pos.serviceBadge}
         </span>
+      )}
+      {cartQty > 0 && <span className={styles.cartQtyBadge}>{cartQty}</span>}
+      {isLoading && (
+        <span className={styles.productLoading}>
+          <Spin size="small" />
+        </span>
+      )}
+      <div className={styles.productOverlay}>
+        <span className={styles.productName} title={product.name}>
+          {product.name}
+        </span>
+        <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
+        {showStock && (
+          <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
+            {outOfStock
+              ? t.pos.outOfStock
+              : level === "low"
+                ? `Stock: ${availableStock} ⚠`
+                : `Stock: ${availableStock}`}
+          </span>
+        )}
       </div>
     </button>
   );
 });
+
+type PerformerPickerProps = {
+  productName: string;
+  productPrice: number;
+  options: EligiblePerformerResponse[];
+  currentId: string | null;
+  onPick: (performer: EligiblePerformerResponse) => void;
+};
+
+const PerformerPicker = memo(function PerformerPicker({
+  productName,
+  productPrice,
+  options,
+  currentId,
+  onPick,
+}: PerformerPickerProps) {
+  const [query, setQuery] = useState("");
+  const showSearch = options.length > 6;
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? options.filter((o) => o.fullName.toLowerCase().includes(q)) : options;
+  }, [options, query]);
+
+  return (
+    <div className={styles.performerPicker}>
+      <div className={styles.performerPickerHeader}>
+        <span className={styles.performerPickerIcon} aria-hidden>
+          <Scissors size={18} />
+        </span>
+        <div className={styles.performerPickerTitle}>
+          <span className={styles.performerPickerProduct}>{productName}</span>
+          <span className={`amount ${styles.performerPickerPrice}`}>
+            {productPrice.toLocaleString("fr-FR")} F
+          </span>
+        </div>
+      </div>
+      <Typography.Text type="secondary" className={styles.performerPickerHint}>
+        {t.pos.performerPickHint}
+      </Typography.Text>
+      {showSearch && (
+        <Input
+          prefix={<Search size={16} />}
+          placeholder={t.pos.performerSearch}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          allowClear
+          size="large"
+        />
+      )}
+      {visible.length === 0 ? (
+        <Typography.Text type="secondary" className={styles.performerEmpty}>
+          {t.pos.performerNoMatch}
+        </Typography.Text>
+      ) : (
+        <div className={styles.performerGrid} role="listbox" aria-label={t.pos.choosePerformer}>
+          {visible.map((o) => {
+            const isCurrent = o.businessUserId === currentId;
+            return (
+              <button
+                key={o.businessUserId}
+                type="button"
+                role="option"
+                aria-selected={isCurrent}
+                className={`${styles.performerOption} ${isCurrent ? styles.performerOptionCurrent : ""}`}
+                onClick={() => onPick(o)}
+              >
+                <PersonAvatar id={o.businessUserId} name={o.fullName} size={44} />
+                <span className={styles.performerOptionName}>{o.fullName}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+});
+
+const SERVICES_FILTER = "__services__";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Alimentation: "#2ecc71",
@@ -213,6 +372,9 @@ type PosCartPanelProps = {
   onUpdateQty: (id: string, delta: number) => void;
   onRemoveLine: (id: string) => void;
   onClear: () => void;
+  serviceProductIds: Set<string>;
+  onChangePerformer: (lineKey: string) => void;
+  subtotal: number;
 };
 
 const PosCartPanel = memo(function PosCartPanel({
@@ -221,6 +383,9 @@ const PosCartPanel = memo(function PosCartPanel({
   onUpdateQty,
   onRemoveLine,
   onClear,
+  serviceProductIds,
+  onChangePerformer,
+  subtotal,
 }: PosCartPanelProps) {
   return (
     <Card className={styles.cartCard} variant="borderless">
@@ -254,46 +419,101 @@ const PosCartPanel = memo(function PosCartPanel({
         </div>
       ) : (
         <div className={styles.cartList}>
-          {cart.map((l) => (
-            <div key={l.id} className={styles.cartLine}>
-              <div className={styles.cartLineInfo}>
-                <span className={styles.cartLineName}>{l.name}</span>
-                <span className={styles.cartLineMeta}>
-                  {l.price.toLocaleString("fr-FR")} F × {l.qty}
-                </span>
+          {cart.map((l) => {
+            const key = cartLineKey(l);
+            const isService = serviceProductIds.has(l.id);
+            const missingPerformer = isService && !l.performerBusinessUserId;
+            return (
+              <div
+                key={key}
+                className={`${styles.cartLine} ${missingPerformer ? styles.cartLineAlert : ""}`}
+              >
+                <div className={styles.cartLineMain}>
+                  <div className={styles.cartLineInfo}>
+                    <span className={styles.cartLineName} title={l.name}>
+                      {l.name}
+                    </span>
+                    {isService &&
+                      (l.performerBusinessUserId && l.performerName ? (
+                        <button
+                          type="button"
+                          className={styles.performerChip}
+                          onClick={() => onChangePerformer(key)}
+                          title={t.pos.changePerformer}
+                          aria-label={`${t.pos.performerLabel} ${l.performerName}. ${t.pos.changePerformer}`}
+                        >
+                          <PersonAvatar
+                            id={l.performerBusinessUserId}
+                            name={l.performerName}
+                            size={18}
+                          />
+                          <span className={styles.performerChipName}>{l.performerName}</span>
+                          <ChevronRight size={12} aria-hidden />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`${styles.performerChip} ${styles.performerChipMissing}`}
+                          onClick={() => onChangePerformer(key)}
+                        >
+                          <AlertCircle size={13} aria-hidden />
+                          <span className={styles.performerChipName}>{t.pos.performerMissing}</span>
+                          <ChevronRight size={12} aria-hidden />
+                        </button>
+                      ))}
+                    {!isService && l.performerName && (
+                      <span className={styles.cartLinePerformer}>
+                        <UserRound size={12} aria-hidden /> {l.performerName}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`amount ${styles.lineTotal}`}>
+                    {(l.price * l.qty).toLocaleString("fr-FR")} F
+                  </span>
+                </div>
+                <div className={styles.cartLineBottom}>
+                  <span className={styles.cartLineMeta}>
+                    {l.price.toLocaleString("fr-FR")} F × {l.qty}
+                  </span>
+                  <div className={styles.cartLineActions}>
+                    <button
+                      type="button"
+                      className={styles.qtyBtn}
+                      onClick={() => onUpdateQty(cartLineKey(l), -1)}
+                      aria-label="Diminuer"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
+                    <button
+                      type="button"
+                      className={styles.qtyBtn}
+                      onClick={() => onUpdateQty(cartLineKey(l), 1)}
+                      aria-label="Augmenter"
+                    >
+                      <Plus size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
+                      onClick={() => onRemoveLine(cartLineKey(l))}
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className={styles.cartLineActions}>
-                <button
-                  type="button"
-                  className={styles.qtyBtn}
-                  onClick={() => onUpdateQty(l.id, -1)}
-                  aria-label="Diminuer"
-                >
-                  <Minus size={14} />
-                </button>
-                <span className={`amount ${styles.qtyDisplay}`}>{l.qty}</span>
-                <button
-                  type="button"
-                  className={styles.qtyBtn}
-                  onClick={() => onUpdateQty(l.id, 1)}
-                  aria-label="Augmenter"
-                >
-                  <Plus size={14} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.qtyBtn} ${styles.qtyBtnDanger}`}
-                  onClick={() => onRemoveLine(l.id)}
-                  aria-label="Supprimer"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              <span className={`amount ${styles.lineTotal}`}>
-                {(l.price * l.qty).toLocaleString("fr-FR")} F
-              </span>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+      {cart.length > 0 && (
+        <div className={styles.cartFooter}>
+          <span>{t.pos.cartSubtotal}</span>
+          <span className={`amount ${styles.cartFooterAmount}`}>
+            {subtotal.toLocaleString("fr-FR")} F
+          </span>
         </div>
       )}
     </Card>
@@ -361,6 +581,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
   return (
     <div className={styles.right}>
       <Card className={styles.totalCard} variant="borderless">
+        <div className={styles.checkoutScroll}>
         <div className={styles.paymentSection}>
           <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
             Mode de paiement
@@ -468,7 +689,8 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
                 {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
                 {t.pos.afterThisSaleLabel}{" "}
                 <strong>
-                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")} F
+                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")}{" "}
+                  F
                 </strong>
               </Typography.Text>
             )}
@@ -544,8 +766,9 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
           </div>
         )}
 
-        <div className={styles.totalDivider} />
+        </div>
 
+        <div className={styles.checkoutFooter}>
         <div className={styles.discountRow}>
           <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
           <CurrencyInput
@@ -600,7 +823,9 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             (!!editSaleId && !editHydrated) ||
             (!editSaleId && salesAtLimit) ||
             (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn)) ||
-            (partialEnabled && remainingToPay > 0 && (!selectedClientId || !!selectedClient?.isWalkIn))
+            (partialEnabled &&
+              remainingToPay > 0 &&
+              (!selectedClientId || !!selectedClient?.isWalkIn))
           }
         >
           {editSaleId ? t.pos.updateSale : t.pos.validateSale}
@@ -610,6 +835,7 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
             </span>
           )}
         </Button>
+        </div>
       </Card>
     </div>
   );
@@ -712,6 +938,13 @@ export default function POS() {
   const [editHydrated, setEditHydrated] = useState(false);
   const prevHadEditRoute = useRef(false);
   const skipNextCartSave = useRef(false);
+  const [performerPick, setPerformerPick] = useState<{
+    product: ProductForPOS;
+    options: EligiblePerformerResponse[];
+    replaceKey: string | null;
+    currentId: string | null;
+  } | null>(null);
+  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     if (editSaleId) return;
@@ -799,6 +1032,8 @@ export default function POS() {
         name: p?.name ?? line.productName,
         price: p?.price ?? line.unitPrice,
         qty: line.quantity,
+        performerBusinessUserId: line.performerBusinessUserId ?? null,
+        performerName: line.performerName ?? null,
       };
     });
     setCart(lines);
@@ -878,6 +1113,7 @@ export default function POS() {
           stock: s.quantity,
           minStock: s.minStock,
           imageUrl: s.imageUrl ?? null,
+          isService: isServiceUnit(s.unit),
         }));
         setProducts(mapped);
       } catch (e) {
@@ -909,7 +1145,9 @@ export default function POS() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchCat = category === "Tous" || p.category === category;
+      const matchCat =
+        category === "Tous" ||
+        (category === SERVICES_FILTER ? p.isService : p.category === category);
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     });
@@ -992,39 +1230,150 @@ export default function POS() {
     [products, editSaleId, saleToEdit, originalQtyByProduct]
   );
 
-  const addToCart = useCallback(
-    (p: ProductForPOS) => {
+  const pushLine = useCallback(
+    (p: ProductForPOS, performer: EligiblePerformerResponse | null) => {
       const maxStock = maxQtyForProduct(p.id);
       if (maxStock <= 0) return;
+      const key = cartLineKey({ id: p.id, performerBusinessUserId: performer?.businessUserId });
       setCart((prev) => {
-        const existing = prev.find((l) => l.id === p.id);
-        if (existing) {
-          if (existing.qty >= maxStock) return prev;
-          return prev.map((l) => (l.id === p.id ? { ...l, qty: l.qty + 1 } : l));
+        const usedForProduct = prev.filter((l) => l.id === p.id).reduce((s, l) => s + l.qty, 0);
+        if (usedForProduct >= maxStock) return prev;
+        if (prev.some((l) => cartLineKey(l) === key)) {
+          return prev.map((l) => (cartLineKey(l) === key ? { ...l, qty: l.qty + 1 } : l));
         }
-        return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
+        return [
+          ...prev,
+          {
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            qty: 1,
+            performerBusinessUserId: performer?.businessUserId ?? null,
+            performerName: performer?.fullName ?? null,
+          },
+        ];
       });
     },
     [maxQtyForProduct]
   );
+
+  const fetchPerformers = useCallback(
+    async (p: ProductForPOS): Promise<EligiblePerformerResponse[] | null> => {
+      if (!activeStore?.id) return null;
+      setPendingProductId(p.id);
+      try {
+        const options = await listEligiblePerformers(activeStore.id, p.id);
+        if (options.length === 0) {
+          message.warning(t.pos.noPerformerForService);
+          return null;
+        }
+        return options;
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+        return null;
+      } finally {
+        setPendingProductId(null);
+      }
+    },
+    [activeStore?.id]
+  );
+
+  const addToCart = useCallback(
+    async (p: ProductForPOS) => {
+      if (!p.isService) {
+        pushLine(p, null);
+        return;
+      }
+      const options = await fetchPerformers(p);
+      if (!options) return;
+      if (options.length === 1) {
+        pushLine(p, options[0]);
+        return;
+      }
+      setPerformerPick({ product: p, options, replaceKey: null, currentId: null });
+    },
+    [fetchPerformers, pushLine]
+  );
+
+  const reassignPerformer = useCallback((lineKey: string, performer: EligiblePerformerResponse) => {
+    setCart((prev) => {
+      const line = prev.find((l) => cartLineKey(l) === lineKey);
+      if (!line) return prev;
+      const updated = {
+        ...line,
+        performerBusinessUserId: performer.businessUserId,
+        performerName: performer.fullName,
+      };
+      const targetKey = cartLineKey(updated);
+      if (targetKey === lineKey) {
+        return prev.map((l) => (cartLineKey(l) === lineKey ? updated : l));
+      }
+      const existing = prev.find((l) => cartLineKey(l) === targetKey);
+      if (existing) {
+        return prev
+          .filter((l) => cartLineKey(l) !== lineKey)
+          .map((l) => (cartLineKey(l) === targetKey ? { ...l, qty: l.qty + line.qty } : l));
+      }
+      return prev.map((l) => (cartLineKey(l) === lineKey ? updated : l));
+    });
+  }, []);
+
+  const openChangePerformer = useCallback(
+    async (lineKey: string) => {
+      const line = cart.find((l) => cartLineKey(l) === lineKey);
+      const product = line && products.find((p) => p.id === line.id);
+      if (!line || !product) return;
+      const options = await fetchPerformers(product);
+      if (!options) return;
+      setPerformerPick({
+        product,
+        options,
+        replaceKey: lineKey,
+        currentId: line.performerBusinessUserId ?? null,
+      });
+    },
+    [cart, products, fetchPerformers]
+  );
+
+  const handlePerformerPick = useCallback(
+    (performer: EligiblePerformerResponse) => {
+      if (!performerPick) return;
+      if (performerPick.replaceKey) {
+        reassignPerformer(performerPick.replaceKey, performer);
+      } else {
+        pushLine(performerPick.product, performer);
+      }
+      setPerformerPick(null);
+    },
+    [performerPick, pushLine, reassignPerformer]
+  );
+
+  const serviceProductIds = useMemo(
+    () => new Set(products.filter((p) => p.isService).map((p) => p.id)),
+    [products]
+  );
+  const hasServices = serviceProductIds.size > 0;
 
   const updateQty = useCallback(
-    (id: string, delta: number) => {
+    (key: string, delta: number) => {
       setCart((prev) => {
-        const line = prev.find((l) => l.id === id);
+        const line = prev.find((l) => cartLineKey(l) === key);
         if (!line) return prev;
-        const maxStock = maxQtyForProduct(id);
+        const maxStock = maxQtyForProduct(line.id);
+        const usedByOthers = prev
+          .filter((l) => l.id === line.id && cartLineKey(l) !== key)
+          .reduce((s, l) => s + l.qty, 0);
         let newQty = line.qty + delta;
-        if (newQty > maxStock) newQty = maxStock;
-        if (newQty <= 0) return prev.filter((l) => l.id !== id);
-        return prev.map((l) => (l.id === id ? { ...l, qty: newQty } : l));
+        if (newQty > maxStock - usedByOthers) newQty = maxStock - usedByOthers;
+        if (newQty <= 0) return prev.filter((l) => cartLineKey(l) !== key);
+        return prev.map((l) => (cartLineKey(l) === key ? { ...l, qty: newQty } : l));
       });
     },
     [maxQtyForProduct]
   );
 
-  const removeLine = useCallback((id: string) => {
-    setCart((prev) => prev.filter((l) => l.id !== id));
+  const removeLine = useCallback((key: string) => {
+    setCart((prev) => prev.filter((l) => cartLineKey(l) !== key));
   }, []);
 
   const clearCart = useCallback(() => {
@@ -1080,6 +1429,14 @@ export default function POS() {
     }
     if (editSaleId && saleToEdit && activeStore.id !== saleToEdit.storeId) {
       message.warning(t.pos.editSaleWrongStore);
+      return;
+    }
+    const lineWithoutPerformer = cart.find(
+      (l) => serviceProductIds.has(l.id) && !l.performerBusinessUserId
+    );
+    if (lineWithoutPerformer) {
+      message.warning(t.pos.performerRequired);
+      void openChangePerformer(cartLineKey(lineWithoutPerformer));
       return;
     }
     // Resolve unit prices from in-memory catalog; if lines are missing
@@ -1158,7 +1515,11 @@ export default function POS() {
             : undefined,
         amountPaid: paidNow,
         dueDate: remainingAfterSale > 0 && dueDate ? dueDate.format("YYYY-MM-DD") : null,
-        lines: cart.map((l) => ({ productId: l.id, quantity: l.qty })),
+        lines: cart.map((l) => ({
+          productId: l.id,
+          quantity: l.qty,
+          performerBusinessUserId: l.performerBusinessUserId ?? null,
+        })),
       };
       const sale = editSaleId ? await updateSale(editSaleId, body) : await createSale(body);
       if (!editSaleId && sale.remainingAmount > 0 && selectedClientId) {
@@ -1215,6 +1576,8 @@ export default function POS() {
     amountPaid,
     dueDate,
     alreadyCollected,
+    serviceProductIds,
+    openChangePerformer,
   ]);
 
   const openQuickClient = useCallback(() => setQuickClientOpen(true), []);
@@ -1283,6 +1646,9 @@ export default function POS() {
       onUpdateQty={updateQty}
       onRemoveLine={removeLine}
       onClear={clearCart}
+      serviceProductIds={serviceProductIds}
+      onChangePerformer={openChangePerformer}
+      subtotal={subtotal}
     />
   );
 
@@ -1345,17 +1711,28 @@ export default function POS() {
                 {c}
               </Button>
             ))}
+            {hasServices && (
+              <Button
+                type={category === SERVICES_FILTER ? "primary" : "default"}
+                onClick={() => setCategory(SERVICES_FILTER)}
+                className={styles.catBtn}
+                icon={<Scissors size={14} />}
+              >
+                {t.pos.servicesFilter}
+              </Button>
+            )}
           </div>
           <div className={styles.productGridWrap}>
             <div className={styles.productGrid}>
               {displayedProducts.map((p) => {
-                const cartItem = cart.find((l) => l.id === p.id);
+                const cartQty = cart.filter((l) => l.id === p.id).reduce((s, l) => s + l.qty, 0);
                 return (
                   <PosProductCard
                     key={p.id}
                     product={p}
-                    cartQty={cartItem?.qty ?? 0}
+                    cartQty={cartQty}
                     maxStock={maxQtyForProduct(p.id)}
+                    isLoading={pendingProductId === p.id}
                     onAdd={addToCart}
                   />
                 );
@@ -1394,8 +1771,7 @@ export default function POS() {
               </span>
               {partialEnabled && total - effectiveAmountPaid > 0 && (
                 <span className={styles.mobileCartBarRemaining}>
-                  {t.pos.remainingToPay}{" "}
-                  {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
+                  {t.pos.remainingToPay} {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
                 </span>
               )}
             </div>
@@ -1430,6 +1806,25 @@ export default function POS() {
           </Drawer>
         </>
       )}
+
+      <Modal
+        title={performerPick?.replaceKey ? t.pos.changePerformer : t.pos.choosePerformer}
+        open={performerPick != null}
+        onCancel={() => setPerformerPick(null)}
+        footer={null}
+        width={520}
+        destroyOnClose
+      >
+        {performerPick && (
+          <PerformerPicker
+            productName={performerPick.product.name}
+            productPrice={performerPick.product.price}
+            options={performerPick.options}
+            currentId={performerPick.currentId}
+            onPick={handlePerformerPick}
+          />
+        )}
+      </Modal>
 
       <Modal
         title={t.pos.quickAddClientTitle}

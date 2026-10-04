@@ -30,7 +30,13 @@ import styles from "./Receipt.module.css";
 type LocationState = {
   sale?: SaleResponse;
   saleId?: string;
-  cart?: { id: string; name: string; price: number; qty: number }[];
+  cart?: {
+    id: string;
+    name: string;
+    price: number;
+    qty: number;
+    performerName?: string | null;
+  }[];
   total?: number;
   discount?: number;
   method?: string;
@@ -247,6 +253,7 @@ export default function Receipt() {
           legalNotice: t.receipt.legalNotice,
           docTypeBadge: t.receipt.docTypeBadge,
           detailLinesTitle: t.receipt.detailLinesTitle,
+          performedBy: t.receipt.performedBy,
           amountPaid: t.receipt.amountPaid,
           remainingToPay: t.receipt.remainingToPay,
           dueDate: t.receipt.dueDate,
@@ -339,6 +346,7 @@ export default function Receipt() {
       quantity: l.qty,
       unitPrice: l.price,
       lineTotal: l.price * l.qty,
+      performerName: l.performerName ?? null,
     }));
 
   return (
@@ -443,9 +451,14 @@ export default function Receipt() {
           </thead>
           <tbody>
             {lines.map((line, i) => (
-              <tr key={line.productId ?? i}>
+              <tr key={i}>
                 <td className={styles.colDesc}>
                   <span className={styles.productName}>{line.productName}</span>
+                  {line.performerName && (
+                    <span className={styles.performerName}>
+                      {t.receipt.performedBy.replace("{name}", line.performerName)}
+                    </span>
+                  )}
                 </td>
                 <td className={styles.colQty}>{line.quantity}</td>
                 <td className={styles.colPrice}>{formatPrice(line.unitPrice)}</td>
@@ -577,8 +590,15 @@ export default function Receipt() {
               </thead>
               <tbody>
                 {lines.map((line, i) => (
-                  <tr key={line.productId ?? i}>
-                    <td>{line.productName}</td>
+                  <tr key={i}>
+                    <td>
+                      {line.productName}
+                      {line.performerName && (
+                        <span className={styles.performerName}>
+                          {t.receipt.performedBy.replace("{name}", line.performerName)}
+                        </span>
+                      )}
+                    </td>
                     <td>{line.quantity}</td>
                     <td>{formatPrice(line.unitPrice)}</td>
                     <td>{formatPrice(line.lineTotal)}</td>

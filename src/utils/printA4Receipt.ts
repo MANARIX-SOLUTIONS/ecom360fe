@@ -43,7 +43,13 @@ export type A4ReceiptData = {
   shopLogoUrl?: string;
   receiptId: string;
   now: Date;
-  lines: { productName: string; quantity: number; unitPrice: number; lineTotal: number }[];
+  lines: {
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    performerName?: string | null;
+  }[];
   subtotal: number;
   total: number;
   discount: number;
@@ -67,6 +73,7 @@ export type A4ReceiptData = {
     legalNotice: string;
     docTypeBadge: string;
     detailLinesTitle: string;
+    performedBy: string;
     amountPaid: string;
     remainingToPay: string;
     dueDate: string;
@@ -227,6 +234,7 @@ const A4_PRINT_STYLES = `
   .a4-table tbody tr:nth-child(even) td { background: #fafbfc; }
   .a4-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-variant-numeric: tabular-nums; color: #334155; }
   .a4-table td:nth-child(2), .a4-table td:nth-child(3), .a4-table td:nth-child(4) { text-align: right; }
+  .a4-performer { font-size: 11px; color: #64748b; margin-top: 2px; }
   .a4-totals {
     margin: 20px 0 22px;
     padding: 20px 0 0;
@@ -301,7 +309,13 @@ function buildA4ReceiptHTML(data: A4ReceiptData): string {
   const rows = data.lines
     .map(
       (l) =>
-        `<tr><td>${escapeHtml(l.productName)}</td><td>${l.quantity}</td><td>${formatPrice(l.unitPrice)}</td><td>${formatPrice(l.lineTotal)}</td></tr>`
+        `<tr><td>${escapeHtml(l.productName)}${
+          l.performerName
+            ? `<div class="a4-performer">${escapeHtml(
+                data.i18n.performedBy.replace("{name}", l.performerName)
+              )}</div>`
+            : ""
+        }</td><td>${l.quantity}</td><td>${formatPrice(l.unitPrice)}</td><td>${formatPrice(l.lineTotal)}</td></tr>`
     )
     .join("");
 

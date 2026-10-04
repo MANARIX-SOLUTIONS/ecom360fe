@@ -32,6 +32,9 @@ import {
   updateProduct,
   deleteProduct,
   uploadProductImageFile,
+  getProductPerformers,
+  replaceProductPerformers,
+  listBusinessUsers,
   adjustStock,
   listCategoriesWithDefaults,
   listCategories,
@@ -42,7 +45,9 @@ import {
   getSubscriptionUsage,
   getStockForProducts,
 } from "@/api";
-import type { StockLevelResponse, CategoryResponse } from "@/api";
+import type { StockLevelResponse, CategoryResponse, BusinessUser } from "@/api";
+import { ProductUnitFields } from "@/components/ProductUnitFields";
+import { isServiceUnit } from "@/utils/serviceUnit";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import { confirmDelete } from "@/utils/confirmDelete";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -69,6 +74,7 @@ type Product = {
   categoryId: string | null;
   storeId: string;
   imageUrl: string | null;
+  unit: string;
 };
 
 function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
@@ -91,6 +97,17 @@ export default function Products() {
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const [stockForm] = Form.useForm();
   const [form] = Form.useForm();
+  const [employees, setEmployees] = useState<BusinessUser[]>([]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("ecom360_access_token")) return;
+    if (!matrixCan("PRODUCTS_UPDATE", "products") && !matrixCan("PRODUCTS_CREATE", "products")) {
+      return;
+    }
+    listBusinessUsers()
+      .then(setEmployees)
+      .catch(() => setEmployees([]));
+  }, [matrixCan]);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
@@ -191,6 +208,7 @@ export default function Products() {
               minStock: s?.minStock ?? 0,
               categoryId: p.categoryId,
               imageUrl: p.imageUrl,
+              unit: p.unit || "pièce",
             };
           })
         );
@@ -302,8 +320,17 @@ export default function Products() {
     });
   };
 
-  const openEdit = (p: Product) => {
+  const openEdit = async (p: Product) => {
     setEditing(p);
+    let performerBusinessUserIds: string[] = [];
+    if (isServiceUnit(p.unit)) {
+      try {
+        const assigned = await getProductPerformers(p.id);
+        performerBusinessUserIds = assigned.map((row) => row.businessUserId);
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : t.common.errorGeneric);
+      }
+    }
     form.setFieldsValue({
       name: p.name,
       categoryId: p.categoryId || undefined,
@@ -311,6 +338,8 @@ export default function Products() {
       salePrice: p.salePrice,
       initialStock: p.stock,
       minStockAlert: p.minStock,
+      unit: p.unit || "pièce",
+      performerBusinessUserIds,
     });
     setImageFile(null);
     setImageRemoved(false);
@@ -347,6 +376,7 @@ export default function Products() {
             categoryId: values.categoryId || null,
             costPrice: values.costPrice,
             salePrice: values.salePrice,
+            unit: values.unit || "pièce",
             isActive: true,
             storeId: sharedCatalog ? editing.storeId : activeStore.id,
             imageUrl: imageUrlForUpdate,
@@ -359,6 +389,7 @@ export default function Products() {
             categoryId: values.categoryId || null,
             costPrice: values.costPrice,
             salePrice: values.salePrice,
+            unit: values.unit || "pièce",
             isActive: true,
             storeId: activeStore.id,
             initialStock: values.initialStock ?? 0,
@@ -378,6 +409,9 @@ export default function Products() {
             });
           }
           message.success(t.products.msgAdded);
+        }
+        if (isServiceUnit(values.unit)) {
+          await replaceProductPerformers(productId, values.performerBusinessUserIds ?? []);
         }
         if (imageFile) {
           try {
@@ -794,6 +828,7 @@ export default function Products() {
           >
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
+          <ProductUnitFields form={form} employees={employees} />
         </Form>
       </Modal>
 
