@@ -84,6 +84,41 @@ export async function deleteProduct(id: string): Promise<void> {
   return api.delete(`/products/${id}`);
 }
 
+export type ProductPerformerResponse = {
+  businessUserId: string;
+  fullName: string;
+  active: boolean;
+};
+
+export type EligiblePerformerResponse = {
+  businessUserId: string;
+  fullName: string;
+};
+
+export async function getProductPerformers(
+  productId: string
+): Promise<ProductPerformerResponse[]> {
+  return api.get<ProductPerformerResponse[]>(`/products/${productId}/performers`);
+}
+
+export async function replaceProductPerformers(
+  productId: string,
+  businessUserIds: string[]
+): Promise<ProductPerformerResponse[]> {
+  return api.put<ProductPerformerResponse[]>(`/products/${productId}/performers`, {
+    businessUserIds,
+  });
+}
+
+export async function listEligiblePerformers(
+  storeId: string,
+  productId: string
+): Promise<EligiblePerformerResponse[]> {
+  return api.get<EligiblePerformerResponse[]>(
+    `/stores/${storeId}/products/${productId}/eligible-performers`
+  );
+}
+
 /** Upload a product image; backend stores the file and returns the product with `imageUrl`. */
 export async function uploadProductImageFile(
   productId: string,
