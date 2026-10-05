@@ -33,7 +33,12 @@ import {
   BarChart3,
   FileText,
 } from "lucide-react";
-import { listAdminAuditLogs, type AuditLogEntry } from "@/api/backoffice";
+import {
+  getLandingStatus,
+  listAdminAuditLogs,
+  updateLandingStatus,
+  type AuditLogEntry,
+} from "@/api/backoffice";
 import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
@@ -208,6 +213,8 @@ export default function BackofficeSystem() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditEntityFilter, setAuditEntityFilter] = useState<string | undefined>();
   const [health, setHealth] = useState<{ status: string; ok: boolean } | null>(null);
+  const [landingLoadingMode, setLandingLoadingMode] = useState<boolean | null>(null);
+  const [landingSaving, setLandingSaving] = useState(false);
   const [modal, contextHolder] = Modal.useModal();
 
   const loadHealth = useCallback(() => {
@@ -231,9 +238,16 @@ export default function BackofficeSystem() {
     }
   }, [auditPage, auditSize, auditEntityFilter]);
 
+  const loadLandingStatus = useCallback(() => {
+    getLandingStatus()
+      .then((status) => setLandingLoadingMode(status.loading))
+      .catch(() => setLandingLoadingMode(null));
+  }, []);
+
   useEffect(() => {
     loadHealth();
-  }, [loadHealth]);
+    loadLandingStatus();
+  }, [loadHealth, loadLandingStatus]);
 
   useEffect(() => {
     loadAuditLogs();
@@ -244,15 +258,51 @@ export default function BackofficeSystem() {
     return () => clearTimeout(id);
   }, []);
 
+  const persistLandingStatus = useCallback(async (loading: boolean) => {
+    setLandingSaving(true);
+    try {
+      const status = await updateLandingStatus(loading);
+      setLandingLoadingMode(status.loading);
+      message.success(
+        status.loading
+          ? "La landing affiche l'écran de préparation."
+          : "Le site marketing est ouvert."
+      );
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Impossible de mettre à jour la landing.");
+    } finally {
+      setLandingSaving(false);
+    }
+  }, []);
+
+  const handleLandingToggle = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        void persistLandingStatus(true);
+        return;
+      }
+      modal.confirm({
+        title: "Ouvrir le site marketing ?",
+        content:
+          "Les visiteurs verront la landing complète. Vous pourrez la remettre en préparation à tout moment.",
+        okText: "Ouvrir le site",
+        cancelText: "Annuler",
+        onOk: () => persistLandingStatus(false),
+      });
+    },
+    [modal, persistLandingStatus]
+  );
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     loadHealth();
+    loadLandingStatus();
     loadAuditLogs();
     setTimeout(() => {
       setRefreshing(false);
       message.success(t.backoffice.systemRefreshed);
     }, 800);
-  }, [loadHealth, loadAuditLogs]);
+  }, [loadHealth, loadLandingStatus, loadAuditLogs]);
 
   const handleExportAudit = useCallback(async () => {
     try {
@@ -349,6 +399,37 @@ export default function BackofficeSystem() {
           </div>
         </div>
       </div>
+
+      <Card variant="borderless" className={styles.card} style={{ marginBottom: 16 }}>
+        <div className={styles.envRow}>
+          <span
+            className={styles.envIcon}
+            style={{
+              background: landingLoadingMode ? "rgba(212,175,55,0.16)" : "rgba(16,185,129,0.08)",
+              color: landingLoadingMode ? "var(--color-gold-ink, #8d6b12)" : "var(--color-success)",
+            }}
+          >
+            <Globe size={18} />
+          </span>
+          <div className={styles.envInfo}>
+            <span className={styles.envLabel}>Landing en préparation</span>
+            <span className={styles.envValue}>
+              {landingLoadingMode == null
+                ? "Statut indisponible"
+                : landingLoadingMode
+                  ? "Les visiteurs voient l'écran de préparation du lancement."
+                  : "Le site marketing est visible."}
+            </span>
+          </div>
+          <Switch
+            checked={landingLoadingMode === true}
+            loading={landingSaving || landingLoadingMode == null}
+            disabled={landingLoadingMode == null}
+            onChange={handleLandingToggle}
+            aria-label="Mettre la landing en chargement"
+          />
+        </div>
+      </Card>
 
       {/* Resource usage cards (demo data) */}
       <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>

@@ -382,6 +382,18 @@ export async function markAdminSubscriptionPaymentPaid(
   });
 }
 
+export type LandingStatus = {
+  loading: boolean;
+};
+
+export async function getLandingStatus(): Promise<LandingStatus> {
+  return api.get<LandingStatus>("/admin/platform/landing-status");
+}
+
+export async function updateLandingStatus(loading: boolean): Promise<LandingStatus> {
+  return api.put<LandingStatus>("/admin/platform/landing-status", { loading });
+}
+
 export async function listAdminAuditLogs(params?: {
   page?: number;
   size?: number;
