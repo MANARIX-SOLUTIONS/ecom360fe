@@ -177,6 +177,7 @@ export default function Livreurs() {
               rowKey="id"
               pagination={{ pageSize: 10 }}
               className="dataTable"
+              scroll={{ x: "max-content" }}
               locale={{ emptyText: "Aucun livreur trouvé" }}
               columns={[
                 {

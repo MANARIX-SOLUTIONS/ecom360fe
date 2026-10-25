@@ -282,6 +282,7 @@ export default function BackofficeUsers() {
           <Table
             dataSource={users}
             rowKey="id"
+            scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
               pageSize,
@@ -432,7 +433,7 @@ export default function BackofficeUsers() {
         title="Profil utilisateur"
         open={!!detail}
         onClose={() => setDetail(null)}
-        width={400}
+        width="min(400px, 100vw)"
       >
         {detail && (
           <>

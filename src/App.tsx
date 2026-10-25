@@ -31,6 +31,8 @@ const Clients = lazy(() => import("./pages/Clients"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const SupplierDetail = lazy(() => import("./pages/SupplierDetail"));
+const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
+const PurchaseOrderDetail = lazy(() => import("./pages/PurchaseOrderDetail"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const Livreurs = lazy(() => import("./pages/Livreurs"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -42,10 +44,13 @@ const SettingsRoles = lazy(() => import("./pages/SettingsRoles"));
 const SettingsSecurity = lazy(() => import("./pages/SettingsSecurity"));
 const SettingsNotifications = lazy(() => import("./pages/SettingsNotifications"));
 const SettingsStores = lazy(() => import("./pages/SettingsStores"));
+const SettingsCommerce = lazy(() => import("./pages/SettingsCommerce"));
+const SettingsApi = lazy(() => import("./pages/SettingsApi"));
 const Profile = lazy(() => import("./pages/Profile"));
 const More = lazy(() => import("./pages/More"));
 const DemoRequest = lazy(() => import("./pages/DemoRequest"));
 const BackofficeDemoRequests = lazy(() => import("./pages/BackofficeDemoRequests"));
+const BackofficeSubscriptionPayments = lazy(() => import("./pages/BackofficeSubscriptionPayments"));
 
 function PageLoader() {
   return (
@@ -246,6 +251,26 @@ export default function App() {
             }
           />
           <Route
+            path="purchase-orders"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="purchaseOrders">
+                  <PurchaseOrders />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="purchase-orders/:id"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="purchaseOrders">
+                  <PurchaseOrderDetail />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
             path="expenses"
             element={
               <Suspense fallback={<PageLoader />}>
@@ -371,6 +396,26 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route
+            path="settings/commerce"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="settings:commerce">
+                  <SettingsCommerce />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="settings/api"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="settings:api">
+                  <SettingsApi />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
         </Route>
         <Route
           path="backoffice"
@@ -411,6 +456,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <BackofficeDemoRequests />
+              </Suspense>
+            }
+          />
+          <Route
+            path="payments"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeSubscriptionPayments />
               </Suspense>
             }
           />

@@ -89,7 +89,7 @@ export default function SettingsRoles() {
   const canEdit = matrixCan("BUSINESS_USERS_UPDATE", "settings:roles");
 
   return (
-    <div className={`${styles.settingsPage} pageWrapper`}>
+    <div className={`${styles.settingsPage} ${styles.settingsPageWide} pageWrapper`}>
       <button type="button" className={styles.settingsBack} onClick={() => navigate("/settings")}>
         <ArrowLeft size={18} />
         {t.common.back}
@@ -122,6 +122,7 @@ export default function SettingsRoles() {
               dataSource={roles}
               rowKey="id"
               pagination={false}
+              scroll={{ x: "max-content" }}
               className={styles.usersTable}
               columns={[
                 { title: t.settings.role, dataIndex: "name" },
@@ -152,7 +153,8 @@ export default function SettingsRoles() {
         }}
         okText={t.settings.saveRolePermissions}
         confirmLoading={saving}
-        width={720}
+        width="min(720px, calc(100vw - 32px))"
+        styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
         destroyOnClose
       >
         {catalog.length > 0 ? (

@@ -163,6 +163,53 @@
   padding-bottom: 32px;
 }
 
+/* Wide shell for settings pages with multi-column tables */
+.settingsPageWide {
+  max-width: 1100px;
+}
+
+.settingsCardExtra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.settingsFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.settingsFilterBar :global(.ant-select) {
+  min-width: min(200px, 100%);
+  flex: 1 1 200px;
+}
+
+@media (max-width: 640px) {
+  .settingsPageWide :global(.ant-card-head) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .settingsPageWide :global(.ant-card-extra) {
+    margin-inline-start: 0 !important;
+    width: 100%;
+  }
+
+  .settingsCardExtra {
+    justify-content: stretch;
+  }
+
+  .settingsCardExtra :global(.ant-btn) {
+    width: 100%;
+  }
+}
+
 .settingsBack {
   display: inline-flex;
   align-items: center;
@@ -258,6 +305,15 @@
 }
 
 @media (max-width: 480px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar :global(.ant-btn) {
+    width: 100%;
+  }
+
   .item {
     padding: 14px 16px;
     min-height: 52px;

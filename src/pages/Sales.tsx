@@ -267,9 +267,11 @@ export default function Sales() {
         ) : (
           <div className="tableResponsive">
             <Table
+              className="dataTable"
               dataSource={sales}
               rowKey="id"
               loading={loading}
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
                 pageSize,

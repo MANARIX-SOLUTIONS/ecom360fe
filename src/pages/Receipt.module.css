@@ -183,6 +183,7 @@
   max-width: 440px;
   margin: 0 auto;
   padding: var(--section-gap) 24px 48px;
+  padding-bottom: max(48px, calc(24px + env(safe-area-inset-bottom, 0px)));
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 

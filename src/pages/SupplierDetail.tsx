@@ -3,7 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Typography, Table, Tag, Modal, Form, Input, message, Skeleton } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Phone, Mail, MapPin, Plus, Pencil, Trash2, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  Wallet,
+  ClipboardList,
+} from "lucide-react";
 import { t } from "@/i18n";
 import { ResourceNotFound } from "@/components/ResourceNotFound";
 import styles from "./Clients.module.css";
@@ -17,6 +27,8 @@ import {
 } from "@/api";
 import type { SupplierResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { usePermissions } from "@/hooks/usePermissions";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 
 function getInitials(name: string) {
   return name
@@ -31,6 +43,8 @@ export default function SupplierDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { matrixCan } = useMatrixCan();
+  const { canAccess: canAccessNav } = usePermissions();
+  const { canAccess: canAccessPlan } = usePlanFeatures();
   const [supplier, setSupplier] = useState<SupplierResponse | null>(null);
   const [payments, setPayments] = useState<{ id: string; date: string; amount: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -211,7 +225,7 @@ export default function SupplierDetail() {
               {supplier.balance.toLocaleString("fr-FR")} F
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
               <Button
                 type="primary"
@@ -222,6 +236,14 @@ export default function SupplierDetail() {
                 }}
               >
                 {t.suppliers.addPayment}
+              </Button>
+            )}
+            {canAccessPlan("purchaseOrders", canAccessNav("purchaseOrders")) && (
+              <Button
+                icon={<ClipboardList size={18} />}
+                onClick={() => navigate(`/purchase-orders?supplierId=${supplier.id}`)}
+              >
+                {t.suppliers.viewPurchaseOrders}
               </Button>
             )}
             {matrixCan("SUPPLIERS_UPDATE", "suppliers") && (
@@ -258,6 +280,7 @@ export default function SupplierDetail() {
               pagination={false}
               size="small"
               className="dataTable"
+              scroll={{ x: "max-content" }}
               columns={[
                 { title: t.common.date, dataIndex: "date" },
                 {

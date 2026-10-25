@@ -20,6 +20,7 @@ export type Permission =
   | "products"
   | "clients"
   | "suppliers"
+  | "purchaseOrders"
   | "livreurs"
   | "expenses"
   | "reports"
@@ -30,4 +31,6 @@ export type Permission =
   | "settings:users"
   | "settings:roles"
   | "settings:security"
-  | "settings:notifications";
+  | "settings:notifications"
+  | "settings:commerce"
+  | "settings:api";

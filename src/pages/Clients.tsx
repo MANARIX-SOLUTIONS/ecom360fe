@@ -182,6 +182,7 @@ export default function Clients() {
             <Table
               dataSource={clients}
               rowKey="id"
+              scroll={{ x: "max-content" }}
               pagination={{
                 current: page + 1,
                 pageSize,

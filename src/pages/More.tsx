@@ -10,6 +10,7 @@ import {
   Shield,
   ChevronRight,
   BarChart3,
+  ClipboardList,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
@@ -49,6 +50,14 @@ const linkConfig: MenuLink[] = [
     icon: Truck,
     label: t.suppliers.title,
     desc: "Achats et soldes",
+    group: "commerce",
+  },
+  {
+    path: "/purchase-orders",
+    permission: "purchaseOrders",
+    icon: ClipboardList,
+    label: t.purchaseOrders.title,
+    desc: "Commandes et réception stock",
     group: "commerce",
   },
   {
