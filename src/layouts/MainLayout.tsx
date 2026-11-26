@@ -1,29 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Typography, Space, Badge, Dropdown, Drawer } from "antd";
+import { Layout, Menu, Typography, Space, Badge, Dropdown, Drawer, Button } from "antd";
 import {
-  LayoutDashboard,
   ShoppingCart,
-  Package,
-  FileText,
-  Users,
-  Truck,
-  Bike,
-  Receipt,
-  ListOrdered,
-  ClipboardList,
-  TrendingUp,
-  Settings,
-  Store,
   MoreHorizontal,
   Menu as MenuIcon,
   Shield,
   Bell,
+  HelpCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LayoutDashboard,
+  Package,
+  TrendingUp,
 } from "lucide-react";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { SkipLink } from "@/components/SkipLink";
 import { StoreSwitcher } from "@/components/StoreSwitcher";
 import { HeaderProfile } from "@/components/HeaderProfile";
+import { GlobalSearch, GlobalSearchTrigger } from "@/components/shell/GlobalSearch";
+import { QuickCreate } from "@/components/shell/QuickCreate";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
@@ -38,110 +34,28 @@ import {
   getNotificationPresentation,
 } from "@/utils/notificationPresentation";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import {
+  NAV_SECTIONS,
+  matchNavKey,
+  matchesMoreSection,
+  navItemHref,
+  type NavItem,
+} from "@/constants/navigation";
 import styles from "./MainLayout.module.css";
 
 const { Header, Sider, Content } = Layout;
-
-const navConfig = [
-  {
-    key: "/dashboard",
-    permission: "dashboard" as const,
-    icon: <LayoutDashboard size={20} />,
-    label: "Tableau de bord",
-  },
-  {
-    key: "/vue-globale",
-    permission: "globalView" as const,
-    icon: <Store size={20} />,
-    label: "Vue globale",
-  },
-  {
-    key: "/pos",
-    permission: "pos" as const,
-    icon: <ShoppingCart size={20} />,
-    label: "POS",
-  },
-  {
-    key: "/sales",
-    permission: "pos" as const,
-    icon: <ListOrdered size={20} />,
-    label: "Ventes",
-  },
-  {
-    key: "/products",
-    permission: "products" as const,
-    icon: <Package size={20} />,
-    label: "Produits",
-  },
-  {
-    key: "/reports",
-    permission: "reports" as const,
-    icon: <FileText size={20} />,
-    label: "Rapports",
-  },
-  {
-    key: "/clients",
-    permission: "clients" as const,
-    icon: <Users size={20} />,
-    label: "Clients",
-  },
-  {
-    key: "/suppliers",
-    permission: "suppliers" as const,
-    icon: <Truck size={20} />,
-    label: "Fournisseurs",
-  },
-  {
-    key: "/purchase-orders",
-    permission: "purchaseOrders" as const,
-    icon: <ClipboardList size={20} />,
-    label: "Bons de commande",
-  },
-  {
-    key: "/livreurs",
-    permission: "livreurs" as const,
-    icon: <Bike size={20} />,
-    label: "Livreurs",
-  },
-  {
-    key: "/expenses",
-    permission: "expenses" as const,
-    icon: <Receipt size={20} />,
-    label: "Dépenses",
-  },
-  {
-    key: "/settings",
-    permission: "settings" as const,
-    icon: <Settings size={20} />,
-    label: "Paramètres",
-  },
-];
-
-/** Highlight bottom nav « Plus » when user is on these sections. */
-const MORE_SECTION_PREFIXES = [
-  "/settings",
-  "/clients",
-  "/expenses",
-  "/suppliers",
-  "/purchase-orders",
-  "/livreurs",
-  "/sales",
-  "/vue-globale",
-  "/profile",
-] as const;
-
-function matchesMoreSection(pathname: string): boolean {
-  return MORE_SECTION_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { isSuperAdmin } = useAuthRole();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
+  const canSeePos = canAccessPlan("pos", canAccessBackend("pos"));
+  const canSeeProducts = canAccessPlan("products", canAccessBackend("products"));
   const canSeeReports = canAccessPlan("reports", canAccessBackend("reports"));
   const { notifications, unreadCount, markRead } = useNotifications({ pollingIntervalMs: 30000 });
   const { offline } = useNetworkStatus();
@@ -155,29 +69,84 @@ export default function MainLayout() {
     setBrandLogoBroken(false);
     setDefaultLogoBroken(false);
   }, [brandLogoUrl]);
-  const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom 360 PME";
+  const sidebarBrandTitle = businessProfile?.name?.trim() || "Ecom360 PME";
 
   useEffect(() => {
     setMobileNavOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if (typing) return;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const visibleItems = useMemo(() => {
+    const allowed = (item: NavItem) => {
+      const backendCan = canAccessBackend(item.permission);
+      return backendCan && canAccessPlan(item.permission, backendCan);
+    };
+    return NAV_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter(allowed),
+    })).filter((section) => section.items.length > 0);
+  }, [canAccessBackend, canAccessPlan]);
+
+  const selectedKeys = useMemo(() => {
+    const matched = visibleItems
+      .flatMap((section) => section.items)
+      .filter((item) => matchNavKey(location.pathname, location.search, item))
+      .map(navItemHref);
+    return matched.length > 0 ? matched : [location.pathname];
+  }, [location.pathname, location.search, visibleItems]);
+
+  const menuItems = useMemo(() => {
+    const groups = visibleItems.map((section) => ({
+      type: "group" as const,
+      key: section.id,
+      label: section.label,
+      children: section.items.map((item) => {
+        const Icon = item.icon;
+        return {
+          key: navItemHref(item),
+          icon: <Icon size={18} />,
+          label: item.label,
+        };
+      }),
+    }));
+    if (isSuperAdmin) {
+      groups.push({
+        type: "group" as const,
+        key: "platform",
+        label: "Plateforme",
+        children: [
+          {
+            key: "/backoffice",
+            icon: <Shield size={18} />,
+            label: t.backoffice.title,
+          },
+        ],
+      });
+    }
+    return groups;
+  }, [isSuperAdmin, visibleItems]);
 
   const notificationItems = useMemo(() => {
     const items: { key: string; label: React.ReactNode }[] = [];
     if (notifications.length === 0) {
       items.push({
         key: "empty",
-        label: (
-          <div
-            style={{
-              padding: 16,
-              textAlign: "center",
-              color: "var(--color-text-muted)",
-              fontSize: 13,
-            }}
-          >
-            Aucune notification
-          </div>
-        ),
+        label: <div className={styles.notifEmpty}>Aucune notification</div>,
       });
     } else {
       items.push(
@@ -190,15 +159,8 @@ export default function MainLayout() {
               <div
                 role="button"
                 tabIndex={0}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  padding: "8px 0",
-                  maxWidth: 280,
-                  cursor: "pointer",
-                  opacity: n.isRead ? 0.8 : 1,
-                }}
+                className={styles.notifItem}
+                style={{ opacity: n.isRead ? 0.8 : 1 }}
                 onClick={() => {
                   if (!n.isRead) markRead(n.id);
                   if (n.actionUrl) navigate(n.actionUrl);
@@ -213,10 +175,8 @@ export default function MainLayout() {
               >
                 <Icon size={16} style={{ color: iconColor, flexShrink: 0, marginTop: 2 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 13 }}>{n.title}</div>
-                  {n.body && (
-                    <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{n.body}</div>
-                  )}
+                  <div className={styles.notifTitle}>{n.title}</div>
+                  {n.body && <div className={styles.notifBody}>{n.body}</div>}
                 </div>
               </div>
             ),
@@ -230,14 +190,7 @@ export default function MainLayout() {
         <div
           role="button"
           tabIndex={0}
-          style={{
-            padding: "12px 16px",
-            borderTop: "1px solid var(--color-border)",
-            cursor: "pointer",
-            fontWeight: 500,
-            fontSize: 13,
-            color: "var(--color-primary)",
-          }}
+          className={styles.notifManage}
           onClick={() => navigate("/settings/notifications")}
           onKeyDown={(e: React.KeyboardEvent) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -253,40 +206,23 @@ export default function MainLayout() {
     return items;
   }, [notifications, markRead, navigate]);
 
-  const navItems = useMemo(() => {
-    const items = navConfig
-      .filter((item) => {
-        const backendCan = canAccessBackend(item.permission);
-        const planAllows = canAccessPlan(item.permission, backendCan);
-        return backendCan && planAllows;
-      })
-      .map(({ key, icon, label }) => ({ key, icon, label }));
-    if (isSuperAdmin) {
-      items.push({
-        key: "/backoffice",
-        icon: <Shield size={20} />,
-        label: t.backoffice.title,
-      });
-    }
-    return items;
-  }, [canAccessBackend, canAccessPlan, isSuperAdmin]);
-
   const moreNavActive =
     location.pathname === "/more" ||
     location.pathname === "/backoffice" ||
     matchesMoreSection(location.pathname);
 
+  const go = (key: string) => navigate(key);
+
   return (
-    <Layout className={styles.root}>
+    <Layout className={`${styles.root} ${collapsed ? styles.rootCollapsed : ""}`}>
       <SkipLink />
       <Sider
-        breakpoint="lg"
-        collapsedWidth="0"
         collapsed={collapsed}
-        onCollapse={setCollapsed}
-        width={240}
+        collapsedWidth={72}
+        width={248}
         className={styles.sider}
         theme="light"
+        trigger={null}
       >
         <div data-onboarding="sidebar" className={styles.sidebarTourRegion}>
           <div
@@ -316,21 +252,35 @@ export default function MainLayout() {
                 <ShoppingCart size={20} />
               )}
             </div>
-            <div className={styles.logoText}>
-              <Typography.Text strong className={styles.logoTitle}>
-                {sidebarBrandTitle}
-              </Typography.Text>
-              <Typography.Text className={styles.logoSub}>Commerce</Typography.Text>
-            </div>
+            {!collapsed && (
+              <div className={styles.logoText}>
+                <Typography.Text strong className={styles.logoTitle}>
+                  {sidebarBrandTitle}
+                </Typography.Text>
+                <Typography.Text className={styles.logoSub}>Ecom360 PME</Typography.Text>
+              </div>
+            )}
           </div>
           <Menu
             mode="inline"
-            selectedKeys={[location.pathname]}
-            items={navItems}
-            onClick={({ key }) => navigate(key)}
+            selectedKeys={selectedKeys}
+            items={menuItems}
+            onClick={({ key }) => go(String(key))}
             style={{ borderRight: 0 }}
             className={styles.menu}
+            inlineCollapsed={collapsed}
           />
+          <div className={styles.siderFooter}>
+            <Button
+              type="text"
+              className={styles.collapseBtn}
+              onClick={() => setCollapsed((v) => !v)}
+              aria-label={collapsed ? "Déplier le menu" : "Replier le menu"}
+              icon={collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            >
+              {!collapsed && "Réduire"}
+            </Button>
+          </div>
         </div>
       </Sider>
 
@@ -347,9 +297,33 @@ export default function MainLayout() {
               <MenuIcon size={22} aria-hidden />
             </button>
             <StoreSwitcher />
+            <GlobalSearchTrigger onOpen={() => setSearchOpen(true)} />
           </div>
-          <Space size="middle">
+          <Space size={8} className={styles.headerRight} wrap={false}>
+            <QuickCreate />
             <SyncIndicator offline={offline} />
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: "demo",
+                    label: "Demander une démo",
+                    onClick: () => navigate("/demo-request"),
+                  },
+                  {
+                    key: "billing",
+                    label: "Abonnement",
+                    onClick: () => navigate("/settings/subscription"),
+                  },
+                ],
+              }}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
+              <button type="button" className={styles.iconBtn} aria-label="Aide">
+                <HelpCircle size={20} />
+              </button>
+            </Dropdown>
             <Dropdown
               menu={{ items: notificationItems }}
               trigger={["click"]}
@@ -357,7 +331,7 @@ export default function MainLayout() {
             >
               <button
                 type="button"
-                className={styles.notifBtn}
+                className={styles.iconBtn}
                 aria-label="Notifications"
                 data-onboarding="notifications"
               >
@@ -375,37 +349,47 @@ export default function MainLayout() {
         </Content>
       </Layout>
 
-      {/* Mobile: bottom navigation */}
       <nav className={styles.bottomNav} data-onboarding="bottom-nav" aria-label="Navigation mobile">
         <button
           type="button"
           className={location.pathname === "/dashboard" ? styles.navActive : ""}
           onClick={() => navigate("/dashboard")}
-          aria-label="Dashboard"
+          aria-label="Tableau de bord"
         >
           <LayoutDashboard size={22} />
-          <span>Dashboard</span>
+          <span>Accueil</span>
           {location.pathname === "/dashboard" && <span className={styles.navDot} />}
         </button>
-        <button
-          type="button"
-          className={location.pathname === "/products" ? styles.navActive : ""}
-          onClick={() => navigate("/products")}
-          aria-label="Produits"
-        >
-          <Package size={22} />
-          <span>Produits</span>
-          {location.pathname === "/products" && <span className={styles.navDot} />}
-        </button>
-        {/* Center POS FAB */}
-        <button
-          type="button"
-          className={`${styles.navFab} ${location.pathname === "/pos" ? styles.navFabActive : ""}`}
-          onClick={() => navigate("/pos")}
-          aria-label="POS"
-        >
-          <ShoppingCart size={24} />
-        </button>
+        {canSeeProducts && (
+          <button
+            type="button"
+            className={
+              location.pathname.startsWith("/products") &&
+              new URLSearchParams(location.search).get("type") !== "service"
+                ? styles.navActive
+                : ""
+            }
+            onClick={() => navigate("/products")}
+            aria-label="Catalogue"
+          >
+            <Package size={22} />
+            <span>Catalogue</span>
+            {location.pathname.startsWith("/products") &&
+              new URLSearchParams(location.search).get("type") !== "service" && (
+                <span className={styles.navDot} />
+              )}
+          </button>
+        )}
+        {canSeePos && (
+          <button
+            type="button"
+            className={`${styles.navFab} ${location.pathname === "/pos" ? styles.navFabActive : ""}`}
+            onClick={() => navigate("/pos")}
+            aria-label="Caisse"
+          >
+            <ShoppingCart size={24} />
+          </button>
+        )}
         {canSeeReports && (
           <button
             type="button"
@@ -414,7 +398,7 @@ export default function MainLayout() {
             aria-label={t.reports.title}
           >
             <TrendingUp size={22} />
-            <span>{t.reports.title}</span>
+            <span>Rapports</span>
             {location.pathname === "/reports" && <span className={styles.navDot} />}
           </button>
         )}
@@ -434,26 +418,23 @@ export default function MainLayout() {
         title={
           <div>
             <Typography.Text strong>{sidebarBrandTitle}</Typography.Text>
-            <Typography.Text
-              type="secondary"
-              style={{ display: "block", fontSize: 12, marginTop: 2 }}
-            >
+            <Typography.Text type="secondary" className={styles.drawerSub}>
               {t.common.menu}
             </Typography.Text>
           </div>
         }
         placement="left"
-        width={280}
+        width={300}
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         styles={{ body: { padding: "8px 12px 24px" } }}
       >
         <Menu
           mode="inline"
-          selectedKeys={[location.pathname]}
-          items={navItems}
+          selectedKeys={selectedKeys}
+          items={menuItems}
           onClick={({ key }) => {
-            navigate(key);
+            go(String(key));
             setMobileNavOpen(false);
           }}
           style={{ borderRight: 0 }}
@@ -461,6 +442,7 @@ export default function MainLayout() {
         />
       </Drawer>
 
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <OnboardingTour />
     </Layout>
   );

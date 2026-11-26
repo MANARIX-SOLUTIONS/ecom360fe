@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Card,
   Table,
@@ -48,6 +49,8 @@ import {
   updateAdminBusinessMemberRole,
   updateAdminBusinessRolePermissions,
   listAdminBusinessStores,
+  listAdminInvoices,
+  listAdminSubscriptionPayments,
   getAdminBusinessSubscriptionUsage,
   createAdminBusinessStore,
   updateAdminBusinessStore,
@@ -56,12 +59,22 @@ import {
   type AdminPlanItem,
   type AdminBusinessMember,
   type AdminBusinessRoleOption,
+  type AdminInvoice,
+  type AdminSubscriptionPayment,
 } from "@/api/backoffice";
 import { listPermissionCatalog, type PermissionCatalogItem } from "@/api/roles";
 import { PermissionCatalogPicker } from "@/components/PermissionCatalogPicker";
 import { labelForPermissionCode } from "@/utils/permissionCatalog";
 import type { StoreResponse } from "@/api/stores";
 import type { SubscriptionUsageResponse } from "@/api/subscription";
+import { BusinessFeaturesPanel } from "@/backoffice/components/BusinessFeaturesPanel";
+import { PageHeader } from "@/components/backoffice/PageHeader";
+import { FilterBar } from "@/components/backoffice/FilterBar";
+import { StatusTag } from "@/components/backoffice/StatusTag";
+import { ErrorState } from "@/components/backoffice/ErrorState";
+import { EmptyState } from "@/components/EmptyState";
+import { formatAdminMoney } from "@/utils/adminMoney";
+import { formatAdminDate } from "@/utils/adminPeriod";
 import { t } from "@/i18n";
 
 type Business = AdminBusiness & { stores: number };
@@ -90,12 +103,6 @@ const subscriptionStatusLabels: Record<string, string> = {
   incomplete: "Incomplet",
 };
 
-function formatAdminDate(iso: string | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-FR");
-}
-
 function subscriptionBillingLabel(cycle: string): string {
   if (cycle === "yearly") return "Annuelle";
   if (cycle === "monthly") return "Mensuelle";
@@ -103,16 +110,21 @@ function subscriptionBillingLabel(cycle: string): string {
 }
 
 export default function BackofficeBusinesses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
-  const [searchDebounced, setSearchDebounced] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [searchDebounced, setSearchDebounced] = useState(searchParams.get("search") ?? "");
   const resetPageRef = useRef(false);
-  const [filterPlan, setFilterPlan] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPlan, setFilterPlan] = useState<string>(searchParams.get("plan") ?? "all");
+  const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") ?? "all");
+  const [invoices, setInvoices] = useState<AdminInvoice[]>([]);
+  const [payments, setPayments] = useState<AdminSubscriptionPayment[]>([]);
+  const [financeLoading, setFinanceLoading] = useState(false);
   const [detail, setDetail] = useState<Business | null>(null);
   const [modal, contextHolder] = Modal.useModal();
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -161,6 +173,7 @@ export default function BackofficeBusinesses() {
       setPage(0);
     }
     setLoading(true);
+    setHasError(false);
     try {
       const res = await listAdminBusinesses({
         page: effectivePage,
@@ -178,6 +191,8 @@ export default function BackofficeBusinesses() {
       setBusinesses(mapped);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
+      setHasError(true);
+      setBusinesses([]);
       message.error(e instanceof Error ? e.message : t.backoffice.businessesLoadError);
     } finally {
       setLoading(false);
@@ -191,11 +206,41 @@ export default function BackofficeBusinesses() {
 
   useEffect(() => {
     resetPageRef.current = true;
-  }, [searchDebounced, filterStatus, filterPlan]);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchDebounced.trim()) next.set("search", searchDebounced.trim());
+        else next.delete("search");
+        if (filterPlan !== "all") next.set("plan", filterPlan);
+        else next.delete("plan");
+        if (filterStatus !== "all") next.set("status", filterStatus);
+        else next.delete("status");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [searchDebounced, filterStatus, filterPlan, setSearchParams]);
 
   useEffect(() => {
     loadBusinesses();
   }, [loadBusinesses]);
+
+  useEffect(() => {
+    void loadPlans();
+  }, [loadPlans]);
+
+  useEffect(() => {
+    const highlight = searchParams.get("highlight");
+    if (!highlight) return;
+    const match = businesses.find((item) => item.id === highlight);
+    if (match) {
+      setDetail(match);
+      return;
+    }
+    getAdminBusiness(highlight)
+      .then((biz) => setDetail({ ...biz, stores: biz.storesCount }))
+      .catch(() => undefined);
+  }, [businesses, searchParams]);
 
   const toggleSuspend = useCallback(
     (biz: Business) => {
@@ -291,9 +336,25 @@ export default function BackofficeBusinesses() {
     if (!detail?.id) {
       setAdminStores([]);
       setStoreUsage(null);
+      setInvoices([]);
+      setPayments([]);
       return;
     }
     loadStoresForBusiness(detail.id);
+    setFinanceLoading(true);
+    Promise.all([
+      listAdminInvoices({ businessId: detail.id, page: 0, size: 10 }),
+      listAdminSubscriptionPayments({ businessId: detail.id, page: 0, size: 10 }),
+    ])
+      .then(([invoicePage, paymentPage]) => {
+        setInvoices(invoicePage.content ?? []);
+        setPayments(paymentPage.content ?? []);
+      })
+      .catch(() => {
+        setInvoices([]);
+        setPayments([]);
+      })
+      .finally(() => setFinanceLoading(false));
   }, [detail?.id, loadStoresForBusiness]);
 
   const detailIdRef = useRef<string | null>(null);
@@ -598,66 +659,59 @@ export default function BackofficeBusinesses() {
     [detail?.id, loadStoresForBusiness, modal, refreshDetail]
   );
 
-  if (loading) {
-    return (
-      <div className="pageWrapper">
-        <Skeleton active paragraph={{ rows: 8 }} />
-      </div>
-    );
-  }
-
   return (
     <div className={`${styles.page} pageWrapper`}>
       {contextHolder}
-      <div className={styles.pageHeader}>
-        <Typography.Title level={4} className={styles.pageTitle}>
-          Entreprises
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          {total} entreprise{total > 1 ? "s" : ""} inscrite{total > 1 ? "s" : ""} sur la plateforme
-        </Typography.Text>
-      </div>
-
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <Input
-            prefix={<Search size={16} />}
-            placeholder="Rechercher entreprise ou propriétaire..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <Select
-            value={filterPlan}
-            onChange={setFilterPlan}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous les plans" },
-              { value: "Starter", label: "Starter" },
-              { value: "Pro", label: "Pro" },
-              { value: "Business", label: "Business" },
-            ]}
-          />
-          <Select
-            value={filterStatus}
-            onChange={setFilterStatus}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous statuts" },
-              { value: "active", label: "Actif" },
-              { value: "suspended", label: "Suspendu" },
-              { value: "trial", label: "Essai" },
-            ]}
-          />
-        </div>
-        <div className={styles.toolbarRight}>
+      <PageHeader
+        title="Entreprises"
+        subtitle={`${total} entreprise${total > 1 ? "s" : ""} inscrite${total > 1 ? "s" : ""} sur la plateforme`}
+        extra={
           <Button type="primary" icon={<Plus size={16} />} onClick={openCreateModal}>
             Nouvelle entreprise
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      <FilterBar>
+        <Input
+          prefix={<Search size={16} />}
+          placeholder="Rechercher entreprise ou propriétaire..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          className={styles.toolbarSearch}
+        />
+        <Select
+          value={filterPlan}
+          onChange={setFilterPlan}
+          style={{ minWidth: 140 }}
+          options={[
+            { value: "all", label: "Tous les plans" },
+            ...plans.map((plan) => ({ value: plan.name, label: plan.name })),
+          ]}
+        />
+        <Select
+          value={filterStatus}
+          onChange={setFilterStatus}
+          style={{ minWidth: 140 }}
+          options={[
+            { value: "all", label: "Tous statuts" },
+            { value: "active", label: "Actif" },
+            { value: "suspended", label: "Suspendu" },
+            { value: "trial", label: "Essai" },
+          ]}
+        />
+        <Tooltip title="Le type d'activité (commerce, prestations, indépendant) n'est pas exposé par l'API. Le filtre sera branché avec ce champ.">
+          <span>
+            <Select
+              disabled
+              value="unavailable"
+              style={{ minWidth: 200 }}
+              options={[{ value: "unavailable", label: "Type : non disponible" }]}
+            />
+          </span>
+        </Tooltip>
+      </FilterBar>
 
       {/* Table */}
       <Card variant="borderless" className={styles.tableCard}>
@@ -665,6 +719,18 @@ export default function BackofficeBusinesses() {
           <Table
             dataSource={businesses}
             rowKey="id"
+            loading={loading}
+            locale={{
+              emptyText: hasError ? (
+                <ErrorState
+                  compact
+                  title="Impossible de charger les entreprises"
+                  onRetry={() => void loadBusinesses()}
+                />
+              ) : (
+                <EmptyState compact icon={Building2} title="Aucune entreprise trouvée" />
+              ),
+            }}
             scroll={{ x: "max-content" }}
             pagination={{
               current: page + 1,
@@ -679,7 +745,13 @@ export default function BackofficeBusinesses() {
               },
             }}
             className="dataTable"
-            onRow={(record) => ({ onClick: () => setDetail(record), style: { cursor: "pointer" } })}
+            onRow={(record) => ({
+              onClick: () => setDetail(record),
+              style: { cursor: "pointer" },
+            })}
+            rowClassName={(record) =>
+              record.id === searchParams.get("highlight") ? styles.highlightRow : ""
+            }
             columns={[
               {
                 title: "Entreprise",
@@ -695,6 +767,18 @@ export default function BackofficeBusinesses() {
                       <span className={styles.nameCellSub}>{r.owner}</span>
                     </div>
                   </div>
+                ),
+              },
+              {
+                title: "Type",
+                key: "activityType",
+                width: 150,
+                render: () => (
+                  <Tooltip title="Le type d'activité n'est pas renvoyé par l'API entreprises.">
+                    <span style={{ color: "var(--text-muted, var(--color-text-muted))" }}>
+                      Non disponible
+                    </span>
+                  </Tooltip>
                 ),
               },
               {
@@ -741,7 +825,31 @@ export default function BackofficeBusinesses() {
                 ),
               },
               {
-                title: "Revenu/mois",
+                title: "Utilisateurs",
+                key: "users",
+                width: 110,
+                align: "center",
+                render: (_: unknown, r: Business) => r.usersCount ?? "—",
+              },
+              {
+                title: "Abonnement",
+                key: "subscriptionAmount",
+                width: 140,
+                align: "right",
+                render: (_: unknown, r: Business) =>
+                  r.subscription?.amount != null
+                    ? formatAdminMoney(r.subscription.amount, r.subscription.currency)
+                    : "—",
+              },
+              {
+                title: "Prochaine échéance",
+                key: "nextBilling",
+                width: 140,
+                render: (_: unknown, r: Business) =>
+                  formatAdminDate(r.subscription?.currentPeriodEnd),
+              },
+              {
+                title: "CA marchand",
                 dataIndex: "revenue",
                 width: 130,
                 align: "right",
@@ -751,7 +859,7 @@ export default function BackofficeBusinesses() {
                 title: "Statut",
                 dataIndex: "status",
                 width: 100,
-                render: (s: string) => <Tag color={statusColors[s]}>{statusLabels[s]}</Tag>,
+                render: (s: string) => <StatusTag status={s} />,
               },
               {
                 title: "",
@@ -905,6 +1013,10 @@ export default function BackofficeBusinesses() {
               </div>
             </div>
             <div className={styles.drawerSection}>
+              <span className={styles.drawerSectionTitle}>Fonctionnalités</span>
+              <BusinessFeaturesPanel businessId={detail.id} />
+            </div>
+            <div className={styles.drawerSection}>
               <span className={styles.drawerSectionTitle}>Activité</span>
               <div className={styles.drawerRow}>
                 <span className={styles.drawerLabel}>Boutiques</span>
@@ -917,9 +1029,68 @@ export default function BackofficeBusinesses() {
                 </span>
               </div>
               <div className={styles.drawerRow}>
-                <span className={styles.drawerLabel}>Revenu mensuel</span>
+                <span className={styles.drawerLabel}>CA marchand (mois)</span>
                 <span className={styles.drawerValue}>{detail.revenue}</span>
               </div>
+              <div className={styles.drawerRow}>
+                <span className={styles.drawerLabel}>Abonnement</span>
+                <span className={styles.drawerValue}>
+                  {detail.subscription?.amount != null
+                    ? formatAdminMoney(detail.subscription.amount, detail.subscription.currency)
+                    : "—"}
+                </span>
+              </div>
+            </div>
+            <div className={styles.drawerSection}>
+              <span className={styles.drawerSectionTitle}>Historique financier</span>
+              {financeLoading ? (
+                <Skeleton active paragraph={{ rows: 2 }} />
+              ) : (
+                <>
+                  <Typography.Text type="secondary" style={{ display: "block", marginBottom: 8 }}>
+                    Factures SaaS et tentatives de paiement d'abonnement.
+                  </Typography.Text>
+                  <Table
+                    size="small"
+                    pagination={false}
+                    rowKey="id"
+                    dataSource={invoices}
+                    locale={{ emptyText: "Aucune facture" }}
+                    columns={[
+                      { title: "N°", dataIndex: "number" },
+                      {
+                        title: "Montant",
+                        render: (_, row) => formatAdminMoney(row.amount, row.currency),
+                      },
+                      {
+                        title: "Statut",
+                        dataIndex: "status",
+                        render: (value: string) => <StatusTag status={value} />,
+                      },
+                    ]}
+                  />
+                  <Table
+                    size="small"
+                    pagination={false}
+                    rowKey="intentId"
+                    style={{ marginTop: 12 }}
+                    dataSource={payments}
+                    locale={{ emptyText: "Aucun paiement" }}
+                    columns={[
+                      { title: "Date", dataIndex: "createdAt", render: formatAdminDate },
+                      {
+                        title: "Montant",
+                        render: (_, row) => formatAdminMoney(row.amount, row.currency),
+                      },
+                      {
+                        title: "Statut",
+                        dataIndex: "status",
+                        render: (value: string) => <StatusTag status={value} />,
+                      },
+                    ]}
+                  />
+                </>
+              )}
             </div>
             <div className={styles.drawerSection}>
               <span className={styles.drawerSectionTitle}>

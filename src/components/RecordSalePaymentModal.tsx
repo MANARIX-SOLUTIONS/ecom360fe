@@ -5,6 +5,7 @@ import { listSalePayments, recordSalePayment } from "@/api";
 import type { SalePaymentResponse, SaleResponse } from "@/api";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
+import { formatFCFA } from "@/utils/money";
 
 const METHOD_LABELS: Record<string, string> = {
   cash: t.pos.cash,
@@ -89,8 +90,7 @@ export function RecordSalePaymentModal({ open, sale, onClose, onRecorded }: Prop
             {sale.receiptNumber}
           </Typography.Text>
           <Typography.Text type="secondary">
-            {t.sales.remainingDue}:{" "}
-            <strong>{remaining.toLocaleString("fr-FR")} F</strong>
+            {t.sales.remainingDue}: <strong>{formatFCFA(remaining)}</strong>
           </Typography.Text>
           {sale.dueDate && (
             <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
@@ -140,7 +140,7 @@ export function RecordSalePaymentModal({ open, sale, onClose, onRecorded }: Prop
                       : t.sales.paymentKindInstallment}{" "}
                     ({METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod})
                   </span>
-                  <span>{p.amount.toLocaleString("fr-FR")} F</span>
+                  <span>{formatFCFA(p.amount)}</span>
                 </div>
               ))}
             </div>

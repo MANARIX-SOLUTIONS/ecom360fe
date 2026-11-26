@@ -21,6 +21,7 @@ import {
 import dayjs from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Plus, Wallet, TrendingUp, BarChart3, Tags, Pencil, Trash2 } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Expenses.module.css";
@@ -39,10 +40,7 @@ import {
 } from "@/api";
 import type { ExpenseResponse, ExpenseCategoryResponse } from "@/api";
 import { confirmDelete } from "@/utils/confirmDelete";
-
-function formatFCFA(n: number) {
-  return n.toLocaleString("fr-FR") + " F";
-}
+import { formatFCFA } from "@/utils/money";
 
 const CATEGORY_COLOR_OPTIONS = [
   { value: "blue", label: "Bleu" },
@@ -310,10 +308,11 @@ export default function Expenses() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader
+        title={t.expenses.title}
+        subtitle="Charges enregistrées — distinctes du chiffre d'affaires."
+      />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.expenses.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <Select
             value={filterMonth}

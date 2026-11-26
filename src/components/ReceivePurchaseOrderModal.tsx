@@ -5,6 +5,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { t } from "@/i18n";
+import { formatFCFA } from "@/utils/money";
 import type { PurchaseOrderResponse } from "@/api";
 
 const METHOD_LABELS: Record<string, string> = {
@@ -25,13 +26,7 @@ type Props = {
   }) => void;
 };
 
-export function ReceivePurchaseOrderModal({
-  open,
-  po,
-  submitting,
-  onClose,
-  onConfirm,
-}: Props) {
+export function ReceivePurchaseOrderModal({ open, po, submitting, onClose, onConfirm }: Props) {
   const { canMultiPayment } = usePlanFeatures();
   const total = po?.totalAmount ?? 0;
   const [partialEnabled, setPartialEnabled] = useState(false);
@@ -92,7 +87,7 @@ export function ReceivePurchaseOrderModal({
             {t.purchaseOrders.receiveConfirmDesc}
           </Typography.Paragraph>
           <Typography.Text strong style={{ display: "block", marginBottom: 12 }}>
-            {po.reference} · {total.toLocaleString("fr-FR")} F
+            {po.reference} · {formatFCFA(total)}
           </Typography.Text>
 
           <div
@@ -171,8 +166,7 @@ export function ReceivePurchaseOrderModal({
           )}
 
           <Typography.Text type="secondary" style={{ display: "block" }}>
-            {t.purchaseOrders.remainingToSupplier}:{" "}
-            <strong>{remaining.toLocaleString("fr-FR")} F</strong>
+            {t.purchaseOrders.remainingToSupplier}: <strong>{formatFCFA(remaining)}</strong>
           </Typography.Text>
         </div>
       )}

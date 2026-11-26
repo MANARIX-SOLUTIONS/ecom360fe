@@ -43,6 +43,8 @@ import {
 } from "@/api";
 import type { PurchaseOrderResponse, SupplierPaymentResponse, SupplierResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 
@@ -75,10 +77,6 @@ function isOverdue(isoDate: string | null): boolean {
   const [y, m, d] = isoDate.split("-").map(Number);
   if (!y || !m || !d) return false;
   return new Date(y, m - 1, d) < today;
-}
-
-function formatFcfa(n: number): string {
-  return `${n.toLocaleString("fr-FR")} F`;
 }
 
 /** Un solde positif est une dette envers le fournisseur. */
@@ -293,6 +291,8 @@ export default function SupplierDetail() {
         </Button>
       </div>
 
+      <PageHeader title={t.suppliers.title} subtitle={t.suppliers.subtitle} />
+
       <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
           <span className={styles.heroAvatar}>{getInitials(supplier.name)}</span>
@@ -334,7 +334,7 @@ export default function SupplierDetail() {
               className={styles.heroBalanceAmount}
               style={{ color: supplierBalanceColor(supplier.balance) }}
             >
-              {formatFcfa(supplier.balance)}
+              <MoneyDisplay value={supplier.balance} />
             </span>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               {owed > 0
@@ -415,19 +415,23 @@ export default function SupplierDetail() {
                     title: t.purchaseOrders.total,
                     dataIndex: "totalAmount",
                     align: "right",
-                    render: (v: number) => formatFcfa(v),
+                    render: (v: number) => <MoneyDisplay value={v} />,
                   },
                   {
                     title: t.purchaseOrders.amountPaid,
                     dataIndex: "amountPaid",
                     align: "right",
-                    render: (v: number) => formatFcfa(v ?? 0),
+                    render: (v: number) => <MoneyDisplay value={v ?? 0} />,
                   },
                   {
                     title: t.purchaseOrders.remainingDue,
                     dataIndex: "remainingAmount",
                     align: "right",
-                    render: (v: number) => <Tag color="gold">{formatFcfa(v)}</Tag>,
+                    render: (v: number) => (
+                      <Tag color="gold">
+                        <MoneyDisplay value={v} />
+                      </Tag>
+                    ),
                   },
                   {
                     title: t.purchaseOrders.dueDate,
@@ -505,7 +509,11 @@ export default function SupplierDetail() {
                   title: t.expenses.amount,
                   dataIndex: "amount",
                   align: "right",
-                  render: (v: number) => <Typography.Text strong>{formatFcfa(v)}</Typography.Text>,
+                  render: (v: number) => (
+                    <Typography.Text strong>
+                      <MoneyDisplay value={v} />
+                    </Typography.Text>
+                  ),
                 },
               ]}
             />
@@ -570,7 +578,10 @@ export default function SupplierDetail() {
                 {supplier.name}
               </Typography.Text>
               <Typography.Text type="secondary">
-                {t.suppliers.outstandingBalance}: <strong>{formatFcfa(owed)}</strong>
+                {t.suppliers.outstandingBalance}:{" "}
+                <strong>
+                  <MoneyDisplay value={owed} />
+                </strong>
               </Typography.Text>
             </div>
           </div>
@@ -609,7 +620,10 @@ export default function SupplierDetail() {
             </Form.Item>
           </Form>
           <Typography.Text type="secondary">
-            {t.suppliers.afterThisPayment}: <strong>{formatFcfa(remainingAfterPay)}</strong>
+            {t.suppliers.afterThisPayment}:{" "}
+            <strong>
+              <MoneyDisplay value={remainingAfterPay} />
+            </strong>
           </Typography.Text>
         </div>
       </Modal>

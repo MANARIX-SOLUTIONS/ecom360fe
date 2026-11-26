@@ -11,10 +11,13 @@ import {
   Modal,
   message,
   Descriptions,
+  Alert,
 } from "antd";
 import { ArrowLeft, CheckCircle, Send, XCircle, Wallet } from "lucide-react";
 import dayjs from "dayjs";
 import { t } from "@/i18n";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import styles from "./Clients.module.css";
 import {
   getPurchaseOrder,
@@ -37,13 +40,22 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "error",
 };
 
-function formatFCFA(n: number): string {
-  return new Intl.NumberFormat("fr-FR").format(n) + " F";
-}
-
 function statusLabel(status: string): string {
   const map = t.purchaseOrders.status as Record<string, string>;
   return map[status] ?? status;
+}
+
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  paid: "green",
+  partial: "gold",
+  unpaid: "purple",
+};
+
+function paymentStatusLabel(status: string): string {
+  if (status === "partial") return t.purchaseOrders.paymentStatusPartial;
+  if (status === "unpaid") return t.purchaseOrders.paymentStatusUnpaid;
+  if (status === "paid") return t.purchaseOrders.paymentStatusPaid;
+  return status;
 }
 
 const NEXT_ACTIONS: Record<
@@ -184,25 +196,12 @@ export default function PurchaseOrderDetail() {
         {t.common.back}
       </Button>
 
-      <Card
-        variant="borderless"
-        className={`${styles.card} contentCard`}
-        style={{ marginBottom: 16 }}
-      >
-        <div
-          style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}
-        >
-          <div>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {po.reference}
-            </Typography.Title>
-            <Tag color={STATUS_COLOR[po.status] || "default"} style={{ marginTop: 8 }}>
-              {statusLabel(po.status)}
-            </Tag>
-          </div>
-          {canUpdate &&
-            (actions.length > 0 ||
-              (po.status === "received" && (po.remainingAmount ?? 0) > 0)) && (
+      <PageHeader
+        title={po.reference}
+        subtitle={t.purchaseOrders.subtitle}
+        extra={
+          canUpdate &&
+          (actions.length > 0 || (po.status === "received" && (po.remainingAmount ?? 0) > 0)) ? (
             <Space wrap>
               {actions.map((a) => (
                 <Button
@@ -227,17 +226,45 @@ export default function PurchaseOrderDetail() {
                 </Button>
               ))}
               {po.status === "received" && (po.remainingAmount ?? 0) > 0 && (
-                <Button
-                  type="primary"
-                  icon={<Wallet size={16} />}
-                  onClick={() => setPayOpen(true)}
-                >
+                <Button type="primary" icon={<Wallet size={16} />} onClick={() => setPayOpen(true)}>
                   {t.purchaseOrders.recordPayment}
                 </Button>
               )}
             </Space>
-          )}
-        </div>
+          ) : undefined
+        }
+      />
+
+      <Card
+        variant="borderless"
+        className={`${styles.card} contentCard`}
+        style={{ marginBottom: 16 }}
+      >
+        <Space wrap size={[8, 8]}>
+          <Tag color={STATUS_COLOR[po.status] || "default"}>{statusLabel(po.status)}</Tag>
+          {po.status === "received" ? (
+            <Tag color={PAYMENT_STATUS_COLOR[po.paymentStatus] || "default"}>
+              {paymentStatusLabel(po.paymentStatus)}
+            </Tag>
+          ) : null}
+        </Space>
+
+        {po.status === "draft" ? (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginTop: 16 }}
+            message={t.purchaseOrders.draftHint}
+          />
+        ) : null}
+        {po.status === "ordered" ? (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginTop: 16 }}
+            message={t.purchaseOrders.orderedHint}
+          />
+        ) : null}
 
         <Descriptions
           column={{ xs: 1, sm: 2 }}
@@ -261,21 +288,25 @@ export default function PurchaseOrderDetail() {
             {
               key: "total",
               label: t.purchaseOrders.total,
-              children: <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>,
+              children: (
+                <Typography.Text strong>
+                  <MoneyDisplay value={po.totalAmount} />
+                </Typography.Text>
+              ),
             },
             ...(po.status === "received"
               ? [
                   {
                     key: "paid",
                     label: t.purchaseOrders.amountPaid,
-                    children: formatFCFA(po.amountPaid ?? 0),
+                    children: <MoneyDisplay value={po.amountPaid ?? 0} />,
                   },
                   {
                     key: "remaining",
                     label: t.purchaseOrders.remainingDue,
                     children: (
                       <Typography.Text strong>
-                        {formatFCFA(po.remainingAmount ?? 0)}
+                        <MoneyDisplay value={po.remainingAmount ?? 0} />
                       </Typography.Text>
                     ),
                   },
@@ -337,13 +368,13 @@ export default function PurchaseOrderDetail() {
                 title: t.purchaseOrders.unitCost,
                 dataIndex: "unitCost",
                 align: "right",
-                render: (n: number) => formatFCFA(n),
+                render: (n: number) => <MoneyDisplay value={n} />,
               },
               {
                 title: t.purchaseOrders.lineTotal,
                 dataIndex: "lineTotal",
                 align: "right",
-                render: (n: number) => formatFCFA(n),
+                render: (n: number) => <MoneyDisplay value={n} />,
               },
             ]}
             summary={() => (
@@ -352,7 +383,9 @@ export default function PurchaseOrderDetail() {
                   <Typography.Text strong>{t.purchaseOrders.total}</Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={1} align="right">
-                  <Typography.Text strong>{formatFCFA(po.totalAmount)}</Typography.Text>
+                  <Typography.Text strong>
+                    <MoneyDisplay value={po.totalAmount} />
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}

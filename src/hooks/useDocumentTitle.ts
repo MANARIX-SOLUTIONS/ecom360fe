@@ -14,6 +14,7 @@ const TITLE_MAP: Record<string, string> = {
   "/sales": "Ventes",
   "/receipt": "Reçu",
   "/products": "Produits",
+  "/stock": "Stock",
   "/clients": "Clients",
   "/suppliers": "Fournisseurs",
   "/purchase-orders": "Bons de commande",
@@ -34,6 +35,15 @@ const TITLE_MAP: Record<string, string> = {
   "/backoffice/businesses": "Entreprises",
   "/backoffice/users": "Utilisateurs",
   "/backoffice/system": "Système",
+  "/backoffice/demo-requests": "Demandes démo",
+  "/backoffice/payments": "Paiements",
+  "/backoffice/audit": "Journal d'audit",
+  "/backoffice/plans": "Plans",
+  "/backoffice/invoices": "Factures",
+  "/backoffice/revenue": "Analytique",
+  "/backoffice/stores": "Boutiques",
+  "/backoffice/notifications": "Notifications",
+  "/backoffice/roles": "Rôles",
 };
 
 // Pages that set their own title (e.g. Receipt) - we skip to avoid flash

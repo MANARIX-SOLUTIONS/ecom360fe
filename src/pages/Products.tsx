@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   Card,
   Input,
@@ -10,6 +10,7 @@ import {
   Form,
   InputNumber,
   Select,
+  Segmented,
   Typography,
   Skeleton,
   message,
@@ -19,6 +20,7 @@ import {
 } from "antd";
 import { CurrencyInput } from "@/components/CurrencyInput";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Search, Plus, Pencil, Package, Trash2, Tags, Upload as UploadIcon } from "lucide-react";
 import { t } from "@/i18n";
 import styles from "./Products.module.css";
@@ -48,6 +50,8 @@ import {
 import type { StockLevelResponse, CategoryResponse, BusinessUser } from "@/api";
 import { ProductUnitFields } from "@/components/ProductUnitFields";
 import { isServiceUnit } from "@/utils/serviceUnit";
+import { formatFCFA } from "@/utils/money";
+import { STOCK_STATUS_COLOR, STOCK_STATUS_LABEL, stockDisplayStatus } from "@/utils/stockStatus";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
 import { confirmDelete } from "@/utils/confirmDelete";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -77,14 +81,12 @@ type Product = {
   unit: string;
 };
 
-function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
-  if (stock <= 0) return "critical";
-  if (stock <= minStock) return "low";
-  return "ok";
-}
-
 export default function Products() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const typeParam = searchParams.get("type");
+  const catalogKind: "all" | "goods" | "service" =
+    typeParam === "service" ? "service" : typeParam === "goods" ? "goods" : "all";
   const { activeStore } = useStore();
   const { matrixCan } = useMatrixCan();
   const { profile } = useBusinessProfile();
@@ -97,6 +99,8 @@ export default function Products() {
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const [stockForm] = Form.useForm();
   const [form] = Form.useForm();
+  const watchedUnit = Form.useWatch("unit", form);
+  const isFormService = isServiceUnit(watchedUnit);
   const [employees, setEmployees] = useState<BusinessUser[]>([]);
 
   useEffect(() => {
@@ -113,6 +117,8 @@ export default function Products() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const fetchPage = catalogKind === "all" ? page : 0;
+  const fetchSize = catalogKind === "all" ? pageSize : 200;
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [productsAtLimit, setProductsAtLimit] = useState(false);
   const [categoriesDrawerOpen, setCategoriesDrawerOpen] = useState(false);
@@ -169,8 +175,8 @@ export default function Products() {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
           listProducts({
-            page,
-            size: pageSize,
+            page: fetchPage,
+            size: fetchSize,
             search: searchToUse || undefined,
             storeId: sharedCatalog ? undefined : activeStore?.id,
           }),
@@ -222,7 +228,7 @@ export default function Products() {
         if (!silent && isInitialLoad && !isCancelled?.()) setLoading(false);
       }
     },
-    [debouncedSearch, activeStore?.id, fetchCategories, page, pageSize, sharedCatalog]
+    [debouncedSearch, activeStore?.id, fetchCategories, fetchPage, fetchSize, sharedCatalog]
   );
 
   useEffect(() => {
@@ -234,13 +240,24 @@ export default function Products() {
   }, [fetchData]);
 
   const filtered = products.filter((p) => {
-    const status = stockStatus(p.stock, p.minStock);
-    return (
+    const status = stockDisplayStatus({
+      unit: p.unit,
+      quantity: p.stock,
+      minStock: p.minStock,
+    });
+    const stockOk =
       filterStock === "all" ||
-      (filterStock === "low" && (status === "low" || status === "critical")) ||
-      (filterStock === "ok" && status === "ok")
-    );
+      (status !== "untracked" &&
+        ((filterStock === "low" && (status === "low" || status === "out")) ||
+          (filterStock === "ok" && status === "available")));
+    const kindOk =
+      catalogKind === "all" ||
+      (catalogKind === "service" && isServiceUnit(p.unit)) ||
+      (catalogKind === "goods" && !isServiceUnit(p.unit));
+    return stockOk && kindOk;
   });
+  const tableRows =
+    catalogKind === "all" ? filtered : filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   const resetImageState = () => {
     setImageFile(null);
@@ -251,6 +268,9 @@ export default function Products() {
   const openAdd = () => {
     setEditing(null);
     form.resetFields();
+    if (catalogKind === "service") {
+      form.setFieldsValue({ unit: "prestation" });
+    }
     resetImageState();
     setModalOpen(true);
   };
@@ -336,8 +356,8 @@ export default function Products() {
       categoryId: p.categoryId || undefined,
       costPrice: p.costPrice,
       salePrice: p.salePrice,
-      initialStock: p.stock,
-      minStockAlert: p.minStock,
+      initialStock: isServiceUnit(p.unit) ? undefined : p.stock,
+      minStockAlert: isServiceUnit(p.unit) ? undefined : p.minStock,
       unit: p.unit || "pièce",
       performerBusinessUserIds,
     });
@@ -392,12 +412,13 @@ export default function Products() {
             unit: values.unit || "pièce",
             isActive: true,
             storeId: activeStore.id,
-            initialStock: values.initialStock ?? 0,
-            minStock: values.minStockAlert ?? 0,
+            initialStock: isServiceUnit(values.unit) ? 0 : (values.initialStock ?? 0),
+            minStock: isServiceUnit(values.unit) ? 0 : (values.minStockAlert ?? 0),
           });
           productId = created.id;
           if (
             !sharedCatalog &&
+            !isServiceUnit(values.unit) &&
             values.initialStock != null &&
             values.initialStock > 0
           ) {
@@ -431,6 +452,7 @@ export default function Products() {
   };
 
   const openStockAdjust = (p: Product) => {
+    if (isServiceUnit(p.unit)) return;
     setStockProduct(p);
     stockForm.setFieldsValue({
       newStock: p.stock,
@@ -479,10 +501,40 @@ export default function Products() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader
+        title={
+          catalogKind === "service"
+            ? t.pos.catalogKindServices
+            : catalogKind === "goods"
+              ? t.pos.catalogKindGoods
+              : t.products.title
+        }
+        subtitle={
+          catalogKind === "service"
+            ? "Services vendus en caisse, sans suivi de stock."
+            : catalogKind === "goods"
+              ? "Articles physiques suivis en stock."
+              : "Produits et prestations de votre catalogue."
+        }
+        extra={
+          <Segmented
+            value={catalogKind}
+            onChange={(value) => {
+              setPage(0);
+              setFilterStock("all");
+              if (value === "service") setSearchParams({ type: "service" });
+              else if (value === "goods") setSearchParams({ type: "goods" });
+              else setSearchParams({});
+            }}
+            options={[
+              { label: t.pos.catalogKindAll, value: "all" },
+              { label: t.pos.catalogKindGoods, value: "goods" },
+              { label: t.pos.catalogKindServices, value: "service" },
+            ]}
+          />
+        }
+      />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.products.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <div className={styles.filters}>
             {(matrixCan("CATEGORIES_CREATE", "products") ||
@@ -504,16 +556,18 @@ export default function Products() {
               allowClear
               className={styles.searchInput}
             />
-            <Select
-              value={filterStock}
-              onChange={setFilterStock}
-              options={[
-                { value: "all", label: "Tous" },
-                { value: "low", label: t.products.lowStock },
-                { value: "ok", label: "Stock OK" },
-              ]}
-              className={styles.filterSelect}
-            />
+            {catalogKind !== "service" ? (
+              <Select
+                value={filterStock}
+                onChange={setFilterStock}
+                options={[
+                  { value: "all", label: "Tous" },
+                  { value: "low", label: t.products.lowStock },
+                  { value: "ok", label: "Stock OK" },
+                ]}
+                className={styles.filterSelect}
+              />
+            ) : null}
           </div>
           {productsAtLimit ? (
             <Typography.Text type="secondary">
@@ -521,7 +575,7 @@ export default function Products() {
             </Typography.Text>
           ) : matrixCan("PRODUCTS_CREATE", "products") ? (
             <Button type="primary" icon={<Plus size={18} />} onClick={openAdd}>
-              {t.products.addProduct}
+              {catalogKind === "service" ? "Ajouter une prestation" : t.products.addProduct}
             </Button>
           ) : null}
         </div>
@@ -550,12 +604,12 @@ export default function Products() {
         ) : (
           <div className="tableResponsive">
             <Table
-              dataSource={filtered}
+              dataSource={tableRows}
               rowKey="id"
               pagination={{
                 current: page + 1,
                 pageSize,
-                total,
+                total: catalogKind === "all" ? total : filtered.length,
                 showSizeChanger: true,
                 pageSizeOptions: ["10", "20", "50"],
                 onChange: (p, size) => {
@@ -604,6 +658,13 @@ export default function Products() {
                 },
                 { title: t.common.name, dataIndex: "name" },
                 {
+                  title: "Type",
+                  dataIndex: "unit",
+                  width: 120,
+                  render: (unit: string) =>
+                    isServiceUnit(unit) ? <Tag color="purple">Prestation</Tag> : <Tag>Produit</Tag>,
+                },
+                {
                   title: t.products.category,
                   dataIndex: "category",
                   width: 140,
@@ -620,21 +681,30 @@ export default function Products() {
                   className: styles.priceColumn,
                   sorter: (a: Product, b: Product) => a.salePrice - b.salePrice,
                   render: (v: number) => (
-                    <span className={`amount ${styles.priceCell}`}>
-                      {v.toLocaleString("fr-FR")} F
-                    </span>
+                    <span className={`amount ${styles.priceCell}`}>{formatFCFA(v)}</span>
                   ),
                 },
                 {
                   title: "Stock",
                   dataIndex: "stock",
-                  width: 100,
-                  sorter: (a: Product, b: Product) => a.stock - b.stock,
+                  width: 110,
+                  sorter: (a: Product, b: Product) => {
+                    const aSvc = isServiceUnit(a.unit);
+                    const bSvc = isServiceUnit(b.unit);
+                    if (aSvc !== bSvc) return aSvc ? 1 : -1;
+                    return a.stock - b.stock;
+                  },
                   render: (stock: number, r: Product) => {
-                    const status = stockStatus(stock, r.minStock);
-                    const color =
-                      status === "critical" ? "error" : status === "low" ? "warning" : "success";
-                    return <Tag color={color}>{stock}</Tag>;
+                    const status = stockDisplayStatus({
+                      unit: r.unit,
+                      quantity: stock,
+                      minStock: r.minStock,
+                    });
+                    return (
+                      <Tag color={STOCK_STATUS_COLOR[status]}>
+                        {status === "untracked" ? STOCK_STATUS_LABEL.untracked : stock}
+                      </Tag>
+                    );
                   },
                 },
                 {
@@ -647,7 +717,7 @@ export default function Products() {
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                      {matrixCan("STOCK_ADJUST", "products") && (
+                      {!isServiceUnit(r.unit) && matrixCan("STOCK_ADJUST", "products") && (
                         <Button
                           type="text"
                           size="small"
@@ -814,21 +884,25 @@ export default function Products() {
           >
             <CurrencyInput min={0} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item
-            name="initialStock"
-            label={t.products.initialStock}
-            rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
-          >
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            name="minStockAlert"
-            label={t.products.minStockAlert}
-            rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
-          >
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
           <ProductUnitFields form={form} employees={employees} />
+          {!isFormService && !editing ? (
+            <Form.Item
+              name="initialStock"
+              label={t.products.initialStock}
+              rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+          ) : null}
+          {!isFormService ? (
+            <Form.Item
+              name="minStockAlert"
+              label={t.products.minStockAlert}
+              rules={[{ type: "number", min: 0, message: t.validation.numberMin }]}
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+          ) : null}
         </Form>
       </Modal>
 

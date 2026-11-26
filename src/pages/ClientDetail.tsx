@@ -23,6 +23,8 @@ import { ResourceNotFound } from "@/components/ResourceNotFound";
 import { canRecordClientPayment, creditBalanceCssVar } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 import { confirmDelete } from "@/utils/confirmDelete";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 
 function getInitials(name: string) {
   return name
@@ -218,6 +220,8 @@ export default function ClientDetail() {
         </Button>
       </div>
 
+      <PageHeader title="Client" subtitle="Historique, crédits et encaissements." />
+
       {/* Hero summary card */}
       <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
@@ -251,7 +255,7 @@ export default function ClientDetail() {
             <span className={styles.heroBalanceLabel}>{t.clients.outstandingBalance}</span>
             <span className={styles.heroBalanceAmount} style={{ color: balanceColor }}>
               {client.creditBalance > 0 ? "+" : ""}
-              {client.creditBalance.toLocaleString("fr-FR")} F
+              <MoneyDisplay value={client.creditBalance} />
             </span>
           </div>
           <div className={styles.heroActions}>
@@ -311,13 +315,15 @@ export default function ClientDetail() {
                 {
                   title: t.common.total,
                   dataIndex: "total",
-                  render: (v: number) => `${v.toLocaleString("fr-FR")} F`,
+                  render: (v: number) => <MoneyDisplay value={v} />,
                 },
                 {
                   title: t.sales.remainingDue,
                   dataIndex: "remainingAmount",
                   render: (v: number) => (
-                    <Tag color="gold">{v.toLocaleString("fr-FR")} F</Tag>
+                    <Tag color="gold">
+                      <MoneyDisplay value={v} />
+                    </Tag>
                   ),
                 },
                 {
@@ -358,7 +364,11 @@ export default function ClientDetail() {
                 {
                   title: t.expenses.amount,
                   dataIndex: "amount",
-                  render: (v: number) => <Tag color="success">+{v.toLocaleString("fr-FR")} F</Tag>,
+                  render: (v: number) => (
+                    <Tag color="success">
+                      +<MoneyDisplay value={v} />
+                    </Tag>
+                  ),
                 },
               ]}
             />
@@ -422,7 +432,9 @@ export default function ClientDetail() {
               </Typography.Text>
               <Typography.Text type="secondary">
                 {t.clients.outstandingBalance}:{" "}
-                <strong>{client.creditBalance.toLocaleString("fr-FR")} F</strong>
+                <strong>
+                  <MoneyDisplay value={client.creditBalance} />
+                </strong>
               </Typography.Text>
             </div>
           </div>

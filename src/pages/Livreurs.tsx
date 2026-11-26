@@ -29,6 +29,7 @@ import {
 import type { CourierResponse, CourierStatsResponse } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { confirmDelete } from "@/utils/confirmDelete";
 
 function getInitials(name: string) {
@@ -110,10 +111,8 @@ export default function Livreurs() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader title={t.livreurs.title} subtitle="Équipe de livraison rattachée à vos ventes." />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.livreurs.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}

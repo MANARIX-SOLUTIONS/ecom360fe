@@ -41,8 +41,8 @@ export function SetupChecklist({
       {
         key: "product",
         icon: Package,
-        title: "Ajouter des produits",
-        desc: "Importez ou créez votre catalogue",
+        title: "Ajouter un produit ou une prestation",
+        desc: "Créez votre catalogue commerce ou services",
         path: "/products",
         done: hasProducts,
       },

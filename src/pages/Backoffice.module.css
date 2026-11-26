@@ -1,7 +1,7 @@
 /* ========== Shared ========== */
 .page {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding-bottom: 32px;
 }
 
@@ -569,6 +569,10 @@
     padding-left: 16px;
     padding-right: 16px;
   }
+}
+
+.highlightRow td {
+  background: rgba(66, 155, 209, 0.08) !important;
 }
 
 @media (max-width: 480px) {

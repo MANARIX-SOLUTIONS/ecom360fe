@@ -24,6 +24,7 @@ const BackofficeAudit = lazy(() => import("./pages/BackofficeAudit"));
 const BackofficeSystem = lazy(() => import("./pages/BackofficeSystem"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Inventory = lazy(() => import("./pages/Inventory"));
 const POS = lazy(() => import("./pages/POS"));
 const Sales = lazy(() => import("./pages/Sales"));
 const Receipt = lazy(() => import("./pages/Receipt"));
@@ -51,6 +52,13 @@ const More = lazy(() => import("./pages/More"));
 const DemoRequest = lazy(() => import("./pages/DemoRequest"));
 const BackofficeDemoRequests = lazy(() => import("./pages/BackofficeDemoRequests"));
 const BackofficeSubscriptionPayments = lazy(() => import("./pages/BackofficeSubscriptionPayments"));
+const BackofficePlans = lazy(() => import("./pages/BackofficePlans"));
+const BackofficeInvoices = lazy(() => import("./pages/BackofficeInvoices"));
+const BackofficeRevenue = lazy(() => import("./pages/BackofficeRevenue"));
+const BackofficeStores = lazy(() => import("./pages/BackofficeStores"));
+const BackofficeNotifications = lazy(() => import("./pages/BackofficeNotifications"));
+const BackofficeRoles = lazy(() => import("./pages/BackofficeRoles"));
+const BackofficeV2App = lazy(() => import("./backoffice-v2"));
 
 function PageLoader() {
   return (
@@ -196,6 +204,16 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <RequirePermission permission="products">
                   <ProductDetail />
+                </RequirePermission>
+              </Suspense>
+            }
+          />
+          <Route
+            path="stock"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <RequirePermission permission="products">
+                  <Inventory />
                 </RequirePermission>
               </Suspense>
             }
@@ -418,6 +436,14 @@ export default function App() {
           />
         </Route>
         <Route
+          path="backoffice/v2/*"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <BackofficeV2App />
+            </Suspense>
+          }
+        />
+        <Route
           path="backoffice"
           element={
             <RequirePermission permission="backoffice">
@@ -480,6 +506,54 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <BackofficeSystem />
+              </Suspense>
+            }
+          />
+          <Route
+            path="plans"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficePlans />
+              </Suspense>
+            }
+          />
+          <Route
+            path="invoices"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeInvoices />
+              </Suspense>
+            }
+          />
+          <Route
+            path="revenue"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeRevenue />
+              </Suspense>
+            }
+          />
+          <Route
+            path="stores"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeStores />
+              </Suspense>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeNotifications />
+              </Suspense>
+            }
+          />
+          <Route
+            path="roles"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <BackofficeRoles />
               </Suspense>
             }
           />

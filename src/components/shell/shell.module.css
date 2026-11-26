@@ -1,0 +1,160 @@
+.searchTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+  min-width: 220px;
+  max-width: 360px;
+  width: min(360px, 100%);
+}
+
+.searchTrigger:hover {
+  border-color: var(--v2-border-strong);
+  color: var(--color-text-secondary);
+}
+
+.searchLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 14px;
+}
+
+.searchKbd {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.searchModal :global(.ant-modal-content) {
+  padding: 12px 12px 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.searchResults {
+  max-height: min(420px, 58vh);
+  margin-top: 8px;
+  overflow: auto;
+}
+
+.searchGroup {
+  margin-top: 8px;
+}
+
+.searchGroupLabel {
+  display: block;
+  margin: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.searchHit {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--color-text-muted);
+}
+
+.searchHit:hover,
+.searchHit:focus-visible,
+.searchHitActive {
+  background: var(--v2-primary-soft);
+  color: var(--color-text);
+}
+
+.searchHitMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.searchHitTitle {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchHitMeta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.searchHint,
+.searchEmpty {
+  margin: 12px 10px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.searchFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 8px -12px 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.searchFooter kbd {
+  margin-right: 4px;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  font-size: 11px;
+}
+
+.quickCreateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 767px) {
+  .searchTrigger {
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .searchLabel,
+  .searchKbd {
+    display: none;
+  }
+}
