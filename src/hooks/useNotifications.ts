@@ -1,5 +1,10 @@
 import { useSyncExternalStore, useCallback, useEffect } from "react";
-import { getUnreadNotificationCount, listNotifications, markNotificationRead } from "@/api";
+import {
+  getUnreadNotificationCount,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/api";
 import type { NotificationResponse } from "@/api";
 import { createSharedStore } from "@/hooks/createSharedStore";
 
@@ -7,6 +12,7 @@ type NotificationsState = {
   notifications: NotificationResponse[];
   unreadCount: number;
   loading: boolean;
+  hasError: boolean;
 };
 
 type UseNotificationsOptions = {
@@ -20,11 +26,17 @@ const notificationsStore = createSharedStore<NotificationsState>({
   notifications: [],
   unreadCount: 0,
   loading: false,
+  hasError: false,
 });
 
 async function fetchNotifications(listSize = DEFAULT_LIST_SIZE): Promise<void> {
   if (!localStorage.getItem("ecom360_access_token")) {
-    notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
+    notificationsStore.setState({
+      notifications: [],
+      unreadCount: 0,
+      loading: false,
+      hasError: false,
+    });
     return;
   }
   notificationsStore.setState((s) => (s.loading ? s : { ...s, loading: true }));
@@ -38,23 +50,34 @@ async function fetchNotifications(listSize = DEFAULT_LIST_SIZE): Promise<void> {
         notifications: all.content,
         unreadCount: unreadCountValue,
         loading: false,
+        hasError: false,
       });
     } catch {
-      notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
+      notificationsStore.setState({
+        notifications: [],
+        unreadCount: 0,
+        loading: false,
+        hasError: true,
+      });
     }
   });
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("ecom360:auth-expired", () => {
-    notificationsStore.setState({ notifications: [], unreadCount: 0, loading: false });
+    notificationsStore.setState({
+      notifications: [],
+      unreadCount: 0,
+      loading: false,
+      hasError: false,
+    });
   });
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const { listSize = DEFAULT_LIST_SIZE, pollingIntervalMs = 0 } = options;
 
-  const { notifications, unreadCount, loading } = useSyncExternalStore(
+  const { notifications, unreadCount, loading, hasError } = useSyncExternalStore(
     notificationsStore.subscribe,
     notificationsStore.getSnapshot,
     notificationsStore.getSnapshot
@@ -87,11 +110,26 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
   }, []);
 
+  const markAllRead = useCallback(async () => {
+    try {
+      await markAllNotificationsRead();
+      notificationsStore.setState((s) => ({
+        ...s,
+        notifications: s.notifications.map((n) => ({ ...n, isRead: true })),
+        unreadCount: 0,
+      }));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return {
     notifications,
     unreadCount,
     loading,
+    hasError,
     refetch,
     markRead,
+    markAllRead,
   };
 }

@@ -1,345 +1,526 @@
-import { useState, useEffect, useCallback } from "react";
-import { Card, Typography, Row, Col, Tag, Skeleton, Button, message } from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Segmented, Table, Tooltip, message } from "antd";
+import { Download, RefreshCw } from "lucide-react";
 import {
-  Building2,
-  Users,
-  TrendingUp,
-  Activity,
-  UserPlus,
-  Store,
-  CreditCard,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  ChevronRight,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { getAdminStats } from "@/api/backoffice";
-import { t } from "@/i18n";
-import styles from "./Backoffice.module.css";
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as ChartTooltip,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  getAdminRevenue,
+  getAdminStats,
+  getAdminSystemHealth,
+  listAdminAuditLogs,
+  listAdminPlans,
+  type AdminPlanItem,
+  type AdminRevenuePoint,
+  type AdminStats,
+  type AdminSystemHealth,
+  type AuditLogEntry,
+} from "@/api/backoffice";
+import { labelFromChanges, resolveAuditNames, type AuditNameIndex } from "@/backoffice/auditLabels";
+import { DateText } from "@/backoffice/components/DateText";
+import { EmptyState } from "@/backoffice/components/EmptyState";
+import { ErrorState } from "@/backoffice/components/ErrorState";
+import { KpiCard } from "@/backoffice/components/KpiCard";
+import { MoneyText } from "@/backoffice/components/MoneyText";
+import { PlanBadge } from "@/backoffice/components/PlanBadge";
+import { SkeletonKpi, SkeletonRows } from "@/backoffice/components/Skeleton";
+import { Timeline } from "@/backoffice/components/Timeline";
+import { formatDate } from "@/backoffice/format/date";
+import { formatMoney } from "@/backoffice/format/money";
+import { formatNumber } from "@/backoffice/format/number";
+import { useBackofficeI18n } from "@/backoffice/useBackofficePreferences";
+import { buildOverviewCsv, downloadCsv } from "@/utils/adminCsv";
+import { periodDelta } from "@/utils/adminMoney";
+import { parseAdminPeriodKey, resolveAdminPeriod } from "@/utils/adminPeriod";
+import { formatAuditAction } from "@/utils/auditAction";
+import styles from "./BackofficeOverview.module.css";
 
-const planColors: Record<string, string> = {
-  Starter: "var(--color-text-muted)",
-  Pro: "var(--color-primary)",
-  Business: "var(--color-warning)",
-};
+type OverviewPeriod = "7d" | "30d" | "90d" | "12m";
 
-function formatFCFA(n: number): string {
-  return `${n.toLocaleString("fr-FR")} F`;
+const PERIODS: OverviewPeriod[] = ["7d", "30d", "90d", "12m"];
+
+function asOverviewPeriod(value: string | null): OverviewPeriod {
+  const parsed = parseAdminPeriodKey(value, "30d");
+  return PERIODS.includes(parsed as OverviewPeriod) ? (parsed as OverviewPeriod) : "30d";
 }
 
-const recentActivity = [
-  {
-    id: "1",
-    icon: UserPlus,
-    color: "var(--color-primary)",
-    title: "Nouvel utilisateur",
-    desc: "Inscription récente",
-    time: "—",
-  },
-  {
-    id: "2",
-    icon: Building2,
-    color: "var(--color-accent)",
-    title: "Nouvelle entreprise",
-    desc: "Création récente",
-    time: "—",
-  },
-  {
-    id: "3",
-    icon: AlertTriangle,
-    color: "var(--color-warning)",
-    title: "Abonnement",
-    desc: "Voir les entreprises",
-    time: "—",
-  },
-  {
-    id: "4",
-    icon: CheckCircle,
-    color: "var(--color-success)",
-    title: "Paiement",
-    desc: "Voir les entreprises",
-    time: "—",
-  },
-  {
-    id: "5",
-    icon: Store,
-    color: "var(--color-text-muted)",
-    title: "Boutique",
-    desc: "Voir les entreprises",
-    time: "—",
-  },
-];
+function planColor(name: string): string {
+  const key = name.toLowerCase();
+  if (key.includes("business")) return "var(--plan-business)";
+  if (key.includes("starter")) return "var(--plan-starter)";
+  if (key.includes("pro")) return "var(--plan-pro)";
+  return "var(--text-subtle)";
+}
+
+function hasCollections(points: AdminRevenuePoint[]): boolean {
+  return points.some((point) => point.collected > 0 || point.outstanding > 0 || point.failed > 0);
+}
 
 export default function Backoffice() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useBackofficeI18n();
+  const [period, setPeriod] = useState<OverviewPeriod>(
+    asOverviewPeriod(searchParams.get("period"))
+  );
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<Awaited<ReturnType<typeof getAdminStats>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [revenue, setRevenue] = useState<AdminRevenuePoint[]>([]);
+  const [activity, setActivity] = useState<AuditLogEntry[]>([]);
+  const [names, setNames] = useState<AuditNameIndex>({ users: {}, businesses: {} });
+  const [catalog, setCatalog] = useState<AdminPlanItem[]>([]);
+  const [planView, setPlanView] = useState<"plans" | "types">("plans");
+  const [health, setHealth] = useState<AdminSystemHealth | null>(null);
+  const [rank, setRank] = useState<"gmv" | "subscription">("subscription");
+  const hasStats = useRef(false);
 
-  const loadStats = useCallback(async () => {
+  const range = useMemo(() => resolveAdminPeriod(period), [period]);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const data = await getAdminStats();
-      setStats(data);
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : t.backoffice.statsLoadError);
+      const [nextStats, nextRevenue, nextActivity, nextHealth] = await Promise.all([
+        getAdminStats({ from: range.from, to: range.to }),
+        getAdminRevenue({ from: range.from, to: range.to }),
+        listAdminAuditLogs({ page: 0, size: 8 }),
+        getAdminSystemHealth().catch(() => null),
+      ]);
+      setStats(nextStats);
+      hasStats.current = true;
+      setRevenue(nextRevenue.points ?? []);
+      const events = nextActivity.content ?? [];
+      setActivity(events);
+      setNames(await resolveAuditNames(events).catch(() => ({ users: {}, businesses: {} })));
+      try {
+        setCatalog(await listAdminPlans());
+      } catch {
+        setCatalog([]);
+      }
+      setHealth(nextHealth);
+    } catch (caught) {
+      if (hasStats.current) message.error(t.overview.refreshError);
+      else setError(caught instanceof Error ? caught.message : t.overview.statsErrorHint);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [range.from, range.to, t.overview.refreshError, t.overview.statsErrorHint]);
 
   useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+    void load();
+  }, [load]);
 
-  const kpis = stats
-    ? [
-        {
-          key: "businesses",
-          label: "Entreprises",
-          value: String(stats.businessesCount),
-          icon: Building2,
-          color: "var(--color-primary)",
-          path: "/backoffice/businesses",
-        },
-        {
-          key: "users",
-          label: "Utilisateurs",
-          value: String(stats.usersCount),
-          icon: Users,
-          color: "var(--color-accent)",
-          path: "/backoffice/users",
-        },
-        {
-          key: "revenue",
-          label: "Revenu mensuel",
-          value: formatFCFA(stats.monthlyRevenue),
-          icon: CreditCard,
-          color: "var(--color-success)",
-          path: "/backoffice/businesses",
-        },
-        {
-          key: "stores",
-          label: "Boutiques actives",
-          value: String(stats.storesCount),
-          icon: Store,
-          color: "var(--color-warning)",
-          path: "/backoffice/businesses",
-        },
-      ]
-    : [];
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("period", period);
+        next.delete("from");
+        next.delete("to");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [period, setSearchParams]);
 
-  if (loading || !stats) {
+  const currency = stats?.currency ?? "XOF";
+  const degradedCount =
+    health?.services.filter((service) => service.status === "degraded" || service.status === "down")
+      .length ?? 0;
+  const actions = [
+    {
+      key: "demos",
+      show: (stats?.pendingDemoRequestsCount ?? 0) > 0,
+      label: t.overview.demos,
+      count: stats?.pendingDemoRequestsCount ?? 0,
+      href: "/backoffice/demo-requests?status=pending",
+      tone: "warn" as const,
+    },
+    {
+      key: "failed",
+      show: (stats?.failedPaymentsCount ?? 0) > 0,
+      label: t.overview.failedPayments,
+      count: stats?.failedPaymentsCount ?? 0,
+      href: "/backoffice/payments?status=failed",
+      tone: "danger" as const,
+    },
+    {
+      key: "health",
+      show: degradedCount > 0,
+      label: t.overview.degraded,
+      count: degradedCount,
+      href: "/backoffice/system",
+      tone: "warn" as const,
+    },
+  ].filter((item) => item.show);
+
+  const ranked = useMemo(() => {
+    const rows = [...(stats?.topBusinesses ?? [])];
+    rows.sort((left, right) =>
+      rank === "gmv"
+        ? right.revenue - left.revenue
+        : (right.subscriptionAmount ?? 0) - (left.subscriptionAmount ?? 0)
+    );
+    return rows;
+  }, [rank, stats?.topBusinesses]);
+
+  const planRows = useMemo(() => {
+    const distribution = stats?.planDistribution ?? [];
+    const known = new Map(distribution.map((entry) => [entry.plan.toLowerCase(), entry]));
+    const namesInCatalog = catalog
+      .map((plan) => plan.name)
+      .filter((name) => name.trim().length > 0);
+    const ordered = [...namesInCatalog];
+    for (const entry of distribution) {
+      if (!ordered.some((name) => name.toLowerCase() === entry.plan.toLowerCase())) {
+        ordered.push(entry.plan);
+      }
+    }
+    if (ordered.length === 0) return distribution;
+    return ordered.map((name) => known.get(name.toLowerCase()) ?? { plan: name, count: 0, pct: 0 });
+  }, [catalog, stats?.planDistribution]);
+
+  const chartPoints = revenue.map((point) => ({
+    ...point,
+    label: formatDate(point.date),
+  }));
+
+  if (loading && !stats) {
     return (
-      <div className={`${styles.page} pageWrapper`}>
-        <div className={styles.pageHeader}>
-          <Skeleton.Input active style={{ width: 240, height: 28 }} />
-          <Skeleton.Input active style={{ width: 180, height: 18, marginTop: 8 }} />
-        </div>
-        <Row gutter={[16, 16]}>
-          {[1, 2, 3, 4].map((i) => (
-            <Col xs={12} sm={6} key={i}>
-              <Card variant="borderless" className={styles.kpiCard}>
-                <Skeleton active paragraph={{ rows: 1 }} />
-              </Card>
-            </Col>
+      <div className={styles.page}>
+        <div className={styles.kpis}>
+          {[0, 1, 2, 3, 4].map((item) => (
+            <SkeletonKpi key={item} />
           ))}
-        </Row>
+        </div>
+        <SkeletonRows rows={6} />
       </div>
     );
   }
 
+  if (!stats) {
+    return (
+      <ErrorState
+        title={t.overview.statsError}
+        description={error ?? t.overview.statsErrorHint}
+        onRetry={() => void load()}
+      />
+    );
+  }
+
   return (
-    <div className={`${styles.page} pageWrapper`}>
-      {/* Header */}
-      <div className={styles.pageHeader}>
+    <div className={styles.page}>
+      <header className={styles.header}>
         <div>
-          <Typography.Title level={4} className={styles.pageTitle}>
-            Vue d'ensemble
-          </Typography.Title>
-          <Typography.Text type="secondary" className={styles.pageSubtitle}>
-            Tableau de bord de la plateforme —{" "}
-            {new Date().toLocaleDateString("fr-FR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </Typography.Text>
+          <h1 className={styles.title}>{t.overview.title}</h1>
+          <p className={styles.lede}>{t.overview.lede}</p>
         </div>
-      </div>
+        <div className={styles.tools}>
+          {stats.generatedAt ? (
+            <span className={styles.updated}>
+              {t.overview.updated} <DateText value={stats.generatedAt} mode="datetime" />
+            </span>
+          ) : null}
+          <Segmented
+            value={period}
+            onChange={(value) => setPeriod(value as OverviewPeriod)}
+            options={[
+              { label: t.overview.period7, value: "7d" },
+              { label: t.overview.period30, value: "30d" },
+              { label: t.overview.period90, value: "90d" },
+              { label: t.overview.period12, value: "12m" },
+            ]}
+          />
+          <Button
+            icon={<RefreshCw size={16} strokeWidth={1.75} aria-hidden />}
+            onClick={() => void load()}
+          >
+            {t.overview.refresh}
+          </Button>
+          <Button
+            icon={<Download size={16} strokeWidth={1.75} aria-hidden />}
+            onClick={() =>
+              downloadCsv(
+                `ecom360-vue-ensemble-${range.from.slice(0, 10)}.csv`,
+                buildOverviewCsv(stats)
+              )
+            }
+          >
+            {t.overview.export}
+          </Button>
+        </div>
+      </header>
 
-      {/* KPI Cards */}
-      <Row gutter={[16, 16]} className={styles.kpiSection}>
-        {kpis.map(({ key, label, value, icon: Icon, color, path }) => (
-          <Col xs={12} sm={12} md={6} key={key}>
-            <Card
-              variant="borderless"
-              className={styles.kpiCard}
-              hoverable
-              onClick={() => navigate(path)}
-              style={{ cursor: "pointer" }}
-            >
-              <div className={styles.kpiTop}>
-                <span className={styles.kpiIconWrap} style={{ background: `${color}12`, color }}>
-                  <Icon size={18} />
+      <section aria-label={t.overview.actions}>
+        <h2 className={styles.sectionTitle}>{t.overview.actions}</h2>
+        {actions.length === 0 ? (
+          <EmptyState title={t.overview.actionsEmpty} />
+        ) : (
+          <div className={styles.actions}>
+            {actions.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={styles.action}
+                onClick={() => navigate(item.href)}
+              >
+                <span className={styles.actionLabel}>{item.label}</span>
+                <span className={`${styles.actionCount} ${styles[item.tone]}`}>
+                  {formatNumber(item.count)}
                 </span>
-              </div>
-              <div className={styles.kpiValue}>{value}</div>
-              <div className={styles.kpiLabel}>{label}</div>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Main content grid */}
-      <Row gutter={[16, 16]} className={styles.mainGrid}>
-        {/* Activity feed */}
-        <Col xs={24} lg={14}>
-          <Card
-            variant="borderless"
-            className={styles.card}
-            title={
-              <span className={styles.cardTitle}>
-                <Activity size={18} />
-                Activité récente
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}
-                >
-                  (à venir)
-                </Typography.Text>
-              </span>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate("/backoffice/businesses")}>
-                Voir les entreprises
-              </Button>
-            }
-          >
-            <div className={styles.activityList}>
-              {recentActivity.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.id} className={styles.activityRow}>
-                    <span
-                      className={styles.activityIcon}
-                      style={{ background: `${item.color}10`, color: item.color }}
-                    >
-                      <Icon size={16} />
-                    </span>
-                    <div className={styles.activityContent}>
-                      <span className={styles.activityTitle}>{item.title}</span>
-                      <span className={styles.activityDesc}>{item.desc}</span>
-                    </div>
-                    <span className={styles.activityTime}>
-                      <Clock size={12} />
-                      {item.time}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        </Col>
+      <section className={styles.kpis}>
+        <KpiCard
+          label={t.overview.mrr}
+          numericValue={stats.mrr ?? 0}
+          formatValue={(value) => formatMoney(value, currency)}
+          hint={t.overview.mrrHint}
+        />
+        <KpiCard
+          label={t.overview.activeBusinesses}
+          numericValue={stats.activeBusinessesCount ?? null}
+          formatValue={(value) => formatNumber(value)}
+          hint={t.overview.activeHint}
+        />
+        <KpiCard
+          label={t.overview.signups}
+          value={t.overview.unavailable}
+          hint={t.overview.signupsHint}
+        />
+        <KpiCard
+          label={t.overview.churn}
+          value={t.overview.unavailable}
+          hint={t.overview.churnHint}
+        />
+        <KpiCard
+          label={t.overview.gmv}
+          numericValue={stats.monthlyRevenue}
+          formatValue={(value) => formatMoney(value, currency)}
+          delta={periodDelta(stats.monthlyRevenue, stats.previousPeriodMerchantRevenue)}
+          hint={t.overview.gmvHint}
+          caption={t.overview.gmvCaption}
+        />
+      </section>
 
-        {/* Right column */}
-        <Col xs={24} lg={10}>
-          {/* Plan distribution */}
-          <Card
-            variant="borderless"
-            className={styles.card}
-            title={
-              <span className={styles.cardTitle}>
-                <TrendingUp size={18} />
-                Répartition des plans
+      <section className={styles.split}>
+        <article className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>{t.overview.collections}</h2>
+            <Tooltip title={t.overview.collectionsHint}>
+              <span style={{ color: "var(--text-subtle)", fontSize: 12 }}>
+                {t.overview.collected}
               </span>
-            }
-            style={{ marginBottom: 16 }}
-          >
-            <div className={styles.planList}>
-              {stats.planDistribution.map(({ plan, count, pct }) => (
-                <div key={plan} className={styles.planRow}>
-                  <div className={styles.planMeta}>
-                    <span className={styles.planName}>{plan}</span>
-                    <span className={styles.planCount}>{count} entreprises</span>
-                    <span className={styles.planPct}>{pct}%</span>
-                  </div>
-                  <div className={styles.planBar}>
-                    <div
-                      className={styles.planBarFill}
-                      style={{
-                        width: `${pct}%`,
-                        background: planColors[plan] ?? "var(--color-text-muted)",
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-              {stats.planDistribution.length === 0 && (
-                <Typography.Text type="secondary">Aucune donnée</Typography.Text>
-              )}
-            </div>
-          </Card>
-
-          {/* Top businesses */}
-          <Card
-            variant="borderless"
-            className={styles.card}
-            title={
-              <span className={styles.cardTitle}>
-                <Building2 size={18} />
-                Top entreprises
-              </span>
-            }
-            extra={
-              <Button type="link" size="small" onClick={() => navigate("/backoffice/businesses")}>
-                Voir tout
-              </Button>
-            }
-          >
-            <div className={styles.topList}>
-              {stats.topBusinesses.map((biz, i) => (
-                <div
-                  key={`${biz.name}-${i}`}
-                  className={styles.topRow}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate("/backoffice/businesses")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate("/backoffice/businesses");
+            </Tooltip>
+          </div>
+          {hasCollections(revenue) ? (
+            <div className={styles.chart}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartPoints}>
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value: number) => formatNumber(value)}
+                  />
+                  <ChartTooltip
+                    formatter={(value) =>
+                      formatMoney(typeof value === "number" ? value : Number(value), currency)
                     }
-                  }}
-                >
-                  <span className={styles.topRank}>#{i + 1}</span>
-                  <div className={styles.topInfo}>
-                    <span className={styles.topName}>{biz.name}</span>
-                    <span className={styles.topOwner}>
-                      {biz.owner} · {biz.storesCount} boutique{biz.storesCount > 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className={styles.topRight}>
-                    <span className={styles.topRevenue}>{formatFCFA(biz.revenue)}</span>
-                    <Tag
-                      style={{ margin: 0, fontSize: 10 }}
-                      color={
-                        biz.plan === "Business" ? "gold" : biz.plan === "Pro" ? "blue" : "default"
-                      }
-                    >
-                      {biz.plan}
-                    </Tag>
-                  </div>
-                  <ChevronRight size={14} className={styles.topChevron} />
-                </div>
-              ))}
-              {stats.topBusinesses.length === 0 && (
-                <Typography.Text type="secondary">Aucune entreprise</Typography.Text>
-              )}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="collected"
+                    name={t.overview.collected}
+                    stroke="var(--ink-900)"
+                    fill="var(--info-50)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="outstanding"
+                    name={t.overview.outstanding}
+                    stroke="var(--warning)"
+                    fill="var(--warning-50)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="failed"
+                    name={t.overview.failed}
+                    stroke="var(--danger)"
+                    fill="var(--danger-50)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          </Card>
-        </Col>
-      </Row>
+          ) : (
+            <EmptyState title={t.overview.collectionsEmpty} />
+          )}
+        </article>
+        <article className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>{t.overview.plans}</h2>
+            <Segmented
+              size="small"
+              value={planView}
+              onChange={(value) => setPlanView(value as "plans" | "types")}
+              options={[
+                { label: t.overview.plansTab, value: "plans" },
+                { label: t.overview.typesTab, value: "types" },
+              ]}
+            />
+          </div>
+          {planView === "types" ? (
+            <EmptyState title={t.overview.unavailable} description={t.overview.typesUnavailable} />
+          ) : planRows.length === 0 ? (
+            <EmptyState title={t.overview.plansEmpty} />
+          ) : (
+            <>
+              <div className={styles.chart}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={planRows}
+                      dataKey="count"
+                      nameKey="plan"
+                      innerRadius={58}
+                      outerRadius={84}
+                      paddingAngle={2}
+                    >
+                      {planRows.map((entry) => (
+                        <Cell key={entry.plan} fill={planColor(entry.plan)} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className={styles.legend}>
+                {planRows.map((entry) => (
+                  <button
+                    key={entry.plan}
+                    type="button"
+                    onClick={() =>
+                      navigate(`/backoffice/businesses?plan=${encodeURIComponent(entry.plan)}`)
+                    }
+                  >
+                    <span className={styles.swatch} style={{ background: planColor(entry.plan) }} />
+                    <PlanBadge name={entry.plan} slug={entry.plan} />
+                    <span>
+                      {t.overview.planCount.replace("{count}", formatNumber(entry.count))} ·{" "}
+                      {formatNumber(entry.pct)} %
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </article>
+      </section>
+
+      <section className={styles.split}>
+        <article className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>{t.overview.activity}</h2>
+            <Button type="link" onClick={() => navigate("/backoffice/audit")}>
+              {t.overview.journal}
+            </Button>
+          </div>
+          {activity.length === 0 ? (
+            <EmptyState title={t.overview.activityEmpty} />
+          ) : (
+            <Timeline
+              items={activity.map((item) => ({
+                id: item.id,
+                actor: item.userId
+                  ? (names.users[item.userId] ?? t.overview.accountActor)
+                  : t.overview.systemActor,
+                action: formatAuditAction(item.action),
+                target:
+                  labelFromChanges(item.changes) ??
+                  (item.businessId ? names.businesses[item.businessId] : null) ??
+                  item.entityType ??
+                  null,
+                at: item.createdAt,
+                onSelect: () =>
+                  navigate(
+                    `/backoffice/audit?requestId=${encodeURIComponent(item.requestId ?? item.id)}`
+                  ),
+              }))}
+            />
+          )}
+        </article>
+        <article className={styles.card}>
+          <div className={styles.cardHead}>
+            <h2 className={styles.cardTitle}>{t.overview.top}</h2>
+            <Button type="link" onClick={() => navigate("/backoffice/businesses")}>
+              {t.overview.seeAll}
+            </Button>
+          </div>
+          <Tooltip title={t.overview.rankHint}>
+            <Segmented
+              value={rank}
+              onChange={(value) => setRank(value as "gmv" | "subscription")}
+              options={[
+                { label: t.overview.rankSubscription, value: "subscription" },
+                { label: t.overview.rankGmv, value: "gmv" },
+              ]}
+            />
+          </Tooltip>
+          <Table
+            style={{ marginTop: 12 }}
+            size="small"
+            pagination={false}
+            rowKey={(row) => row.id ?? row.name}
+            dataSource={ranked}
+            locale={{ emptyText: t.overview.topEmpty }}
+            onRow={(row) => ({
+              onClick: () =>
+                navigate(
+                  row.id ? `/backoffice/businesses?highlight=${row.id}` : "/backoffice/businesses"
+                ),
+              style: { cursor: "pointer" },
+            })}
+            columns={[
+              { title: t.overview.business, dataIndex: "name", key: "name" },
+              {
+                title: t.overview.plan,
+                dataIndex: "plan",
+                key: "plan",
+                render: (plan: string) => <PlanBadge name={plan} slug={plan} />,
+              },
+              {
+                title: t.overview.subscription,
+                key: "subscription",
+                align: "right",
+                render: (_value, row) => (
+                  <MoneyText value={row.subscriptionAmount ?? 0} currency={currency} />
+                ),
+              },
+              {
+                title: t.overview.gmvColumn,
+                key: "gmv",
+                align: "right",
+                render: (_value, row) => <MoneyText value={row.revenue} currency={currency} />,
+              },
+            ]}
+          />
+        </article>
+      </section>
     </div>
   );
 }

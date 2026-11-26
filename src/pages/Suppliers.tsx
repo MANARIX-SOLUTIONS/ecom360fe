@@ -13,6 +13,8 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { confirmDelete } from "@/utils/confirmDelete";
 
 type Supplier = {
@@ -130,10 +132,8 @@ export default function Suppliers() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader title={t.suppliers.title} subtitle={t.suppliers.subtitle} />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.suppliers.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}
@@ -223,7 +223,9 @@ export default function Suppliers() {
                   title: t.suppliers.balance,
                   dataIndex: "balance",
                   render: (v: number) => (
-                    <Tag color={v < 0 ? "error" : "default"}>{v.toLocaleString("fr-FR")} F</Tag>
+                    <Tag color={v < 0 ? "error" : "default"}>
+                      <MoneyDisplay value={v} />
+                    </Tag>
                   ),
                 },
                 {

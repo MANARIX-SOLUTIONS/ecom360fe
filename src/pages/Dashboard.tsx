@@ -15,7 +15,6 @@ import {
   Tooltip,
   Space,
 } from "antd";
-import dayjs from "dayjs";
 import type { LucideIcon } from "lucide-react";
 import {
   TrendingUp,
@@ -37,6 +36,15 @@ import {
   Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useStore } from "@/hooks/useStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -45,18 +53,16 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { EmptyState } from "@/components/EmptyState";
 import { NoStoreBanner } from "@/components/NoStoreBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { PeriodFilter } from "@/components/ui/PeriodFilter";
+import { getPeriodBounds, type PeriodKey } from "@/utils/period";
 import { getDashboard, getDashboardLowStockSlice, getDashboardTopProductsSlice } from "@/api";
 import { t } from "@/i18n";
 import { formatRangeSummaryFr } from "@/utils/dateLocal";
 import { pctChangeVsPrevious } from "@/utils/kpiDelta";
+import { formatFCFA, paymentMethodLabel } from "@/utils/money";
 import styles from "./Dashboard.module.css";
-
-function getDashboardPeriodBounds() {
-  return {
-    periodStart: dayjs().startOf("month").format("YYYY-MM-DD"),
-    periodEnd: dayjs().format("YYYY-MM-DD"),
-  };
-}
 
 const DASH_LIST_BATCH = 10;
 
@@ -77,10 +83,6 @@ type DashboardStatCard = {
   hint?: string;
   tooltip?: string;
 };
-
-function formatFCFA(n: number) {
-  return n.toLocaleString("fr-FR") + " F";
-}
 
 function creditFollowUpDescription(count: number, amount: number): string {
   const amountLabel = formatFCFA(amount);
@@ -227,6 +229,8 @@ export default function Dashboard() {
   const [loadingMoreLow, setLoadingMoreLow] = useState(false);
   const [topSliceHasNext, setTopSliceHasNext] = useState(false);
   const [lowSliceHasNext, setLowSliceHasNext] = useState(false);
+  const [periodKey, setPeriodKey] = useState<PeriodKey>("month");
+  const period = useMemo(() => getPeriodBounds(periodKey), [periodKey]);
 
   const loadData = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -236,7 +240,7 @@ export default function Dashboard() {
       }
       setLoading(true);
       try {
-        const { periodStart, periodEnd } = getDashboardPeriodBounds();
+        const { periodStart, periodEnd } = period;
         const res = await getDashboard({
           periodStart,
           periodEnd,
@@ -253,7 +257,7 @@ export default function Dashboard() {
         if (!signal?.cancelled) setLoading(false);
       }
     },
-    [activeStore?.id]
+    [activeStore?.id, period]
   );
 
   useEffect(() => {
@@ -285,7 +289,7 @@ export default function Dashboard() {
     setLoadingMoreTop(true);
     try {
       const page = 1 + Math.floor(extraTopProducts.length / DASH_LIST_BATCH);
-      const { periodStart, periodEnd } = getDashboardPeriodBounds();
+      const { periodStart, periodEnd } = period;
       const res = await getDashboardTopProductsSlice({
         periodStart,
         periodEnd,
@@ -308,7 +312,7 @@ export default function Dashboard() {
     } finally {
       setLoadingMoreTop(false);
     }
-  }, [data, activeStore?.id, extraTopProducts.length, loadingMoreTop]);
+  }, [data, activeStore?.id, extraTopProducts.length, loadingMoreTop, period]);
 
   const loadMoreLowStock = useCallback(async () => {
     if (!data || loadingMoreLow || !canStockAlerts) return;
@@ -595,6 +599,25 @@ export default function Dashboard() {
     return { breakdown, collected, credit, total };
   }, [data?.recentSales]);
 
+  const dailyChart = useMemo(
+    () =>
+      (data?.periodDailySales ?? []).map((row) => ({
+        date: row.date.slice(5),
+        ca: row.amount,
+        depenses: data?.periodDailyExpenses?.find((e) => e.date === row.date)?.amount ?? 0,
+      })),
+    [data?.periodDailySales, data?.periodDailyExpenses]
+  );
+
+  const paymentChart = useMemo(
+    () =>
+      (data?.periodPaymentBreakdown ?? []).map((row) => ({
+        method: paymentMethodLabel(row.method),
+        amount: row.amount,
+      })),
+    [data?.periodPaymentBreakdown]
+  );
+
   const recentSales =
     data?.recentSales.map((s, i) => ({
       saleId: s.saleId,
@@ -715,19 +738,12 @@ export default function Dashboard() {
   if (emptyData) {
     return (
       <div className={`${styles.page} pageWrapper`}>
-        <header className={styles.header}>
-          <div>
-            <Typography.Title level={4} className={styles.pageTitle}>
-              {getGreeting()}, {displayName}
-            </Typography.Title>
-            <div className={styles.headerMeta}>
-              <Typography.Text type="secondary" className={styles.headerDate}>
-                {formatDate()}
-              </Typography.Text>
-              {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          eyebrow={formatDate()}
+          title={`${getGreeting()}, ${displayName}`}
+          subtitle={activeStore ? activeStore.name : period.label}
+          extra={<PeriodFilter value={periodKey} onChange={setPeriodKey} />}
+        />
         <Card variant="borderless" className={`${styles.card} ${styles.emptyCard}`}>
           <EmptyState
             icon={ShoppingCart}
@@ -746,19 +762,18 @@ export default function Dashboard() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <div>
-          <Typography.Title level={4} className={styles.pageTitle}>
-            {getGreeting()}, {displayName}
-          </Typography.Title>
-          <div className={styles.headerMeta}>
-            <Typography.Text type="secondary" className={styles.headerDate}>
-              {formatDate()}
-            </Typography.Text>
-            {activeStore && <span className={styles.storeBadge}>{activeStore.name}</span>}
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow={formatDate()}
+        title={`${getGreeting()}, ${displayName}`}
+        subtitle={activeStore ? `${activeStore.name} · ${period.label}` : period.label}
+        extra={
+          <PeriodFilter
+            value={periodKey}
+            onChange={setPeriodKey}
+            disabled={Boolean(data?.analyticsLimitedToToday)}
+          />
+        }
+      />
 
       <NoStoreBanner />
 
@@ -1032,7 +1047,7 @@ export default function Dashboard() {
                       </div>
                       <div className={styles.recentRight}>
                         <span className={`amount ${styles.recentTotal}`}>
-                          {sale.total.toLocaleString("fr-FR")} F
+                          {formatFCFA(sale.total)}
                         </span>
                         <Tag
                           className={styles.recentMethod}
@@ -1087,69 +1102,77 @@ export default function Dashboard() {
       </section>
 
       <section className={styles.periodSection} aria-label={t.dashboard.sectionPeriod}>
-        <Collapse
-          bordered={false}
-          ghost
-          className={styles.periodCollapse}
-          defaultActiveKey={[]}
-          expandIconPosition="end"
-          items={[
-            {
-              key: "period",
-              label: (
-                <div className={styles.periodCollapseLabel}>
-                  <Typography.Title level={5} className={styles.periodCollapseHeading}>
-                    {t.dashboard.sectionPeriod}
-                  </Typography.Title>
-                  {data?.periodStart && data?.periodEnd ? (
-                    <>
-                      <Typography.Text type="secondary" className={styles.periodCollapseMeta}>
-                        {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
-                        {" · "}
-                        <span className={`amount ${styles.periodCollapseMetaAmount}`}>
-                          {formatFCFA(data.periodRevenue)}
-                        </span>
-                      </Typography.Text>
-                      <Typography.Text type="secondary" className={styles.periodCollapseHint}>
-                        {t.dashboard.periodCollapseHint}
-                      </Typography.Text>
-                    </>
-                  ) : (
-                    <Typography.Text type="secondary" className={styles.periodCollapseMeta}>
-                      {t.dashboard.periodCollapseHint}
-                    </Typography.Text>
-                  )}
-                </div>
-              ),
-              children: (
-                <>
-                  <Typography.Paragraph type="secondary" className={styles.moneyStoryBanner}>
-                    {t.dashboard.periodDefaultBanner}
-                  </Typography.Paragraph>
-                  <Row gutter={[16, 16]}>
-                    {periodCards.map(
-                      ({ key, label, value, variant, icon, trendPct, hint, tooltip }) => (
-                        <Col xs={24} sm={12} lg={8} key={key}>
-                          <DashboardKpiCard
-                            label={label}
-                            value={value}
-                            variant={variant}
-                            icon={icon}
-                            tooltip={tooltip}
-                            hint={hint}
-                            trendPct={trendPct}
-                            showTrend
-                          />
-                        </Col>
-                      )
-                    )}
-                  </Row>
-                </>
-              ),
-            },
-          ]}
-        />
+        <Typography.Title level={5} className={styles.statsSectionTitle}>
+          {t.dashboard.sectionPeriod}
+          {data?.periodStart && data?.periodEnd ? (
+            <Typography.Text type="secondary" className={styles.periodCollapseMeta}>
+              {" · "}
+              {formatRangeSummaryFr(data.periodStart, data.periodEnd)}
+            </Typography.Text>
+          ) : null}
+        </Typography.Title>
+        <Row gutter={[12, 12]}>
+          {periodCards.map(({ key, label, value, icon, trendPct, hint, tooltip }) => (
+            <Col xs={24} sm={12} xl={8} key={key}>
+              <KpiCard
+                label={label}
+                value={value}
+                icon={icon}
+                hint={tooltip}
+                footnote={hint}
+                delta={trendPct}
+              />
+            </Col>
+          ))}
+        </Row>
       </section>
+
+      {(dailyChart.length > 0 || paymentChart.length > 0) && (
+        <section className={styles.tablesSection} aria-label="Graphiques">
+          <Row gutter={[16, 16]}>
+            {dailyChart.length > 0 ? (
+              <Col xs={24} lg={14}>
+                <Card variant="borderless" className={styles.card} title="Évolution du CA">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={dailyChart}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                      />
+                      <RechartsTooltip formatter={(value: number) => formatFCFA(value)} />
+                      <Bar dataKey="ca" name="CA" fill="#1D3557" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            ) : null}
+            {paymentChart.length > 0 ? (
+              <Col xs={24} lg={10}>
+                <Card
+                  variant="borderless"
+                  className={styles.card}
+                  title={t.dashboard.paymentBreakdown}
+                >
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={paymentChart} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                      />
+                      <YAxis type="category" dataKey="method" width={110} tick={{ fontSize: 12 }} />
+                      <RechartsTooltip formatter={(value: number) => formatFCFA(value)} />
+                      <Bar dataKey="amount" name="Montant" fill="#315B91" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            ) : null}
+          </Row>
+        </section>
+      )}
 
       <section className={styles.tablesSection} aria-label={t.dashboard.sectionCatalog}>
         <Typography.Title level={5} className={styles.statsSectionTitle}>

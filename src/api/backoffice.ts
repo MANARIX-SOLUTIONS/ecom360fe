@@ -19,6 +19,8 @@ export type AdminBusinessSubscriptionInfo = {
   daysRemaining: number;
   cancelAtPeriodEnd: boolean;
   trialing: boolean;
+  amount?: number;
+  currency?: string;
 };
 
 export type AdminBusiness = {
@@ -31,6 +33,7 @@ export type AdminBusiness = {
   plan: string;
   status: string;
   storesCount: number;
+  usersCount?: number;
   revenue: string;
   createdAt: string;
   trialEndsAt?: string;
@@ -43,6 +46,7 @@ export type AdminUser = {
   email: string;
   role: string;
   business: string;
+  businessId?: string | null;
   status: string;
   lastLoginAt: string | null;
   createdAt: string;
@@ -52,6 +56,7 @@ export type AdminStats = {
   businessesCount: number;
   usersCount: number;
   storesCount: number;
+  /** Merchant POS GMV for the selected period. */
   monthlyRevenue: number;
   planDistribution: { plan: string; count: number; pct: number }[];
   topBusinesses: {
@@ -60,11 +65,59 @@ export type AdminStats = {
     revenue: number;
     storesCount: number;
     plan: string;
+    id?: string;
+    subscriptionAmount?: number;
+    subscriptionStatus?: string;
   }[];
+  activeBusinessesCount?: number;
+  pendingDemoRequestsCount?: number;
+  activeSubscriptionsCount?: number;
+  mrr?: number;
+  saasCollected?: number;
+  saasOutstanding?: number;
+  failedPaymentsCount?: number;
+  failedPaymentsAmount?: number;
+  successfulPaymentsCount?: number;
+  paymentAttemptsCount?: number;
+  previousPeriodCollected?: number;
+  previousPeriodMerchantRevenue?: number;
+  currency?: string;
+  periodFrom?: string;
+  periodTo?: string;
+  generatedAt?: string;
 };
 
-export async function getAdminStats(): Promise<AdminStats> {
-  return api.get<AdminStats>("/admin/stats");
+export type AdminRevenuePoint = {
+  date: string;
+  collected: number;
+  outstanding: number;
+  failed: number;
+};
+
+export type AdminRevenueSeries = {
+  currency: string;
+  periodFrom: string;
+  periodTo: string;
+  points: AdminRevenuePoint[];
+};
+
+export async function getAdminStats(params?: { from?: string; to?: string }): Promise<AdminStats> {
+  const searchParams = new URLSearchParams();
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  const q = searchParams.toString();
+  return api.get<AdminStats>(`/admin/stats${q ? `?${q}` : ""}`);
+}
+
+export async function getAdminRevenue(params?: {
+  from?: string;
+  to?: string;
+}): Promise<AdminRevenueSeries> {
+  const searchParams = new URLSearchParams();
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  const q = searchParams.toString();
+  return api.get<AdminRevenueSeries>(`/admin/stats/revenue${q ? `?${q}` : ""}`);
 }
 
 export async function listAdminBusinesses(params?: {
@@ -179,10 +232,65 @@ export type AdminPlanItem = {
   name: string;
   priceMonthly: number;
   priceYearly: number;
+  maxStores?: number;
+  maxUsers?: number;
+  maxProducts?: number;
+  maxSalesPerMonth?: number;
+  maxClients?: number;
+  maxSuppliers?: number;
+  dataRetentionMonths?: number;
+  active?: boolean;
+  subscribedCompanies?: number;
+  entitlements?: string[];
+  features?: Record<string, boolean>;
+};
+
+export type AdminPlanUpdate = {
+  priceMonthly?: number;
+  priceYearly?: number;
+  maxUsers?: number;
+  maxStores?: number;
+  maxProducts?: number;
+  maxSalesPerMonth?: number;
+  maxClients?: number;
+  maxSuppliers?: number;
+  dataRetentionMonths?: number;
+  active?: boolean;
+  features?: Record<string, boolean>;
+};
+
+export type AdminBusinessFeature = {
+  key: string;
+  label: string;
+  planEnabled: boolean;
+  override: boolean | null;
+  effective: boolean;
 };
 
 export async function listAdminPlans(): Promise<AdminPlanItem[]> {
   return api.get<AdminPlanItem[]>("/admin/businesses/plans");
+}
+
+export async function updateAdminPlan(
+  planId: string,
+  payload: AdminPlanUpdate
+): Promise<AdminPlanItem> {
+  return api.patch<AdminPlanItem>(`/admin/businesses/plans/${planId}`, payload);
+}
+
+export async function listAdminBusinessFeatures(
+  businessId: string
+): Promise<AdminBusinessFeature[]> {
+  return api.get<AdminBusinessFeature[]>(`/admin/businesses/${businessId}/features`);
+}
+
+export async function replaceAdminBusinessFeatures(
+  businessId: string,
+  overrides: Record<string, boolean | null>
+): Promise<AdminBusinessFeature[]> {
+  return api.put<AdminBusinessFeature[]>(`/admin/businesses/${businessId}/features`, {
+    overrides,
+  });
 }
 
 export async function setBusinessStatus(
@@ -246,6 +354,10 @@ export async function updateAdminBusinessRolePermissions(
   );
 }
 
+export async function getAdminUser(userId: string): Promise<AdminUser> {
+  return api.get<AdminUser>(`/admin/users/${userId}`);
+}
+
 export async function listAdminUsers(params?: {
   page?: number;
   size?: number;
@@ -274,6 +386,10 @@ export async function inviteAdminUser(params: {
   businessId: string;
 }): Promise<AdminUser> {
   return api.post<AdminUser>("/admin/users/invite", params);
+}
+
+export async function sendAdminUserPasswordReset(userId: string): Promise<void> {
+  await api.post(`/admin/users/${userId}/password-reset`);
 }
 
 export type AuditLogEntry = {
@@ -310,17 +426,27 @@ export async function listAdminDemoRequests(params?: {
   page?: number;
   size?: number;
   status?: string;
+  search?: string;
 }): Promise<PageResponse<AdminDemoRequest>> {
   const searchParams = new URLSearchParams();
   if (params?.page != null) searchParams.set("page", String(params.page));
   if (params?.size != null) searchParams.set("size", String(params.size));
   if (params?.status) searchParams.set("status", params.status);
+  if (params?.search) searchParams.set("search", params.search);
   const q = searchParams.toString();
   return api.get<PageResponse<AdminDemoRequest>>(`/admin/demo-requests${q ? `?${q}` : ""}`);
 }
 
-export async function approveAdminDemoRequest(id: string): Promise<void> {
-  await api.post(`/admin/demo-requests/${id}/approve`);
+export type DemoApproveResult = {
+  requestId: string;
+  businessId: string;
+  userId: string;
+  email: string;
+  businessName: string;
+};
+
+export async function approveAdminDemoRequest(id: string): Promise<DemoApproveResult> {
+  return api.post<DemoApproveResult>(`/admin/demo-requests/${id}/approve`);
 }
 
 export async function rejectAdminDemoRequest(id: string, reason?: string): Promise<void> {
@@ -357,6 +483,8 @@ export async function listAdminSubscriptionPayments(params?: {
   size?: number;
   businessId?: string;
   status?: string;
+  provider?: string;
+  channel?: string;
   from?: string;
   to?: string;
 }): Promise<PageResponse<AdminSubscriptionPayment>> {
@@ -365,6 +493,8 @@ export async function listAdminSubscriptionPayments(params?: {
   if (params?.size != null) searchParams.set("size", String(params.size));
   if (params?.businessId) searchParams.set("businessId", params.businessId);
   if (params?.status) searchParams.set("status", params.status);
+  if (params?.provider) searchParams.set("provider", params.provider);
+  if (params?.channel) searchParams.set("channel", params.channel);
   if (params?.from) searchParams.set("from", params.from);
   if (params?.to) searchParams.set("to", params.to);
   const q = searchParams.toString();
@@ -400,6 +530,10 @@ export async function listAdminAuditLogs(params?: {
   businessId?: string;
   entityType?: string;
   userId?: string;
+  action?: string;
+  requestId?: string;
+  from?: string;
+  to?: string;
 }): Promise<PageResponse<AuditLogEntry>> {
   const searchParams = new URLSearchParams();
   if (params?.page != null) searchParams.set("page", String(params.page));
@@ -407,6 +541,153 @@ export async function listAdminAuditLogs(params?: {
   if (params?.businessId) searchParams.set("businessId", params.businessId);
   if (params?.entityType) searchParams.set("entityType", params.entityType);
   if (params?.userId) searchParams.set("userId", params.userId);
+  if (params?.action) searchParams.set("action", params.action);
+  if (params?.requestId) searchParams.set("requestId", params.requestId);
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
   const q = searchParams.toString();
   return api.get<PageResponse<AuditLogEntry>>(`/admin/audit-logs${q ? `?${q}` : ""}`);
+}
+
+export type AdminFeatureFlag = {
+  id: string;
+  key: string;
+  label: string;
+  description: string | null;
+  enabled: boolean;
+  updatedAt: string;
+};
+
+export async function listAdminFeatureFlags(): Promise<AdminFeatureFlag[]> {
+  return api.get<AdminFeatureFlag[]>("/admin/system/features");
+}
+
+export async function updateAdminFeatureFlag(
+  key: string,
+  enabled: boolean
+): Promise<AdminFeatureFlag> {
+  return api.patch<AdminFeatureFlag>(`/admin/system/features/${key}`, { enabled });
+}
+
+export type AdminServiceHealth = {
+  key: string;
+  label: string;
+  status: "healthy" | "degraded" | "down" | "unknown" | string;
+  detail: string;
+};
+
+export type AdminSystemHealth = {
+  generatedAt: string;
+  overall: string;
+  services: AdminServiceHealth[];
+};
+
+export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
+  return api.get<AdminSystemHealth>("/admin/system/health");
+}
+
+export type AdminInvoice = {
+  id: string;
+  number: string;
+  businessId: string;
+  businessName: string;
+  subscriptionId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentMethod: string | null;
+  provider: string | null;
+  externalRef: string | null;
+  paymentIntentId: string | null;
+  dueDate: string;
+  paidAt: string | null;
+  createdAt: string;
+};
+
+export async function listAdminInvoices(params?: {
+  page?: number;
+  size?: number;
+  businessId?: string;
+  status?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+}): Promise<PageResponse<AdminInvoice>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.size != null) searchParams.set("size", String(params.size));
+  if (params?.businessId) searchParams.set("businessId", params.businessId);
+  if (params?.status) searchParams.set("status", params.status);
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.from) searchParams.set("from", params.from);
+  if (params?.to) searchParams.set("to", params.to);
+  const q = searchParams.toString();
+  return api.get<PageResponse<AdminInvoice>>(`/admin/invoices${q ? `?${q}` : ""}`);
+}
+
+export type AdminStoreListItem = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  active: boolean;
+  createdAt: string;
+};
+
+export async function listAdminStores(params?: {
+  page?: number;
+  size?: number;
+  search?: string;
+  active?: boolean;
+}): Promise<PageResponse<AdminStoreListItem>> {
+  const searchParams = new URLSearchParams();
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.size != null) searchParams.set("size", String(params.size));
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.active != null) searchParams.set("active", String(params.active));
+  const q = searchParams.toString();
+  return api.get<PageResponse<AdminStoreListItem>>(`/admin/stores${q ? `?${q}` : ""}`);
+}
+
+export type AdminSearchResponse = {
+  companies: { id: string; name: string; email: string; status: string }[];
+  users: { id: string; name: string; email: string; status: string }[];
+  invoices: { id: string; number: string; businessId: string; status: string; amount: number }[];
+  payments: {
+    intentId: string;
+    businessId: string;
+    status: string;
+    amount: number;
+    externalRef: string | null;
+  }[];
+  audit: { id: string; action: string; entityType: string; requestId: string | null }[];
+  stores?: {
+    id: string;
+    businessId: string;
+    name: string;
+    businessName: string;
+    active: boolean;
+  }[];
+};
+
+export async function searchAdmin(query: string): Promise<AdminSearchResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("q", query);
+  return api.get<AdminSearchResponse>(`/admin/search?${searchParams.toString()}`);
+}
+
+export type AdminMaintenanceResult = {
+  targetedBusinesses: number;
+  mailedBusinesses: number;
+  inAppRecipients: number;
+};
+
+export async function sendAdminMaintenanceNotification(payload: {
+  title: string;
+  message: string;
+  statusPageUrl?: string;
+}): Promise<AdminMaintenanceResult> {
+  return api.post<AdminMaintenanceResult>("/admin/notifications/maintenance", payload);
 }

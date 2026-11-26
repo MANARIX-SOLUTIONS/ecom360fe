@@ -6,7 +6,6 @@ import {
   Typography,
   Input,
   Button,
-  Skeleton,
   Select,
   Modal,
   Form,
@@ -27,16 +26,25 @@ import {
   Mail,
   Calendar,
   Building2,
+  KeyRound,
 } from "lucide-react";
 import styles from "./Backoffice.module.css";
 import {
   listAdminUsers,
+  getAdminUser,
   setUserStatus,
   inviteAdminUser,
   listAdminBusinesses,
+  sendAdminUserPasswordReset,
   type AdminUser,
 } from "@/api/backoffice";
+import { PageHeader } from "@/components/backoffice/PageHeader";
+import { FilterBar } from "@/components/backoffice/FilterBar";
+import { StatusTag } from "@/components/backoffice/StatusTag";
+import { ErrorState } from "@/components/backoffice/ErrorState";
+import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 type PlatformUser = AdminUser & { lastLogin: string };
 
@@ -84,15 +92,18 @@ function timeAgo(d: string | null) {
 }
 
 export default function BackofficeUsers() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
-  const [searchDebounced, setSearchDebounced] = useState("");
-  const [filterRole, setFilterRole] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [searchDebounced, setSearchDebounced] = useState(searchParams.get("search") ?? "");
+  const [filterRole, setFilterRole] = useState<string>(searchParams.get("role") ?? "all");
+  const [filterStatus, setFilterStatus] = useState<string>(searchParams.get("status") ?? "all");
   const resetPageRef = useRef(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [detail, setDetail] = useState<PlatformUser | null>(null);
@@ -108,6 +119,7 @@ export default function BackofficeUsers() {
       setPage(0);
     }
     setLoading(true);
+    setHasError(false);
     try {
       const res = await listAdminUsers({
         page: effectivePage,
@@ -123,6 +135,8 @@ export default function BackofficeUsers() {
       setUsers(mapped);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
+      setHasError(true);
+      setUsers([]);
       message.error(e instanceof Error ? e.message : t.backoffice.platformUsersLoadError);
     } finally {
       setLoading(false);
@@ -136,11 +150,42 @@ export default function BackofficeUsers() {
 
   useEffect(() => {
     resetPageRef.current = true;
-  }, [searchDebounced, filterStatus, filterRole]);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchDebounced.trim()) next.set("search", searchDebounced.trim());
+        else next.delete("search");
+        if (filterRole !== "all") next.set("role", filterRole);
+        else next.delete("role");
+        if (filterStatus !== "all") next.set("status", filterStatus);
+        else next.delete("status");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [searchDebounced, filterStatus, filterRole, setSearchParams]);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    const highlight = searchParams.get("highlight");
+    if (!highlight) return;
+    const match = users.find((item) => item.id === highlight);
+    if (match) {
+      setDetail(match);
+      return;
+    }
+    getAdminUser(highlight)
+      .then((user) =>
+        setDetail({
+          ...user,
+          lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt).toISOString().slice(0, 10) : "-",
+        })
+      )
+      .catch(() => undefined);
+  }, [users, searchParams]);
 
   useEffect(() => {
     if (inviteOpen) {
@@ -215,66 +260,75 @@ export default function BackofficeUsers() {
     window.location.href = `mailto:${user.email}`;
   }, []);
 
-  if (loading) {
-    return (
-      <div className="pageWrapper">
-        <Skeleton active paragraph={{ rows: 8 }} />
-      </div>
-    );
-  }
+  const handlePasswordReset = useCallback(
+    (user: PlatformUser) => {
+      modal.confirm({
+        title: `Envoyer une récupération à ${user.email} ?`,
+        content:
+          "Un e-mail de réinitialisation sera envoyé. Le statut du compte n'est pas modifié.",
+        okText: "Envoyer",
+        cancelText: "Annuler",
+        onOk: async () => {
+          try {
+            await sendAdminUserPasswordReset(user.id);
+            message.success("E-mail de récupération envoyé.");
+          } catch (error) {
+            message.error(
+              error instanceof Error ? error.message : "Envoi de récupération impossible."
+            );
+            throw error;
+          }
+        },
+      });
+    },
+    [modal]
+  );
 
   return (
     <div className={`${styles.page} pageWrapper`}>
       {contextHolder}
-      <div className={styles.pageHeader}>
-        <Typography.Title level={4} className={styles.pageTitle}>
-          Utilisateurs plateforme
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.pageSubtitle}>
-          {total} compte{total > 1 ? "s" : ""} sur la plateforme
-        </Typography.Text>
-      </div>
-
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <Input
-            prefix={<Search size={16} />}
-            placeholder={t.backoffice.searchPlatformUsersPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-            className={styles.toolbarSearch}
-          />
-          <Select
-            value={filterRole}
-            onChange={setFilterRole}
-            style={{ minWidth: 140 }}
-            options={[
-              { value: "all", label: "Tous les rôles" },
-              { value: "Propriétaire", label: "Propriétaire" },
-              { value: "Gestionnaire", label: "Gestionnaire" },
-              { value: "Caissier", label: "Caissier" },
-            ]}
-          />
-          <Select
-            value={filterStatus}
-            onChange={setFilterStatus}
-            style={{ minWidth: 120 }}
-            options={[
-              { value: "all", label: "Tous statuts" },
-              { value: "active", label: "Actif" },
-              { value: "inactive", label: "Inactif" },
-              { value: "disabled", label: "Désactivé" },
-            ]}
-          />
-        </div>
-        <div className={styles.toolbarRight}>
+      <PageHeader
+        title="Utilisateurs plateforme"
+        subtitle={`${total} compte${total > 1 ? "s" : ""} sur la plateforme`}
+        extra={
           <Button type="primary" icon={<UserPlus size={16} />} onClick={() => setInviteOpen(true)}>
             Inviter
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      <FilterBar>
+        <Input
+          prefix={<Search size={16} />}
+          placeholder={t.backoffice.searchPlatformUsersPlaceholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          allowClear
+          className={styles.toolbarSearch}
+        />
+        <Select
+          value={filterRole}
+          onChange={setFilterRole}
+          style={{ minWidth: 140 }}
+          options={[
+            { value: "all", label: "Tous les rôles" },
+            { value: "Propriétaire", label: "Propriétaire" },
+            { value: "Gestionnaire", label: "Gestionnaire" },
+            { value: "Caissier", label: "Caissier" },
+          ]}
+        />
+        <Select
+          value={filterStatus}
+          onChange={setFilterStatus}
+          style={{ minWidth: 120 }}
+          options={[
+            { value: "all", label: "Tous statuts" },
+            { value: "active", label: "Actif" },
+            { value: "inactive", label: "Inactif" },
+            { value: "disabled", label: "Désactivé" },
+          ]}
+        />
+      </FilterBar>
 
       {/* Table */}
       <Card variant="borderless" className={styles.tableCard}>
@@ -282,7 +336,19 @@ export default function BackofficeUsers() {
           <Table
             dataSource={users}
             rowKey="id"
+            loading={loading}
             scroll={{ x: "max-content" }}
+            locale={{
+              emptyText: hasError ? (
+                <ErrorState
+                  compact
+                  title="Impossible de charger les utilisateurs"
+                  onRetry={() => void loadUsers()}
+                />
+              ) : (
+                <EmptyState compact icon={UserPlus} title="Aucun utilisateur trouvé" />
+              ),
+            }}
             pagination={{
               current: page + 1,
               pageSize,
@@ -296,7 +362,13 @@ export default function BackofficeUsers() {
               },
             }}
             className="dataTable"
-            onRow={(record) => ({ onClick: () => setDetail(record), style: { cursor: "pointer" } })}
+            onRow={(record) => ({
+              onClick: () => setDetail(record),
+              style: { cursor: "pointer" },
+            })}
+            rowClassName={(record) =>
+              record.id === searchParams.get("highlight") ? styles.highlightRow : ""
+            }
             columns={[
               {
                 title: "Utilisateur",
@@ -333,15 +405,21 @@ export default function BackofficeUsers() {
                 title: "Entreprise",
                 dataIndex: "business",
                 ellipsis: true,
-                render: (b: string) => (
-                  <Typography.Text
-                    type="secondary"
-                    ellipsis={{ tooltip: b }}
-                    style={{ maxWidth: 180 }}
-                  >
-                    {b}
-                  </Typography.Text>
-                ),
+                render: (b: string, row) =>
+                  row.businessId ? (
+                    <Button
+                      type="link"
+                      style={{ padding: 0 }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/backoffice/businesses?highlight=${row.businessId}`);
+                      }}
+                    >
+                      {b}
+                    </Button>
+                  ) : (
+                    <Typography.Text type="secondary">{b || "—"}</Typography.Text>
+                  ),
               },
               {
                 title: "Dernière connexion",
@@ -361,10 +439,16 @@ export default function BackofficeUsers() {
                   ),
               },
               {
+                title: "Créé",
+                dataIndex: "createdAt",
+                width: 120,
+                render: (d: string) => formatDate(d),
+              },
+              {
                 title: "Statut",
                 dataIndex: "status",
                 width: 105,
-                render: (s: string) => <Tag color={statusColors[s]}>{statusLabels[s]}</Tag>,
+                render: (s: string) => <StatusTag status={s} />,
               },
               {
                 title: "",
@@ -387,6 +471,12 @@ export default function BackofficeUsers() {
                           icon: <Mail size={14} />,
                           label: "Envoyer un email",
                           onClick: () => handleContact(r),
+                        },
+                        {
+                          key: "reset",
+                          icon: <KeyRound size={14} />,
+                          label: "Récupération de compte",
+                          onClick: () => handlePasswordReset(r),
                         },
                         { type: "divider" },
                         r.status === "disabled"
@@ -490,6 +580,14 @@ export default function BackofficeUsers() {
             <Space style={{ width: "100%", marginTop: 20 }} direction="vertical">
               <Button block icon={<Mail size={16} />} onClick={() => handleContact(detail)}>
                 Envoyer un email
+              </Button>
+              <Button
+                block
+                icon={<KeyRound size={16} />}
+                disabled={detail.status === "disabled"}
+                onClick={() => handlePasswordReset(detail)}
+              >
+                Envoyer une récupération
               </Button>
               <Button
                 block

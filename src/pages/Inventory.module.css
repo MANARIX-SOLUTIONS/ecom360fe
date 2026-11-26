@@ -1,0 +1,45 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.searchInput {
+  min-width: min(280px, 100%);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.kpiRow {
+  margin-bottom: 16px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.movementMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

@@ -1,0 +1,217 @@
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+
+/*
+ * Console admin — Indigo Nuit & Jade.
+ * Scoped to .boShell so the merchant app keeps its own theme.
+ */
+.boShell {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f7;
+  --surface-hover: #f4f5fb;
+  --border: #e4e7ee;
+  --border-strong: #d3d8e2;
+
+  --text-primary: #0f1729;
+  --text-secondary: #475266;
+  --text-muted: #8590a6;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef0ff;
+  --primary-foreground: #ffffff;
+
+  --sidebar-bg: #0e1424;
+  --sidebar-text: #a3adc2;
+  --sidebar-text-active: #ffffff;
+  --sidebar-item-active: #1c2540;
+  --sidebar-border: #1c2438;
+
+  --success: #059669;
+  --success-soft: #e6f6f0;
+  --warning: #d97706;
+  --warning-soft: #fef4e2;
+  --danger: #dc2626;
+  --danger-soft: #fdecec;
+  --info: #0284c7;
+  --info-soft: #e6f3fb;
+
+  --plan-starter: #64748b;
+  --plan-starter-soft: #f1f5f9;
+  --plan-pro: #0284c7;
+  --plan-pro-soft: #e6f3fb;
+  --plan-business: #7c3aed;
+  --plan-business-soft: #f3eefe;
+
+  --chart-1: #4f46e5;
+  --chart-2: #059669;
+  --chart-3: #0ea5e9;
+  --chart-4: #f59e0b;
+  --chart-5: #ec4899;
+  --chart-6: #94a3b8;
+
+  --wave: #1dc8f2;
+  --orange-money: #ff7900;
+
+  --radius: 10px;
+  --shadow-card: 0 1px 2px rgba(15, 23, 41, 0.04), 0 1px 1px rgba(15, 23, 41, 0.02);
+  --shadow-pop: 0 12px 32px -8px rgba(15, 23, 41, 0.18);
+
+  /* Aliases used by existing backoffice components */
+  --bg: var(--background);
+  --surface-2: var(--surface-muted);
+  --ink-900: var(--text-primary);
+  --ink-700: var(--text-secondary);
+  --text: var(--text-primary);
+  --text-subtle: var(--text-muted);
+  --success-50: var(--success-soft);
+  --warning-50: var(--warning-soft);
+  --danger-50: var(--danger-soft);
+  --info-50: var(--info-soft);
+  --plan-starter-bg: var(--plan-starter-soft);
+  --plan-pro-bg: var(--plan-pro-soft);
+  --plan-business-bg: var(--plan-business-soft);
+  --brand-500: var(--primary);
+  --brand-50: var(--primary-soft);
+  --shadow-overlay: var(--shadow-pop);
+  --radius-control: 8px;
+  --radius-card: var(--radius);
+  --radius-overlay: 16px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sidebar: 260px;
+  --sidebar-rail: 72px;
+  --topbar: 64px;
+  --focus: var(--primary);
+
+  --v2-bg-app: var(--background);
+  --v2-bg-elevated: var(--surface);
+  --v2-bg-sidebar: var(--sidebar-bg);
+  --v2-border-subtle: var(--border);
+  --v2-border-strong: var(--border-strong);
+  --v2-text: var(--text-primary);
+  --v2-text-secondary: var(--text-secondary);
+  --v2-text-muted: var(--text-muted);
+  --v2-primary: var(--primary);
+  --v2-primary-soft: var(--primary-soft);
+  --v2-success: var(--success);
+  --v2-warning: var(--warning);
+  --v2-danger: var(--danger);
+  --color-primary: var(--primary);
+  --color-accent: var(--primary-hover);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-bg: var(--background);
+  --color-bg-base: var(--background);
+  --color-bg-elevated: var(--surface);
+  --color-bg-secondary: var(--surface-muted);
+  --color-border: var(--border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-error: var(--danger);
+
+  color: var(--text-primary);
+  background: var(--background);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 20px;
+  font-feature-settings: "tnum" 1;
+  color-scheme: light;
+}
+
+.boShell[data-theme="dark"] {
+  --background: #0a0f1c;
+  --surface: #111827;
+  --surface-muted: #162033;
+  --surface-hover: #1a2438;
+  --border: #232e44;
+  --border-strong: #2f3b55;
+  --text-primary: #eef1f7;
+  --text-secondary: #b4bdd0;
+  --text-muted: #7a859c;
+  --primary: #7c83ff;
+  --primary-hover: #959bff;
+  --primary-soft: #1e2347;
+  --primary-foreground: #0a0f1c;
+  --sidebar-bg: #070b15;
+  --sidebar-item-active: #161e36;
+  --success: #34d399;
+  --success-soft: #0f2e25;
+  --warning: #fbbf24;
+  --warning-soft: #33260c;
+  --danger: #f87171;
+  --danger-soft: #3a1717;
+  --info: #38bdf8;
+  --info-soft: #0e2a3b;
+  --plan-starter: #cbd5e1;
+  --plan-starter-soft: rgba(148, 163, 184, 0.16);
+  --plan-pro: #7dd3fc;
+  --plan-pro-soft: rgba(14, 165, 233, 0.16);
+  --plan-business: #c4b5fd;
+  --plan-business-soft: rgba(124, 58, 237, 0.2);
+  --shadow-card: none;
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .boShell[data-theme-preference="system"] {
+    --background: #0a0f1c;
+    --surface: #111827;
+    --surface-muted: #162033;
+    --surface-hover: #1a2438;
+    --border: #232e44;
+    --border-strong: #2f3b55;
+    --text-primary: #eef1f7;
+    --text-secondary: #b4bdd0;
+    --text-muted: #7a859c;
+    --primary: #7c83ff;
+    --primary-hover: #959bff;
+    --primary-soft: #1e2347;
+    --primary-foreground: #0a0f1c;
+    --sidebar-bg: #070b15;
+    --sidebar-item-active: #161e36;
+    --success: #34d399;
+    --success-soft: #0f2e25;
+    --warning: #fbbf24;
+    --warning-soft: #33260c;
+    --danger: #f87171;
+    --danger-soft: #3a1717;
+    --info: #38bdf8;
+    --info-soft: #0e2a3b;
+    --plan-starter: #cbd5e1;
+    --plan-starter-soft: rgba(148, 163, 184, 0.16);
+    --plan-pro: #7dd3fc;
+    --plan-pro-soft: rgba(14, 165, 233, 0.16);
+    --plan-business: #c4b5fd;
+    --plan-business-soft: rgba(124, 58, 237, 0.2);
+    --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+.boShell :focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.boShell[data-density="compact"] {
+  --row-pad: 6px;
+}
+
+.boShell[data-density="comfortable"] {
+  --row-pad: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boShell,
+  .boShell * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

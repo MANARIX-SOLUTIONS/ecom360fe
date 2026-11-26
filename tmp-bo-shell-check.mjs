@@ -1,0 +1,22 @@
+import { chromium } from "@playwright/test";
+
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.setDefaultTimeout(20000);
+await page.goto("http://localhost:5173/login");
+await page.getByPlaceholder("exemple@domaine.com").fill("demo@ecom360.local");
+await page.getByPlaceholder("Mot de passe").fill("password123");
+await page.getByRole("button", { name: "Se connecter" }).click();
+await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 });
+await page.goto("http://localhost:5173/backoffice");
+await page.getByRole("link", { name: "Vue d'ensemble" }).waitFor();
+const status = await page.getByRole("button", { name: /État de la plateforme/ }).innerText();
+console.log("STATUS", status.replace(/\s+/g, " "));
+console.log("URL", page.url());
+await page.screenshot({ path: "tmp-bo-shell.png" });
+await page.getByRole("button", { name: /Sombre|Clair/ }).click();
+await page.screenshot({ path: "tmp-bo-shell-theme.png" });
+await page.keyboard.press("Meta+k");
+await page.getByRole("dialog").waitFor();
+await page.screenshot({ path: "tmp-bo-shell-search.png" });
+await browser.close();

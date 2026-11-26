@@ -11,6 +11,9 @@ import {
   ChevronRight,
   BarChart3,
   ClipboardList,
+  ListOrdered,
+  Sparkles,
+  Boxes,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
@@ -28,6 +31,30 @@ type MenuLink = {
 };
 
 const linkConfig: MenuLink[] = [
+  {
+    path: "/sales",
+    permission: "pos",
+    icon: ListOrdered,
+    label: t.sales.title,
+    desc: "Tickets et encaissements",
+    group: "commerce",
+  },
+  {
+    path: "/products?type=service",
+    permission: "products",
+    icon: Sparkles,
+    label: "Prestations",
+    desc: "Services vendus en caisse",
+    group: "commerce",
+  },
+  {
+    path: "/stock",
+    permission: "products",
+    icon: Boxes,
+    label: "Stock",
+    desc: "Niveaux, alertes et mouvements",
+    group: "commerce",
+  },
   {
     path: "/vue-globale",
     permission: "globalView",

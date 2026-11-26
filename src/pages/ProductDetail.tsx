@@ -50,14 +50,11 @@ import { confirmDelete } from "@/utils/confirmDelete";
 import type { ProductResponse, BusinessUser } from "@/api";
 import { ProductUnitFields } from "@/components/ProductUnitFields";
 import { isServiceUnit } from "@/utils/serviceUnit";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { STOCK_STATUS_COLOR, STOCK_STATUS_LABEL, stockDisplayStatus } from "@/utils/stockStatus";
 import type { StockLevelResponse, StockMovementResponse } from "@/api";
 import type { UploadFile } from "antd/es/upload/interface";
-
-function stockStatus(stock: number, minStock: number): "ok" | "low" | "critical" {
-  if (stock <= 0) return "critical";
-  if (stock <= minStock) return "low";
-  return "ok";
-}
 
 function movementTypeLabel(type: string): string {
   switch (type) {
@@ -249,6 +246,14 @@ export default function ProductDetail() {
     product.categoryId && categories.find((c) => c.id === product.categoryId)?.name;
   const activeStock = stockLevels.find((s) => s.storeId === activeStore?.id);
   const productImageSrc = sanitizeExternalImageUrl(product.imageUrl);
+  const isService = isServiceUnit(product.unit);
+  const activeStockStatus = activeStock
+    ? stockDisplayStatus({
+        unit: product.unit,
+        quantity: activeStock.quantity,
+        minStock: activeStock.minStock,
+      })
+    : null;
 
   const handleEdit = () => {
     editForm.validateFields().then(async (values) => {
@@ -332,10 +337,23 @@ export default function ProductDetail() {
   return (
     <div className={`${styles.page} pageWrapper`}>
       <div className={styles.backWrap}>
-        <Button type="text" icon={<ArrowLeft size={18} />} onClick={() => navigate("/products")}>
+        <Button
+          type="text"
+          icon={<ArrowLeft size={18} />}
+          onClick={() => navigate(isService ? "/products?type=service" : "/products")}
+        >
           {t.common.back}
         </Button>
       </div>
+
+      <PageHeader
+        title={isService ? t.pos.catalogKindServices : t.pos.catalogKindGoods}
+        subtitle={
+          isService
+            ? "Prestation vendue en caisse, sans suivi de stock."
+            : "Prix, stock par boutique et mouvements."
+        }
+      />
 
       <Card variant="borderless" className={styles.heroCard}>
         <div className={styles.heroInner}>
@@ -359,6 +377,7 @@ export default function ProductDetail() {
               {product.name}
             </Typography.Title>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+              {isService ? <Tag color="purple">{t.pos.serviceBadge}</Tag> : null}
               {categoryName && <Tag color="blue">{categoryName}</Tag>}
               {product.sku && (
                 <Typography.Text type="secondary">
@@ -378,30 +397,26 @@ export default function ProductDetail() {
                 {t.products.salePrice}
               </Typography.Text>
               <Typography.Title level={4} style={{ margin: "2px 0 0" }}>
-                {product.salePrice.toLocaleString("fr-FR")} F
+                <MoneyDisplay value={product.salePrice} />
               </Typography.Title>
             </div>
-            {activeStock && (
+            {!isService && activeStock && activeStockStatus ? (
               <div>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {t.products.heroStockLabel.replace("{store}", activeStore?.name ?? "")}
+                  {isService
+                    ? "Suivi stock"
+                    : t.products.heroStockLabel.replace("{store}", activeStore?.name ?? "")}
                 </Typography.Text>
-                <Tag
-                  color={
-                    stockStatus(activeStock.quantity, activeStock.minStock) === "critical"
-                      ? "error"
-                      : stockStatus(activeStock.quantity, activeStock.minStock) === "low"
-                        ? "warning"
-                        : "success"
-                  }
-                >
-                  {activeStock.quantity}
+                <Tag color={STOCK_STATUS_COLOR[activeStockStatus]}>
+                  {isService
+                    ? STOCK_STATUS_LABEL.untracked
+                    : `${activeStock.quantity} · ${STOCK_STATUS_LABEL[activeStockStatus]}`}
                 </Tag>
               </div>
-            )}
+            ) : null}
           </div>
           <div className={styles.heroActions}>
-            {matrixCan("STOCK_ADJUST", "products") && (
+            {!isService && matrixCan("STOCK_ADJUST", "products") && (
               <Button
                 icon={<Layers size={18} />}
                 onClick={openStockModal}
@@ -445,11 +460,15 @@ export default function ProductDetail() {
           )}
           <div>
             <div className={styles.infoLabel}>{t.products.purchasePrice}</div>
-            <div className={styles.infoValue}>{product.costPrice.toLocaleString("fr-FR")} F</div>
+            <div className={styles.infoValue}>
+              <MoneyDisplay value={product.costPrice} />
+            </div>
           </div>
           <div>
             <div className={styles.infoLabel}>{t.products.salePrice}</div>
-            <div className={styles.infoValue}>{product.salePrice.toLocaleString("fr-FR")} F</div>
+            <div className={styles.infoValue}>
+              <MoneyDisplay value={product.salePrice} />
+            </div>
           </div>
           <div>
             <div className={styles.infoLabel}>{t.products.unitLabel}</div>
@@ -459,7 +478,7 @@ export default function ProductDetail() {
             <div>
               <div className={styles.infoLabel}>{t.products.performersLabel}</div>
               <div className={styles.infoValue}>
-                {performerNames.length > 0 ? performerNames.join(", ") : "—"}
+                {performerNames.length > 0 ? performerNames.join(", ") : t.products.performersAll}
               </div>
             </div>
           )}
@@ -472,57 +491,58 @@ export default function ProductDetail() {
         </div>
       </Card>
 
-      <Card
-        title={t.products.stockByStore}
-        variant="borderless"
-        className={`${styles.card} ${styles.sectionCard} contentCard`}
-      >
-        {stockLevels.length === 0 ? (
-          <EmptyState
-            compact
-            icon={Layers}
-            title={t.products.emptyStockByStoreTitle}
-            description={t.products.emptyStockByStoreDesc}
-          />
-        ) : (
-          <div className="tableResponsive">
-            <Table
-              dataSource={stockLevels}
-              rowKey="storeId"
-              pagination={false}
-              size="small"
-              className="dataTable"
-              scroll={{ x: "max-content" }}
-              columns={[
-                { title: t.products.tableStoreColumn, dataIndex: "storeName" },
-                {
-                  title: t.products.stockQtyColumn,
-                  dataIndex: "quantity",
-                  render: (v: number, r: StockLevelResponse) => (
-                    <Tag
-                      color={
-                        stockStatus(v, r.minStock) === "critical"
-                          ? "error"
-                          : stockStatus(v, r.minStock) === "low"
-                            ? "warning"
-                            : "success"
-                      }
-                    >
-                      {v}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: t.products.minStockAlert,
-                  dataIndex: "minStock",
-                },
-              ]}
+      {!isService && (
+        <Card
+          title={t.products.stockByStore}
+          variant="borderless"
+          className={`${styles.card} ${styles.sectionCard} contentCard`}
+        >
+          {stockLevels.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Layers}
+              title={t.products.emptyStockByStoreTitle}
+              description={t.products.emptyStockByStoreDesc}
             />
-          </div>
-        )}
-      </Card>
+          ) : (
+            <div className="tableResponsive">
+              <Table
+                dataSource={stockLevels}
+                rowKey="storeId"
+                pagination={false}
+                size="small"
+                className="dataTable"
+                scroll={{ x: "max-content" }}
+                columns={[
+                  { title: t.products.tableStoreColumn, dataIndex: "storeName" },
+                  {
+                    title: t.products.stockQtyColumn,
+                    dataIndex: "quantity",
+                    render: (v: number, r: StockLevelResponse) => {
+                      const status = stockDisplayStatus({
+                        unit: product.unit,
+                        quantity: v,
+                        minStock: r.minStock,
+                      });
+                      return (
+                        <Tag color={STOCK_STATUS_COLOR[status]}>
+                          {status === "untracked" ? STOCK_STATUS_LABEL.untracked : v}
+                        </Tag>
+                      );
+                    },
+                  },
+                  {
+                    title: t.products.minStockAlert,
+                    dataIndex: "minStock",
+                  },
+                ]}
+              />
+            </div>
+          )}
+        </Card>
+      )}
 
-      {activeStore?.id && (
+      {!isService && activeStore?.id && (
         <Card
           title={t.products.movements}
           variant="borderless"
@@ -657,24 +677,24 @@ export default function ProductDetail() {
             <Input placeholder={t.products.placeholderProductName} />
           </Form.Item>
           {!sharedCatalog ? (
-          <Form.Item
-            name="storeId"
-            label={t.products.ownerStoreLabel}
-            rules={[{ required: true, message: t.validation.storeRequired }]}
-          >
-            <>
-              <Select
-                placeholder={t.products.ownerStorePlaceholder}
-                options={stores.map((s) => ({ value: s.id, label: s.name }))}
-              />
-              <Typography.Text
-                type="secondary"
-                style={{ fontSize: 12, marginTop: 4, display: "block" }}
-              >
-                {t.products.transferStoreHint}
-              </Typography.Text>
-            </>
-          </Form.Item>
+            <Form.Item
+              name="storeId"
+              label={t.products.ownerStoreLabel}
+              rules={[{ required: true, message: t.validation.storeRequired }]}
+            >
+              <>
+                <Select
+                  placeholder={t.products.ownerStorePlaceholder}
+                  options={stores.map((s) => ({ value: s.id, label: s.name }))}
+                />
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 12, marginTop: 4, display: "block" }}
+                >
+                  {t.products.transferStoreHint}
+                </Typography.Text>
+              </>
+            </Form.Item>
           ) : null}
           <Form.Item name="categoryId" label={t.products.category}>
             <Select

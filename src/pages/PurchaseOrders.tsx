@@ -33,6 +33,9 @@ import {
 } from "@/api";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { isServiceUnit } from "@/utils/serviceUnit";
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "default",
@@ -41,13 +44,22 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "error",
 };
 
-function formatFCFA(n: number): string {
-  return new Intl.NumberFormat("fr-FR").format(n) + " F";
-}
-
 function statusLabel(status: string): string {
   const map = t.purchaseOrders.status as Record<string, string>;
   return map[status] ?? status;
+}
+
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  paid: "green",
+  partial: "gold",
+  unpaid: "purple",
+};
+
+function paymentStatusLabel(status: string): string {
+  if (status === "partial") return t.purchaseOrders.paymentStatusPartial;
+  if (status === "unpaid") return t.purchaseOrders.paymentStatusUnpaid;
+  if (status === "paid") return t.purchaseOrders.paymentStatusPaid;
+  return status;
 }
 
 type LineForm = {
@@ -134,7 +146,7 @@ export default function PurchaseOrders() {
       .then(([supRes, storeRes, prodRes]) => {
         setSuppliers(supRes.content ?? []);
         setStores(storeRes ?? []);
-        setProducts((prodRes.content ?? []).filter((p) => p.isActive));
+        setProducts((prodRes.content ?? []).filter((p) => p.isActive && !isServiceUnit(p.unit)));
       })
       .catch(() => {
         /* ignore — create modal will show empty selects */
@@ -200,10 +212,8 @@ export default function PurchaseOrders() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader title={t.purchaseOrders.title} subtitle={t.purchaseOrders.subtitle} />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.purchaseOrders.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <Select
             allowClear
@@ -300,7 +310,19 @@ export default function PurchaseOrders() {
                   title: t.purchaseOrders.total,
                   dataIndex: "totalAmount",
                   align: "right",
-                  render: (n: number) => formatFCFA(n),
+                  render: (n: number) => <MoneyDisplay value={n} />,
+                },
+                {
+                  title: t.purchaseOrders.paymentColumn,
+                  dataIndex: "paymentStatus",
+                  render: (s: string, r: PurchaseOrderResponse) =>
+                    r.status === "received" ? (
+                      <Tag color={PAYMENT_STATUS_COLOR[s] || "default"}>
+                        {paymentStatusLabel(s)}
+                      </Tag>
+                    ) : (
+                      "—"
+                    ),
                 },
                 {
                   title: t.purchaseOrders.remainingDue,
@@ -308,7 +330,9 @@ export default function PurchaseOrders() {
                   align: "right",
                   render: (n: number, r: PurchaseOrderResponse) =>
                     r.status === "received" && n > 0 ? (
-                      <Tag color="gold">{formatFCFA(n)}</Tag>
+                      <Tag color="gold">
+                        <MoneyDisplay value={n} />
+                      </Tag>
                     ) : (
                       "—"
                     ),
@@ -336,6 +360,12 @@ export default function PurchaseOrders() {
         styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
         destroyOnHidden
       >
+        <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+          {t.purchaseOrders.createHint}
+        </Typography.Paragraph>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          {t.purchaseOrders.stockableOnlyHint}
+        </Typography.Paragraph>
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
           <Form.Item
             name="supplierId"

@@ -46,9 +46,11 @@ import {
   CircleHelp,
 } from "lucide-react";
 import { t } from "@/i18n";
+import { PageHeader } from "@/components/ui/PageHeader";
 import styles from "./Reports.module.css";
 import { getDashboard, voidSale } from "@/api";
 import { formatRangeSummaryFr, isYmdInInclusiveRange, ymdFromIsoLocal } from "@/utils/dateLocal";
+import { formatFCFA } from "@/utils/money";
 import { buildPeriodChartData } from "@/utils/reportChartData";
 import {
   type ReportsPeriodKey,
@@ -93,10 +95,6 @@ const PAYMENT_COLORS: Record<string, string> = {
 };
 
 const LABELS = REPORT_PAYMENT_LABELS;
-
-function formatFCFA(n: number) {
-  return n.toLocaleString("fr-FR") + " F";
-}
 
 function formatTime(iso: string) {
   try {
@@ -494,15 +492,12 @@ export default function Reports() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <div className={styles.toolbar}>
-          <Space wrap align="center" size="middle">
-            <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
-              {t.reports.title}
-            </Typography.Title>
-            <StoreScopeSelect value={selectedStoreId} onChange={setSelectedStoreId} />
-          </Space>
+      <PageHeader
+        title={t.reports.title}
+        subtitle="Ventes, charges et exports comptables."
+        extra={
           <Space wrap>
+            <StoreScopeSelect value={selectedStoreId} onChange={setSelectedStoreId} />
             <Button
               type="link"
               icon={<CircleHelp size={16} aria-hidden />}
@@ -530,8 +525,8 @@ export default function Reports() {
               </Button>
             )}
           </Space>
-        </div>
-      </header>
+        }
+      />
 
       <Tabs
         activeKey={activeTab}
@@ -701,7 +696,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: number) => `${v.toLocaleString("fr-FR")} F`} />
+                  <Tooltip formatter={(v: number) => formatFCFA(v)} />
                   <Bar
                     dataKey="ventes"
                     fill="var(--color-primary)"
@@ -846,9 +841,7 @@ export default function Reports() {
                     dataIndex: "total",
                     width: 100,
                     align: "right",
-                    render: (v: number) => (
-                      <span className="amount">{v.toLocaleString("fr-FR")} F</span>
-                    ),
+                    render: (v: number) => <span className="amount">{formatFCFA(v)}</span>,
                   },
                   {
                     title: t.reports.recentSalesColPayment,

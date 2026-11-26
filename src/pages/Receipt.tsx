@@ -25,6 +25,7 @@ import { isWalkInClientName } from "@/utils/clientWalkIn";
 import { useBusinessProfile } from "@/contexts/BusinessProfileContext";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { sanitizeExternalImageUrl } from "@/utils/sanitizeImageUrl";
+import { formatFCFA } from "@/utils/money";
 import styles from "./Receipt.module.css";
 
 type LocationState = {
@@ -50,7 +51,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 function formatPrice(n: number): string {
-  return n.toLocaleString("fr-FR") + " F";
+  return formatFCFA(n);
 }
 
 function formatDueDate(isoDate: string): string {
@@ -781,9 +782,7 @@ export default function Receipt() {
           if (!sale?.id) return;
           getSale(sale.id)
             .then(setFetchedSale)
-            .catch((e) =>
-              message.error(e instanceof Error ? e.message : t.receipt.msgLoadError)
-            );
+            .catch((e) => message.error(e instanceof Error ? e.message : t.receipt.msgLoadError));
         }}
       />
     </main>

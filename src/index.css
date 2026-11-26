@@ -11,33 +11,34 @@
  * Variables --color-* conservées pour compatibilité du code existant.
  */
 :root {
-  --v2-primary: #0f3460;
-  --v2-primary-hover: #143d72;
-  --v2-primary-soft: rgba(15, 52, 96, 0.08);
-  --v2-accent: #0ea5e9;
-  --v2-accent-soft: rgba(14, 165, 233, 0.12);
-  --v2-bg-app: #f1f5f9;
+  --v2-primary: #1d3557;
+  --v2-primary-hover: #315b91;
+  --v2-primary-soft: rgba(29, 53, 87, 0.08);
+  --v2-accent: #315b91;
+  --v2-accent-soft: rgba(49, 91, 145, 0.12);
+  --v2-info: #4389c5;
+  --v2-bg-app: #f5f7fa;
   --v2-bg-elevated: #ffffff;
-  --v2-bg-sidebar: rgba(255, 255, 255, 0.72);
-  --v2-border-subtle: rgba(15, 23, 42, 0.06);
-  --v2-border-strong: rgba(15, 23, 42, 0.12);
-  --v2-text: #0f172a;
-  --v2-text-secondary: #475569;
-  --v2-text-muted: #94a3b8;
+  --v2-bg-sidebar: #ffffff;
+  --v2-border-subtle: #e4e9f0;
+  --v2-border-strong: #d5dce6;
+  --v2-text: #182230;
+  --v2-text-secondary: #687588;
+  --v2-text-muted: #8b95a5;
   --v2-radius-sm: 10px;
   --v2-radius-md: 14px;
-  --v2-radius-lg: 20px;
-  --v2-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --v2-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
-  --v2-shadow-md: 0 4px 8px rgba(15, 23, 42, 0.04), 0 24px 48px rgba(15, 23, 42, 0.08);
-  --v2-glass-blur: 16px;
-  --v2-glass-bg: rgba(255, 255, 255, 0.72);
+  --v2-radius-lg: 16px;
+  --v2-shadow-xs: 0 1px 2px rgba(24, 34, 48, 0.04);
+  --v2-shadow-sm: 0 1px 2px rgba(24, 34, 48, 0.04), 0 6px 16px rgba(24, 34, 48, 0.05);
+  --v2-shadow-md: 0 4px 8px rgba(24, 34, 48, 0.04), 0 16px 32px rgba(24, 34, 48, 0.07);
+  --v2-glass-blur: 0px;
+  --v2-glass-bg: #ffffff;
   --v2-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --v2-duration-fast: 160ms;
-  --v2-duration-base: 240ms;
-  --v2-success: #059669;
-  --v2-warning: #d97706;
-  --v2-danger: #dc2626;
+  --v2-duration-fast: 140ms;
+  --v2-duration-base: 200ms;
+  --v2-success: #23865b;
+  --v2-warning: #c9852d;
+  --v2-danger: #d14343;
 
   /* Alias legacy (utilisés dans tout le frontend) */
   --color-primary: var(--v2-primary);
@@ -62,7 +63,7 @@
   --radius-sm: var(--v2-radius-sm);
   --radius-lg: var(--v2-radius-lg);
   --font: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: "Plus Jakarta Sans", var(--font);
+  --font-display: "Inter", var(--font);
   --shadow-card: var(--v2-shadow-sm);
   --shadow-card-hover: var(--v2-shadow-md);
   --shadow-elevated: var(--v2-shadow-md);
@@ -134,7 +135,7 @@ body {
 }
 
 ::selection {
-  background: rgba(15, 52, 96, 0.14);
+  background: rgba(49, 91, 145, 0.16);
   color: var(--color-text);
 }
 
@@ -194,11 +195,11 @@ body {
 }
 
 .ant-btn-primary {
-  box-shadow: 0 1px 3px rgba(15, 52, 96, 0.28);
+  box-shadow: 0 1px 3px rgba(29, 53, 87, 0.22);
 }
 
 .ant-btn-primary:hover {
-  box-shadow: 0 4px 14px rgba(15, 52, 96, 0.32);
+  box-shadow: 0 4px 12px rgba(29, 53, 87, 0.24);
   transform: translateY(-1px);
 }
 

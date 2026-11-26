@@ -7,7 +7,6 @@ import {
   Select,
   DatePicker,
   Space,
-  Typography,
   Tag,
   Modal,
   message,
@@ -17,10 +16,12 @@ import { FileDown, Ban, Pencil, ListOrdered, Banknote } from "lucide-react";
 import type { SalePaymentStatus, SaleResponse } from "@/api";
 import { listSales, voidSale } from "@/api";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { RecordSalePaymentModal } from "@/components/RecordSalePaymentModal";
 import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { t } from "@/i18n";
+import { formatFCFA } from "@/utils/money";
 import styles from "./Sales.module.css";
 import type { Dayjs } from "dayjs";
 
@@ -232,11 +233,7 @@ export default function Sales() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle" style={{ margin: 0 }}>
-          {t.sales.title}
-        </Typography.Title>
-      </header>
+      <PageHeader title={t.sales.title} subtitle="Tickets, encaissements et soldes clients." />
 
       <div className={styles.toolbar}>
         <Space wrap size="middle">
@@ -361,9 +358,7 @@ export default function Sales() {
                   dataIndex: "total",
                   width: 110,
                   align: "right",
-                  render: (v: number) => (
-                    <span className={styles.amount}>{v.toLocaleString("fr-FR")} F</span>
-                  ),
+                  render: (v: number) => <span className={styles.amount}>{formatFCFA(v)}</span>,
                 },
                 {
                   title: t.sales.remainingDue,
@@ -372,7 +367,7 @@ export default function Sales() {
                   align: "right",
                   render: (v: number, r: SaleResponse) =>
                     r.status === "completed" && v > 0 ? (
-                      <span className={styles.amount}>{v.toLocaleString("fr-FR")} F</span>
+                      <span className={styles.amount}>{formatFCFA(v)}</span>
                     ) : (
                       <span className={styles.amount}>—</span>
                     ),

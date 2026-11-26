@@ -20,6 +20,8 @@ export type BusinessUser = {
   role: string;
   roleName?: string;
   isActive: boolean;
+  storeIds?: string[];
+  storeNames?: string[];
 };
 
 export async function getUserProfile(): Promise<UserProfile> {
@@ -43,6 +45,16 @@ export async function inviteBusinessUser(data: {
   role: string;
 }): Promise<BusinessUser> {
   return api.post<BusinessUser>("/business/users", data);
+}
+
+/** Retire un employé (pas le propriétaire). La place redevient disponible. */
+export async function deactivateBusinessUser(businessUserId: string): Promise<void> {
+  await api.delete<void>(`/business/users/${businessUserId}`);
+}
+
+/** Toutes les boutiques actives de l'entreprise, pour le formulaire d'affectation. */
+export async function listAssignableStores(): Promise<StoreResponse[]> {
+  return api.get<StoreResponse[]>("/business/users/assignable-stores");
 }
 
 /** Récupère les boutiques assignées à un employé (multi-store) */

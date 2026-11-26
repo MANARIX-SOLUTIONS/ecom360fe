@@ -17,9 +17,12 @@ import { useStore } from "@/hooks/useStore";
 import { useMatrixCan } from "@/hooks/useMatrixCan";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { canRecordClientPayment, creditBalanceTagColor } from "@/utils/clientCredit";
 import { isWalkInClientName } from "@/utils/clientWalkIn";
 import { confirmDelete } from "@/utils/confirmDelete";
+import { formatFCFA } from "@/utils/money";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 
 type Client = {
   id: string;
@@ -138,10 +141,8 @@ export default function Clients() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
+      <PageHeader title={t.clients.title} subtitle="Annuaire, historique et soldes à encaisser." />
       <header className={styles.header}>
-        <Typography.Title level={4} className="pageTitle">
-          {t.clients.title}
-        </Typography.Title>
         <div className={styles.toolbar}>
           <Input
             prefix={<Search size={18} />}
@@ -234,7 +235,7 @@ export default function Clients() {
                   render: (v: number) => (
                     <Tag color={creditBalanceTagColor(v)}>
                       {v > 0 ? "+" : ""}
-                      {v.toLocaleString("fr-FR")} F
+                      {formatFCFA(v)}
                     </Tag>
                   ),
                 },
@@ -353,7 +354,9 @@ export default function Clients() {
                 </Typography.Text>
                 <Typography.Text type="secondary">
                   {t.clients.outstandingBalance}:{" "}
-                  <strong>{paymentModal.balance.toLocaleString("fr-FR")} F</strong>
+                  <strong>
+                    <MoneyDisplay value={paymentModal.balance} />
+                  </strong>
                 </Typography.Text>
               </div>
             </div>

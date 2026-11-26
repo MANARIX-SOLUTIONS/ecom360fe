@@ -15,13 +15,19 @@ import {
   Descriptions,
   Divider,
 } from "antd";
-import { CheckCircle, XCircle, Inbox, Eye } from "lucide-react";
+import { CheckCircle, XCircle, Inbox, Eye, Search, Mail, Phone } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   listAdminDemoRequests,
   approveAdminDemoRequest,
   rejectAdminDemoRequest,
   type AdminDemoRequest,
 } from "@/api/backoffice";
+import { PageHeader } from "@/components/backoffice/PageHeader";
+import { FilterBar } from "@/components/backoffice/FilterBar";
+import { StatusTag } from "@/components/backoffice/StatusTag";
+import { ErrorState } from "@/components/backoffice/ErrorState";
+import { EmptyState } from "@/components/EmptyState";
 import { t } from "@/i18n";
 import styles from "./Backoffice.module.css";
 
@@ -38,35 +44,58 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function BackofficeDemoRequests() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AdminDemoRequest[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>("pending");
+  const statusParam = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(
+    statusParam === "all" ? undefined : (statusParam ?? "pending")
+  );
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [searchDebounced, setSearchDebounced] = useState(searchParams.get("search") ?? "");
   const [rejectModal, setRejectModal] = useState<AdminDemoRequest | null>(null);
   const [rejectForm] = Form.useForm<{ reason: string }>();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminDemoRequest | null>(null);
+  const [hasError, setHasError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setHasError(false);
     try {
       const res = await listAdminDemoRequests({
         page,
         size: pageSize,
         status: statusFilter,
+        search: searchDebounced || undefined,
       });
       setRows(res.content ?? []);
       setTotal(res.totalElements ?? 0);
     } catch (e) {
       message.error(e instanceof Error ? e.message : t.backoffice.demoRequestsLoadError);
+      setHasError(true);
       setRows([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, statusFilter]);
+  }, [page, pageSize, statusFilter, searchDebounced]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setSearchDebounced(search.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [search]);
+
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (searchDebounced) next.set("search", searchDebounced);
+    next.set("status", statusFilter ?? "all");
+    setSearchParams(next, { replace: true });
+  }, [searchDebounced, statusFilter, setSearchParams]);
 
   useEffect(() => {
     load();
@@ -81,10 +110,13 @@ export default function BackofficeDemoRequests() {
       onOk: async () => {
         setActionLoading(r.id);
         try {
-          await approveAdminDemoRequest(r.id);
+          const created = await approveAdminDemoRequest(r.id);
           message.success(t.backoffice.demoAccountCreated);
           setDetail(null);
           load();
+          if (created?.businessId) {
+            navigate(`/backoffice/businesses?highlight=${created.businessId}`);
+          }
         } catch (e) {
           message.error(e instanceof Error ? e.message : t.common.errorGeneric);
         } finally {
@@ -114,17 +146,24 @@ export default function BackofficeDemoRequests() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
-      <div className={styles.header}>
-        <Typography.Title level={2} className={styles.title}>
-          Demandes de démo
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          Validez ou refusez les inscriptions avant création du compte entreprise.
-        </Typography.Text>
-      </div>
+      <PageHeader
+        title="Demandes de démo"
+        subtitle="Validez ou refusez les inscriptions avant création du compte entreprise."
+      />
 
       <Card variant="borderless" className={styles.card}>
-        <Space style={{ marginBottom: 16 }} wrap>
+        <FilterBar>
+          <Input.Search
+            allowClear
+            placeholder="Entreprise, contact ou e-mail"
+            value={search}
+            onChange={(event) => {
+              setPage(0);
+              setSearch(event.target.value);
+            }}
+            style={{ width: 280 }}
+            prefix={<Search size={14} />}
+          />
           <Select
             style={{ width: 200 }}
             value={statusFilter ?? "all"}
@@ -139,7 +178,7 @@ export default function BackofficeDemoRequests() {
               { value: "rejected", label: "Refusées" },
             ]}
           />
-        </Space>
+        </FilterBar>
 
         <div className="tableResponsive">
           <Table<AdminDemoRequest>
@@ -159,13 +198,51 @@ export default function BackofficeDemoRequests() {
               },
             }}
             locale={{
-              emptyText: (
-                <div style={{ padding: 32, textAlign: "center" }}>
-                  <Inbox size={40} strokeWidth={1.2} style={{ opacity: 0.35 }} />
-                  <Typography.Text type="secondary" style={{ display: "block", marginTop: 8 }}>
-                    Aucune demande
-                  </Typography.Text>
-                </div>
+              emptyText: hasError ? (
+                <ErrorState
+                  compact
+                  title="Impossible de charger les demandes"
+                  onRetry={() => void load()}
+                />
+              ) : (
+                <EmptyState
+                  compact
+                  icon={Inbox}
+                  title={
+                    statusFilter === "pending"
+                      ? "Aucune demande en attente — tout est traité"
+                      : "Aucune demande pour ces filtres"
+                  }
+                  description={
+                    statusFilter === "pending"
+                      ? "Les nouvelles demandes apparaîtront ici."
+                      : "Élargissez la recherche ou changez le statut."
+                  }
+                  action={
+                    statusFilter ? (
+                      <Button
+                        type="link"
+                        onClick={() => {
+                          setPage(0);
+                          setStatusFilter(undefined);
+                        }}
+                      >
+                        Voir l'historique
+                      </Button>
+                    ) : (
+                      <Button
+                        type="link"
+                        onClick={() => {
+                          setPage(0);
+                          setSearch("");
+                          setStatusFilter(undefined);
+                        }}
+                      >
+                        Réinitialiser les filtres
+                      </Button>
+                    )
+                  }
+                />
               ),
             }}
             onRow={(record) => ({
@@ -189,66 +266,67 @@ export default function BackofficeDemoRequests() {
               { title: "Contact", dataIndex: "fullName", width: 140, ellipsis: true },
               { title: "E-mail", dataIndex: "email", ellipsis: true },
               {
+                title: "Téléphone",
+                dataIndex: "phone",
+                width: 130,
+                render: (value: string | null) => value || "—",
+              },
+              {
+                title: "Secteur",
+                dataIndex: "sector",
+                width: 140,
+                render: (value: string | null) => value || "—",
+              },
+              {
                 title: "Statut",
                 width: 120,
-                render: (_, r) => (
-                  <Tag color={STATUS_COLOR[r.status] ?? "default"}>
-                    {STATUS_LABELS[r.status] ?? r.status}
-                  </Tag>
-                ),
+                render: (_, r) => <StatusTag status={r.status} />,
               },
               {
-                title: "",
-                key: "detail",
-                width: 88,
-                render: (_, r) => (
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<Eye size={14} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDetail(r);
-                    }}
-                  >
-                    Détails
-                  </Button>
-                ),
-              },
-              {
-                title: "",
+                title: "Actions",
                 key: "actions",
-                width: 200,
-                render: (_, r) =>
-                  r.status === "pending" ? (
-                    <Space onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<CheckCircle size={14} />}
-                        loading={actionLoading === r.id}
-                        onClick={() => handleApprove(r)}
-                      >
-                        Valider
-                      </Button>
-                      <Button
-                        danger
-                        size="small"
-                        icon={<XCircle size={14} />}
-                        loading={actionLoading === r.id}
-                        onClick={() => {
-                          rejectForm.resetFields();
-                          setRejectModal(r);
-                        }}
-                      >
-                        Refuser
-                      </Button>
-                    </Space>
-                  ) : r.status === "rejected" && r.rejectionReason ? (
-                    <Typography.Text type="secondary" ellipsis style={{ maxWidth: 200 }}>
-                      {r.rejectionReason}
-                    </Typography.Text>
-                  ) : null,
+                width: 280,
+                render: (_, r) => (
+                  <Space onClick={(e) => e.stopPropagation()} size={4}>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<Eye size={14} />}
+                      onClick={() => setDetail(r)}
+                    >
+                      Détails
+                    </Button>
+                    {r.status === "pending" ? (
+                      <>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<CheckCircle size={14} />}
+                          loading={actionLoading === r.id}
+                          onClick={() => handleApprove(r)}
+                        >
+                          Approuver
+                        </Button>
+                        <Button
+                          danger
+                          size="small"
+                          icon={<XCircle size={14} />}
+                          loading={actionLoading === r.id}
+                          onClick={() => {
+                            rejectForm.resetFields();
+                            setRejectModal(r);
+                          }}
+                        >
+                          Refuser
+                        </Button>
+                      </>
+                    ) : r.status === "rejected" && r.rejectionReason ? (
+                      <Typography.Text type="secondary" ellipsis style={{ maxWidth: 140 }}>
+                        {r.rejectionReason}
+                      </Typography.Text>
+                    ) : null}
+                  </Space>
+                ),
               },
             ]}
           />
@@ -263,31 +341,43 @@ export default function BackofficeDemoRequests() {
         onClose={() => setDetail(null)}
         destroyOnClose
         extra={
-          detail?.status === "pending" ? (
-            <Space>
-              <Button
-                type="primary"
-                icon={<CheckCircle size={16} />}
-                loading={actionLoading === detail.id}
-                onClick={() => detail && handleApprove(detail)}
-              >
-                Valider
+          <Space>
+            {detail?.email ? (
+              <Button icon={<Mail size={16} />} href={`mailto:${detail.email}`}>
+                Contacter
               </Button>
-              <Button
-                danger
-                icon={<XCircle size={16} />}
-                loading={actionLoading === detail.id}
-                onClick={() => {
-                  if (detail) {
-                    rejectForm.resetFields();
-                    setRejectModal(detail);
-                  }
-                }}
-              >
-                Refuser
+            ) : null}
+            {detail?.phone ? (
+              <Button icon={<Phone size={16} />} href={`tel:${detail.phone}`}>
+                Appeler
               </Button>
-            </Space>
-          ) : null
+            ) : null}
+            {detail?.status === "pending" ? (
+              <>
+                <Button
+                  type="primary"
+                  icon={<CheckCircle size={16} />}
+                  loading={actionLoading === detail.id}
+                  onClick={() => detail && handleApprove(detail)}
+                >
+                  Valider
+                </Button>
+                <Button
+                  danger
+                  icon={<XCircle size={16} />}
+                  loading={actionLoading === detail.id}
+                  onClick={() => {
+                    if (detail) {
+                      rejectForm.resetFields();
+                      setRejectModal(detail);
+                    }
+                  }}
+                >
+                  Refuser
+                </Button>
+              </>
+            ) : null}
+          </Space>
         }
       >
         {detail && (

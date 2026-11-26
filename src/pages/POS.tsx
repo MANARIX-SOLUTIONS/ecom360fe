@@ -15,6 +15,7 @@ import {
   Drawer,
   Switch,
   DatePicker,
+  Segmented,
 } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
@@ -59,6 +60,7 @@ import {
   type PosCartLine,
 } from "@/utils/posCartStorage";
 import { isServiceUnit } from "@/utils/serviceUnit";
+import { formatFCFA } from "@/utils/money";
 
 type CartLine = PosCartLine;
 
@@ -228,18 +230,18 @@ const PosProductCard = memo(function PosProductCard({
 }: PosProductCardProps) {
   const availableStock = maxStock - cartQty;
   const level = stockLevel(availableStock, product.minStock);
-  const outOfStock = availableStock <= 0;
   const catColor = CATEGORY_COLORS[product.category] || "#999";
-  const priceLabel = `${product.price.toLocaleString("fr-FR")} F`;
-  const showStock = !product.isService || level !== "ok";
+  const priceLabel = formatFCFA(product.price);
+  const showStock = !product.isService;
+  const blocked = !product.isService && availableStock <= 0;
 
   return (
     <button
       type="button"
-      className={`${styles.productCard} ${outOfStock ? styles.productCardDisabled : ""} ${cartQty > 0 ? styles.productCardInCart : ""}`}
+      className={`${styles.productCard} ${blocked ? styles.productCardDisabled : ""} ${cartQty > 0 ? styles.productCardInCart : ""}`}
       onClick={() => onAdd(product)}
-      disabled={outOfStock || isLoading}
-      aria-disabled={outOfStock}
+      disabled={blocked || isLoading}
+      aria-disabled={blocked}
       aria-busy={isLoading}
       aria-label={`${product.name}, ${priceLabel}`}
     >
@@ -269,7 +271,7 @@ const PosProductCard = memo(function PosProductCard({
         <span className={`amount ${styles.productPrice}`}>{priceLabel}</span>
         {showStock && (
           <span className={`${styles.stockBadge} ${styles[`stock_${level}`]}`}>
-            {outOfStock
+            {blocked
               ? t.pos.outOfStock
               : level === "low"
                 ? `Stock: ${availableStock} ⚠`
@@ -312,7 +314,7 @@ const PerformerPicker = memo(function PerformerPicker({
         <div className={styles.performerPickerTitle}>
           <span className={styles.performerPickerProduct}>{productName}</span>
           <span className={`amount ${styles.performerPickerPrice}`}>
-            {productPrice.toLocaleString("fr-FR")} F
+            {formatFCFA(productPrice)}
           </span>
         </div>
       </div>
@@ -356,8 +358,6 @@ const PerformerPicker = memo(function PerformerPicker({
     </div>
   );
 });
-
-const SERVICES_FILTER = "__services__";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Alimentation: "#2ecc71",
@@ -468,12 +468,12 @@ const PosCartPanel = memo(function PosCartPanel({
                     )}
                   </div>
                   <span className={`amount ${styles.lineTotal}`}>
-                    {(l.price * l.qty).toLocaleString("fr-FR")} F
+                    {formatFCFA(l.price * l.qty)}
                   </span>
                 </div>
                 <div className={styles.cartLineBottom}>
                   <span className={styles.cartLineMeta}>
-                    {l.price.toLocaleString("fr-FR")} F × {l.qty}
+                    {formatFCFA(l.price)} × {l.qty}
                   </span>
                   <div className={styles.cartLineActions}>
                     <button
@@ -511,9 +511,7 @@ const PosCartPanel = memo(function PosCartPanel({
       {cart.length > 0 && (
         <div className={styles.cartFooter}>
           <span>{t.pos.cartSubtotal}</span>
-          <span className={`amount ${styles.cartFooterAmount}`}>
-            {subtotal.toLocaleString("fr-FR")} F
-          </span>
+          <span className={`amount ${styles.cartFooterAmount}`}>{formatFCFA(subtotal)}</span>
         </div>
       )}
     </Card>
@@ -582,259 +580,259 @@ const PosCheckoutPanel = memo(function PosCheckoutPanel({
     <div className={styles.right}>
       <Card className={styles.totalCard} variant="borderless">
         <div className={styles.checkoutScroll}>
-        <div className={styles.paymentSection}>
-          <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
-            Mode de paiement
-          </Typography.Text>
-          <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
-            {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={paymentMethod === key}
-                className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
-                onClick={() => onPaymentMethodChange(key)}
-                style={
-                  paymentMethod === key
-                    ? {
-                        borderColor: color,
-                        background: bg,
+          <div className={styles.paymentSection}>
+            <Typography.Text type="secondary" className={styles.paymentSectionLabel}>
+              Mode de paiement
+            </Typography.Text>
+            <div className={styles.paymentGrid} role="radiogroup" aria-label="Mode de paiement">
+              {paymentMethods.map(({ key, label, hint, image, color, bg }) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === key}
+                  className={`${styles.payMethodBtn} ${paymentMethod === key ? styles.payMethodActive : ""}`}
+                  onClick={() => onPaymentMethodChange(key)}
+                  style={
+                    paymentMethod === key
+                      ? {
+                          borderColor: color,
+                          background: bg,
+                        }
+                      : undefined
+                  }
+                >
+                  <span className={styles.payMethodVisual} aria-hidden>
+                    <img
+                      src={image}
+                      alt=""
+                      className={
+                        key === "wave" || key === "orange_money"
+                          ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
+                          : styles.payMethodImg
                       }
-                    : undefined
-                }
-              >
-                <span className={styles.payMethodVisual} aria-hidden>
-                  <img
-                    src={image}
-                    alt=""
-                    className={
-                      key === "wave" || key === "orange_money"
-                        ? `${styles.payMethodImg} ${styles.payMethodImgBrand}`
-                        : styles.payMethodImg
-                    }
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className={styles.payMethodLabel}>{label}</span>
-                <span className={styles.payMethodHint}>{hint}</span>
-              </button>
-            ))}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </span>
+                  <span className={styles.payMethodLabel}>{label}</span>
+                  <span className={styles.payMethodHint}>{hint}</span>
+                </button>
+              ))}
+            </div>
+            {paymentMethods.some((m) => m.key === "wave" || m.key === "orange_money") ? (
+              <Typography.Text type="secondary" className={styles.paymentRecordedNote}>
+                {t.pos.paymentRecordedNote}
+              </Typography.Text>
+            ) : null}
           </div>
-        </div>
 
-        <div className={styles.clientRow}>
-          <div className={styles.clientRowHeader}>
-            <Typography.Text type="secondary">
-              {paymentMethod === "credit" ? t.pos.clientCreditLabelShort : t.pos.clientLabelShort}
+          <div className={styles.clientRow}>
+            <div className={styles.clientRowHeader}>
+              <Typography.Text type="secondary">
+                {paymentMethod === "credit" ? t.pos.clientCreditLabelShort : t.pos.clientLabelShort}
+              </Typography.Text>
+              <Button
+                type="link"
+                size="small"
+                className={styles.quickAddClientBtn}
+                icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
+                onClick={onQuickAddClient}
+              >
+                {t.pos.quickAddClient}
+              </Button>
+            </div>
+            <Typography.Text type="secondary" className={styles.clientCreditHint}>
+              {t.pos.quickAddClientHint}
             </Typography.Text>
-            <Button
-              type="link"
-              size="small"
-              className={styles.quickAddClientBtn}
-              icon={<Plus size={16} strokeWidth={2.25} aria-hidden />}
-              onClick={onQuickAddClient}
-            >
-              {t.pos.quickAddClient}
-            </Button>
-          </div>
-          <Typography.Text type="secondary" className={styles.clientCreditHint}>
-            {t.pos.quickAddClientHint}
-          </Typography.Text>
-          <Select
-            placeholder={t.pos.placeholderSelectClient}
-            value={selectedClientId}
-            onChange={onClientChange}
-            options={clients.map((c) => ({
-              value: c.id,
-              label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
-              disabled: paymentMethod === "credit" && c.isWalkIn,
-            }))}
-            style={{ width: "100%" }}
-            size="large"
-            showSearch
-            optionFilterProp="label"
-            notFoundContent={
-              <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
-            }
-          />
-          {paymentMethod === "credit" && (!selectedClientId || selectedClient?.isWalkIn) && (
-            <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
-              {t.pos.warnCreditNeedsNamedClient}
-            </Typography.Text>
-          )}
-          {paymentMethod === "credit" && selectedClientId && !selectedClient?.isWalkIn && (
-            <Typography.Text
-              type="secondary"
-              style={{ display: "block", marginTop: 8, fontSize: 13 }}
-            >
-              {t.pos.currentDebtLabel} :{" "}
-              {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
-              {t.pos.afterThisSaleLabel}{" "}
-              <strong>
-                {((selectedClient?.creditBalance ?? 0) + total).toLocaleString("fr-FR")} F
-              </strong>
-            </Typography.Text>
-          )}
-          {partialEnabled &&
-            remainingToPay > 0 &&
-            selectedClientId &&
-            !selectedClient?.isWalkIn && (
+            <Select
+              placeholder={t.pos.placeholderSelectClient}
+              value={selectedClientId}
+              onChange={onClientChange}
+              options={clients.map((c) => ({
+                value: c.id,
+                label: c.isWalkIn ? `${c.name}${t.pos.walkInDefaultSuffix}` : c.name,
+                disabled: paymentMethod === "credit" && c.isWalkIn,
+              }))}
+              style={{ width: "100%" }}
+              size="large"
+              showSearch
+              optionFilterProp="label"
+              notFoundContent={
+                <span className={styles.selectEmptyHint}>{t.pos.selectClientNotFound}</span>
+              }
+            />
+            {paymentMethod === "credit" && (!selectedClientId || selectedClient?.isWalkIn) && (
+              <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+                {t.pos.warnCreditNeedsNamedClient}
+              </Typography.Text>
+            )}
+            {paymentMethod === "credit" && selectedClientId && !selectedClient?.isWalkIn && (
               <Typography.Text
                 type="secondary"
                 style={{ display: "block", marginTop: 8, fontSize: 13 }}
               >
-                {t.pos.currentDebtLabel} :{" "}
-                {(selectedClient?.creditBalance ?? 0).toLocaleString("fr-FR")} F{" · "}
+                {t.pos.currentDebtLabel} : {formatFCFA(selectedClient?.creditBalance ?? 0)} {" · "}
                 {t.pos.afterThisSaleLabel}{" "}
-                <strong>
-                  {((selectedClient?.creditBalance ?? 0) + remainingToPay).toLocaleString("fr-FR")}{" "}
-                  F
-                </strong>
+                <strong>{formatFCFA((selectedClient?.creditBalance ?? 0) + total)}</strong>
               </Typography.Text>
             )}
-        </div>
-
-        {showPartialSection && (
-          <div className={styles.partialSection}>
-            <div className={styles.partialToggleRow}>
-              <div>
-                <Typography.Text strong>{t.pos.partialPayment}</Typography.Text>
+            {partialEnabled &&
+              remainingToPay > 0 &&
+              selectedClientId &&
+              !selectedClient?.isWalkIn && (
                 <Typography.Text
                   type="secondary"
-                  style={{ display: "block", fontSize: 12, marginTop: 2 }}
+                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
                 >
-                  {partialLocked ? t.pos.depositNeedsNamedClient : t.pos.partialPaymentHint}
+                  {t.pos.currentDebtLabel} : {formatFCFA(selectedClient?.creditBalance ?? 0)}{" "}
+                  {" · "}
+                  {t.pos.afterThisSaleLabel}{" "}
+                  <strong>
+                    {formatFCFA((selectedClient?.creditBalance ?? 0) + remainingToPay)}
+                  </strong>
                 </Typography.Text>
-              </div>
-              <Switch
-                checked={partialEnabled}
-                onChange={onPartialEnabledChange}
-                disabled={partialLocked}
-                aria-label={t.pos.partialPayment}
-              />
-            </div>
+              )}
+          </div>
 
-            {partialEnabled && !partialLocked && (
-              <>
-                <div className={styles.discountRow}>
-                  <Typography.Text type="secondary">{t.pos.amountPaidNow}</Typography.Text>
-                  <CurrencyInput
-                    min={minAmountPaid}
-                    max={total}
-                    value={amountPaid}
-                    onChange={(v) => onAmountPaidChange(Number(v) || 0)}
-                    style={{ width: 160 }}
-                  />
-                </div>
-                <div className={styles.quickPayRow}>
-                  <button
-                    type="button"
-                    className={styles.quickPayChip}
-                    onClick={() =>
-                      onAmountPaidChange(
-                        Math.min(total, Math.max(minAmountPaid, Math.round(total / 2)))
-                      )
-                    }
+          {showPartialSection && (
+            <div className={styles.partialSection}>
+              <div className={styles.partialToggleRow}>
+                <div>
+                  <Typography.Text strong>{t.pos.partialPayment}</Typography.Text>
+                  <Typography.Text
+                    type="secondary"
+                    style={{ display: "block", fontSize: 12, marginTop: 2 }}
                   >
-                    {t.pos.payHalf}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.quickPayChip}
-                    onClick={() => onAmountPaidChange(total)}
-                  >
-                    {t.pos.payInFull}
-                  </button>
+                    {partialLocked ? t.pos.depositNeedsNamedClient : t.pos.partialPaymentHint}
+                  </Typography.Text>
                 </div>
-                {remainingToPay > 0 && (
+                <Switch
+                  checked={partialEnabled}
+                  onChange={onPartialEnabledChange}
+                  disabled={partialLocked}
+                  aria-label={t.pos.partialPayment}
+                />
+              </div>
+
+              {partialEnabled && !partialLocked && (
+                <>
                   <div className={styles.discountRow}>
-                    <Typography.Text type="secondary">{t.pos.dueDate}</Typography.Text>
-                    <DatePicker
-                      value={dueDate}
-                      onChange={onDueDateChange}
-                      format="DD/MM/YYYY"
-                      placeholder={t.pos.dueDateOptional}
-                      disabledDate={(d) => d.isBefore(dayjs().startOf("day"))}
+                    <Typography.Text type="secondary">{t.pos.amountPaidNow}</Typography.Text>
+                    <CurrencyInput
+                      min={minAmountPaid}
+                      max={total}
+                      value={amountPaid}
+                      onChange={(v) => onAmountPaidChange(Number(v) || 0)}
                       style={{ width: 160 }}
                     />
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
+                  <div className={styles.quickPayRow}>
+                    <button
+                      type="button"
+                      className={styles.quickPayChip}
+                      onClick={() =>
+                        onAmountPaidChange(
+                          Math.min(total, Math.max(minAmountPaid, Math.round(total / 2)))
+                        )
+                      }
+                    >
+                      {t.pos.payHalf}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.quickPayChip}
+                      onClick={() => onAmountPaidChange(total)}
+                    >
+                      {t.pos.payInFull}
+                    </button>
+                  </div>
+                  {remainingToPay > 0 && (
+                    <div className={styles.discountRow}>
+                      <Typography.Text type="secondary">{t.pos.dueDate}</Typography.Text>
+                      <DatePicker
+                        value={dueDate}
+                        onChange={onDueDateChange}
+                        format="DD/MM/YYYY"
+                        placeholder={t.pos.dueDateOptional}
+                        disabledDate={(d) => d.isBefore(dayjs().startOf("day"))}
+                        style={{ width: 160 }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className={styles.checkoutFooter}>
-        <div className={styles.discountRow}>
-          <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
-          <CurrencyInput
-            min={0}
-            value={discount}
-            onChange={(v) => onDiscountChange(Number(v) || 0)}
-            style={{ width: 140 }}
-          />
-        </div>
-
-        <div className={styles.totalRow}>
-          <Typography.Text type="secondary">{t.common.total}</Typography.Text>
-          <Typography.Title level={2} className={styles.totalAmount}>
-            {total.toLocaleString("fr-FR")} F
-          </Typography.Title>
-        </div>
-        {partialEnabled && remainingToPay > 0 && (
-          <div className={`${styles.discountRow} ${styles.remainingRow}`}>
-            <Typography.Text type="secondary">{t.pos.remainingToPay}</Typography.Text>
-            <Typography.Text strong className={styles.remainingAmount}>
-              {remainingToPay.toLocaleString("fr-FR")} F
-            </Typography.Text>
+          <div className={styles.discountRow}>
+            <Typography.Text type="secondary">{t.pos.discount}</Typography.Text>
+            <CurrencyInput
+              min={0}
+              value={discount}
+              onChange={(v) => onDiscountChange(Number(v) || 0)}
+              style={{ width: 140 }}
+            />
           </div>
-        )}
 
-        {!editSaleId && salesAtLimit && (
-          <div
-            style={{
-              padding: 12,
-              marginBottom: 12,
-              background: "rgba(239,68,68,0.08)",
-              borderRadius: 8,
-              fontSize: 13,
-              color: "var(--color-danger)",
-            }}
-          >
-            {t.pos.monthlySalesLimitReached}{" "}
-            <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
-              {t.pos.upgradePlanLink}
-            </Link>
+          <div className={styles.totalRow}>
+            <Typography.Text type="secondary">{t.common.total}</Typography.Text>
+            <Typography.Title level={2} className={styles.totalAmount}>
+              {formatFCFA(total)}
+            </Typography.Title>
           </div>
-        )}
-        <Button
-          type="primary"
-          size="large"
-          block
-          className={styles.validateBtn}
-          onClick={onValidate}
-          loading={loading}
-          disabled={
-            cartEmpty ||
-            (!!editSaleId && !editHydrated) ||
-            (!editSaleId && salesAtLimit) ||
-            (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn)) ||
-            (partialEnabled &&
-              remainingToPay > 0 &&
-              (!selectedClientId || !!selectedClient?.isWalkIn))
-          }
-        >
-          {editSaleId ? t.pos.updateSale : t.pos.validateSale}
           {partialEnabled && remainingToPay > 0 && (
-            <span className={styles.validateBtnHint}>
-              {t.pos.remainingToPay} {remainingToPay.toLocaleString("fr-FR")} F
-            </span>
+            <div className={`${styles.discountRow} ${styles.remainingRow}`}>
+              <Typography.Text type="secondary">{t.pos.remainingToPay}</Typography.Text>
+              <Typography.Text strong className={styles.remainingAmount}>
+                {formatFCFA(remainingToPay)}
+              </Typography.Text>
+            </div>
           )}
-        </Button>
+
+          {!editSaleId && salesAtLimit && (
+            <div
+              style={{
+                padding: 12,
+                marginBottom: 12,
+                background: "rgba(239,68,68,0.08)",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "var(--color-danger)",
+              }}
+            >
+              {t.pos.monthlySalesLimitReached}{" "}
+              <Link to="/settings/subscription" style={{ fontWeight: 600 }}>
+                {t.pos.upgradePlanLink}
+              </Link>
+            </div>
+          )}
+          <Button
+            type="primary"
+            size="large"
+            block
+            className={styles.validateBtn}
+            onClick={onValidate}
+            loading={loading}
+            disabled={
+              cartEmpty ||
+              (!!editSaleId && !editHydrated) ||
+              (!editSaleId && salesAtLimit) ||
+              (paymentMethod === "credit" && (!selectedClientId || !!selectedClient?.isWalkIn)) ||
+              (partialEnabled &&
+                remainingToPay > 0 &&
+                (!selectedClientId || !!selectedClient?.isWalkIn))
+            }
+          >
+            {editSaleId ? t.pos.updateSale : t.pos.validateSale}
+            {partialEnabled && remainingToPay > 0 && (
+              <span className={styles.validateBtnHint}>
+                {t.pos.remainingToPay} {formatFCFA(remainingToPay)}
+              </span>
+            )}
+          </Button>
         </div>
       </Card>
     </div>
@@ -902,6 +900,8 @@ export default function POS() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("Tous");
+  const [catalogKind, setCatalogKind] = useState<"all" | "goods" | "services">("all");
+  const catalogKindInitStore = useRef<string | null>(null);
 
   const posBreakpoint = usePosBreakpoint();
   const productPageSize = PRODUCTS_PAGE_SIZE[posBreakpoint];
@@ -1145,13 +1145,16 @@ export default function POS() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchCat =
-        category === "Tous" ||
-        (category === SERVICES_FILTER ? p.isService : p.category === category);
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchSearch;
+      if (!matchSearch) return false;
+      if (catalogKind === "services") return p.isService;
+      if (catalogKind === "goods") {
+        return !p.isService && (category === "Tous" || p.category === category);
+      }
+      if (category === "Tous") return true;
+      return p.category === category;
     });
-  }, [category, search, products]);
+  }, [catalogKind, category, search, products]);
 
   const displayedProducts = useMemo(
     () => filteredProducts.slice(0, productVisibleLimit),
@@ -1224,6 +1227,7 @@ export default function POS() {
   const maxQtyForProduct = useCallback(
     (productId: string) => {
       const prod = products.find((p) => p.id === productId);
+      if (prod?.isService) return 999;
       const orig = editSaleId && saleToEdit ? (originalQtyByProduct.get(productId) ?? 0) : 0;
       return (prod ? prod.stock : 0) + orig;
     },
@@ -1353,6 +1357,16 @@ export default function POS() {
     [products]
   );
   const hasServices = serviceProductIds.size > 0;
+  const hasGoods = products.some((p) => !p.isService);
+
+  useEffect(() => {
+    if (!activeStore?.id || products.length === 0) return;
+    if (catalogKindInitStore.current === activeStore.id) return;
+    catalogKindInitStore.current = activeStore.id;
+    const services = products.filter((p) => p.isService).length;
+    setCatalogKind(services > products.length - services ? "services" : "all");
+    setCategory("Tous");
+  }, [activeStore?.id, products]);
 
   const updateQty = useCallback(
     (key: string, delta: number) => {
@@ -1700,28 +1714,37 @@ export default function POS() {
             /* eslint-disable-next-line jsx-a11y/no-autofocus -- POS: search is primary action, focus on load improves checkout speed */
             autoFocus
           />
-          <div className={styles.categories}>
-            {categories.map((c) => (
-              <Button
-                key={c}
-                type={category === c ? "primary" : "default"}
-                onClick={() => setCategory(c)}
-                className={styles.catBtn}
-              >
-                {c}
-              </Button>
-            ))}
-            {hasServices && (
-              <Button
-                type={category === SERVICES_FILTER ? "primary" : "default"}
-                onClick={() => setCategory(SERVICES_FILTER)}
-                className={styles.catBtn}
-                icon={<Scissors size={14} />}
-              >
-                {t.pos.servicesFilter}
-              </Button>
-            )}
-          </div>
+          {hasServices && hasGoods ? (
+            <div className={styles.kindFilter}>
+              <Segmented
+                value={catalogKind}
+                onChange={(value) => {
+                  setCatalogKind(value as "all" | "goods" | "services");
+                  setCategory("Tous");
+                }}
+                options={[
+                  { label: t.pos.catalogKindAll, value: "all" },
+                  { label: t.pos.catalogKindGoods, value: "goods" },
+                  { label: t.pos.catalogKindServices, value: "services" },
+                ]}
+                block
+              />
+            </div>
+          ) : null}
+          {catalogKind !== "services" ? (
+            <div className={styles.categories}>
+              {categories.map((c) => (
+                <Button
+                  key={c}
+                  type={category === c ? "primary" : "default"}
+                  onClick={() => setCategory(c)}
+                  className={styles.catBtn}
+                >
+                  {c}
+                </Button>
+              ))}
+            </div>
+          ) : null}
           <div className={styles.productGridWrap}>
             <div className={styles.productGrid}>
               {displayedProducts.map((p) => {
@@ -1766,12 +1789,10 @@ export default function POS() {
               <span className={styles.mobileCartBarCount}>
                 {t.pos.cartBarItems.replace("{count}", String(itemCount))}
               </span>
-              <span className={`amount ${styles.mobileCartBarTotal}`}>
-                {total.toLocaleString("fr-FR")} F
-              </span>
+              <span className={`amount ${styles.mobileCartBarTotal}`}>{formatFCFA(total)}</span>
               {partialEnabled && total - effectiveAmountPaid > 0 && (
                 <span className={styles.mobileCartBarRemaining}>
-                  {t.pos.remainingToPay} {(total - effectiveAmountPaid).toLocaleString("fr-FR")} F
+                  {t.pos.remainingToPay} {formatFCFA(total - effectiveAmountPaid)}
                 </span>
               )}
             </div>

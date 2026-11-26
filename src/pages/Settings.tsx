@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Card, Typography } from "antd";
+import { Card } from "antd";
 import {
   Building2,
   CreditCard,
@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { t } from "@/i18n";
 import styles from "./Settings.module.css";
 
@@ -28,7 +29,7 @@ type SettingItem = {
   permission: string;
 };
 
-const organisationConfig: SettingItem[] = [
+const businessConfig: SettingItem[] = [
   {
     icon: Store,
     title: t.stores.title,
@@ -52,6 +53,23 @@ const organisationConfig: SettingItem[] = [
   },
 ];
 
+const teamConfig: SettingItem[] = [
+  {
+    icon: Users,
+    title: t.settings.usersAndRoles,
+    desc: t.settings.usersAndRolesDesc,
+    path: "/settings/users",
+    permission: "settings:users",
+  },
+  {
+    icon: BadgeCheck,
+    title: t.settings.rolesPermissions,
+    desc: t.settings.rolesPermissionsDesc,
+    path: "/settings/roles",
+    permission: "settings:roles",
+  },
+];
+
 const integrationsConfig: SettingItem[] = [
   {
     icon: ShoppingBag,
@@ -71,20 +89,6 @@ const integrationsConfig: SettingItem[] = [
 
 const accountConfig: SettingItem[] = [
   {
-    icon: Users,
-    title: t.settings.usersAndRoles,
-    desc: t.settings.usersAndRolesDesc,
-    path: "/settings/users",
-    permission: "settings:users",
-  },
-  {
-    icon: BadgeCheck,
-    title: t.settings.rolesPermissions,
-    desc: t.settings.rolesPermissionsDesc,
-    path: "/settings/roles",
-    permission: "settings:roles",
-  },
-  {
     icon: Bell,
     title: t.settings.notifications,
     desc: t.settings.notificationsDesc,
@@ -100,40 +104,32 @@ const accountConfig: SettingItem[] = [
   },
 ];
 
+const settingGroups = [
+  { title: t.settings.sectionBusiness, items: businessConfig },
+  { title: t.settings.sectionTeam, items: teamConfig },
+  { title: t.settings.sectionIntegrations, items: integrationsConfig },
+  { title: t.settings.sectionAccount, items: accountConfig },
+] as const;
+
 export default function Settings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { canAccess: canAccessBackend } = usePermissions();
   const { canAccess: canAccessPlan } = usePlanFeatures();
 
-  const organisationItems = useMemo(
+  const visibleGroups = useMemo(
     () =>
-      organisationConfig.filter((item) => {
-        const backendCan = canAccessBackend(
-          item.permission as Parameters<typeof canAccessBackend>[0]
-        );
-        return backendCan && canAccessPlan(item.permission, backendCan);
-      }),
-    [canAccessBackend, canAccessPlan]
-  );
-  const integrationsItems = useMemo(
-    () =>
-      integrationsConfig.filter((item) => {
-        const backendCan = canAccessBackend(
-          item.permission as Parameters<typeof canAccessBackend>[0]
-        );
-        return backendCan && canAccessPlan(item.permission, backendCan);
-      }),
-    [canAccessBackend, canAccessPlan]
-  );
-  const accountItems = useMemo(
-    () =>
-      accountConfig.filter((item) => {
-        const backendCan = canAccessBackend(
-          item.permission as Parameters<typeof canAccessBackend>[0]
-        );
-        return backendCan && canAccessPlan(item.permission, backendCan);
-      }),
+      settingGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => {
+            const backendCan = canAccessBackend(
+              item.permission as Parameters<typeof canAccessBackend>[0]
+            );
+            return backendCan && canAccessPlan(item.permission, backendCan);
+          }),
+        }))
+        .filter((group) => group.items.length > 0),
     [canAccessBackend, canAccessPlan]
   );
 
@@ -160,68 +156,23 @@ export default function Settings() {
 
   return (
     <div className={`${styles.page} pageWrapper`}>
-      <header className={styles.header}>
-        <Typography.Title level={4} className={styles.title}>
-          {t.settings.title}
-        </Typography.Title>
-        <Typography.Text type="secondary" className={styles.subtitle}>
-          {t.settings.subtitle}
-        </Typography.Text>
-      </header>
+      <PageHeader title={t.settings.title} subtitle={t.settings.subtitle} />
 
-      {organisationItems.length > 0 && (
-        <section className={styles.section}>
-          <Typography.Text type="secondary" className={styles.sectionTitle}>
-            {t.settings.sectionOrganisation}
-          </Typography.Text>
+      {visibleGroups.map((group) => (
+        <section key={group.title} className={styles.section}>
+          <span className={styles.sectionTitle}>{group.title}</span>
           <Card variant="borderless" className={styles.card}>
             <div className={styles.itemList}>
-              {organisationItems.map((item, i) => (
+              {group.items.map((item, i) => (
                 <div key={item.path}>
                   {renderItem(item)}
-                  {i < organisationItems.length - 1 && <div className={styles.itemDivider} />}
+                  {i < group.items.length - 1 && <div className={styles.itemDivider} />}
                 </div>
               ))}
             </div>
           </Card>
         </section>
-      )}
-
-      {integrationsItems.length > 0 && (
-        <section className={styles.section}>
-          <Typography.Text type="secondary" className={styles.sectionTitle}>
-            {t.settings.sectionIntegrations}
-          </Typography.Text>
-          <Card variant="borderless" className={styles.card}>
-            <div className={styles.itemList}>
-              {integrationsItems.map((item, i) => (
-                <div key={item.path}>
-                  {renderItem(item)}
-                  {i < integrationsItems.length - 1 && <div className={styles.itemDivider} />}
-                </div>
-              ))}
-            </div>
-          </Card>
-        </section>
-      )}
-
-      {accountItems.length > 0 && (
-        <section className={styles.section}>
-          <Typography.Text type="secondary" className={styles.sectionTitle}>
-            {t.settings.sectionAccount}
-          </Typography.Text>
-          <Card variant="borderless" className={styles.card}>
-            <div className={styles.itemList}>
-              {accountItems.map((item, i) => (
-                <div key={item.path}>
-                  {renderItem(item)}
-                  {i < accountItems.length - 1 && <div className={styles.itemDivider} />}
-                </div>
-              ))}
-            </div>
-          </Card>
-        </section>
-      )}
+      ))}
 
       <section className={styles.section}>
         <Card variant="borderless" className={styles.logoutCard}>

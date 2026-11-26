@@ -134,7 +134,6 @@ const PLAN_GATED = new Set([
   "purchaseOrders",
   "livreurs",
   "globalView",
-  "settings:users",
   "settings:roles",
   "settings:commerce",
   "settings:api",
@@ -165,6 +164,7 @@ export function usePlanFeatures() {
     canGlobalView: features.globalView,
     canMultiPayment: features.multiPayment,
     canClientCredits: features.clientCredits,
+    /** Custom roles (plan Business). The team page itself is available on every plan. */
     canSettingsUsers: features.settingsUsers,
     canAdvancedReports: features.advancedReports,
     canApi: features.api,
@@ -181,8 +181,7 @@ export function usePlanFeatures() {
       if (permission === "purchaseOrders") return features.suppliers;
       if (permission === "livreurs") return features.livreurs;
       if (permission === "globalView") return features.globalView;
-      if (permission === "settings:users" || permission === "settings:roles")
-        return features.settingsUsers;
+      if (permission === "settings:roles") return features.settingsUsers;
       if (permission === "settings:commerce" || permission === "settings:api") return features.api;
       return true;
     },
